@@ -197,71 +197,84 @@ function StockAnalysis() {
   const chartData = summary ? buildChartData(summary.chart_data) : null;
 
   // The columns with multiple rows for your stats
-  const renderStatsColumns = () => {
-    if (!summary) return null;
-    const statsColumns = [
-      {
-        title: 'Upper Touches',
-        rows: [
-          { label: 'Count',           value: summary.upper_touches_count },
-          { label: 'Avg drop ($)',    value: summary.avg_upper_touch_drop },
-          { label: 'Avg days',        value: summary.avg_upper_touch_in_days }
-        ]
-      },
-      {
-        title: 'Lower Touches',
-        rows: [
-          { label: 'Count',           value: summary.lower_touches_count },
-          { label: 'Avg bounce ($)',  value: summary.avg_lower_touch_bounce },
-          { label: 'Avg days',        value: summary.avg_lower_touch_bounce_in_days }
-        ]
-      },
-      {
-        title: 'Upper Hugs',
-        rows: [
-          { label: 'Count',            value: summary.hug_events_upper_count },
-          { label: 'Avg drop ($)',     value: summary.avg_upper_hug_drop },
-          { label: 'Avg days',         value: summary.avg_upper_hug_drop_in_days },
-          { label: 'Avg hug length',   value: summary.avg_upper_hug_length },
-          { label: 'Avg hug change',   value: summary.avg_upper_hug_change },
-          { label: 'Avg hug touches',  value: summary.avg_upper_hug_touch_count }
-        ]
-      },
-      {
-        title: 'Lower Hugs',
-        rows: [
-          { label: 'Count',            value: summary.hug_events_lower_count },
-          { label: 'Avg bounce ($)',   value: summary.avg_lower_hug_bounce },
-          { label: 'Avg days',         value: summary.avg_lower_hug_bounce_in_days },
-          { label: 'Avg hug length',   value: summary.avg_lower_hug_length },
-          { label: 'Avg hug change',   value: summary.avg_lower_hug_change },
-          { label: 'Avg hug touches',  value: summary.avg_lower_hug_touch_count }
-        ]
-      }
-    ];
-
-    return (
-      <Grid container spacing={2} sx={{ mt: 2 }}>
-        {statsColumns.map((col) => (
-          <Grid item xs={12} sm={6} md={3} key={col.title}>
-            <Paper sx={{ p: 2, textAlign: 'center' }}>
-              <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
-                {col.title}
-              </Typography>
-              {col.rows.map((r) => (
-                <Typography key={r.label} variant="body2" sx={{ mb: 0.5 }}>
-                  <strong>{r.label}:</strong>{' '}
-                  {r.value !== null && r.value !== undefined
-                    ? r.value.toFixed?.(2) ?? r.value
-                    : '-'}
-                </Typography>
-              ))}
-            </Paper>
+  // A separate component to display each stats group in a Card
+const StatCard = ({ title, rows }) => (
+  <Card variant="outlined" sx={{ mb: 2, height: '100%' }}>
+    <CardContent>
+      <Typography variant="h6" gutterBottom>
+        {title}
+      </Typography>
+      <Divider sx={{ mb: 1 }} />
+      <Grid container spacing={1}>
+        {rows.map((row) => (
+          <Grid item xs={6} key={row.label}>
+            <Typography variant="body2">
+              <strong>{row.label}:</strong>{' '}
+              {row.value !== null && row.value !== undefined
+                ? row.value.toFixed?.(2) ?? row.value
+                : '-'}
+            </Typography>
           </Grid>
         ))}
       </Grid>
-    );
-  };
+    </CardContent>
+  </Card>
+);
+
+const renderStatsColumns = () => {
+  if (!summary) return null;
+  const statsColumns = [
+    {
+      title: 'Upper Touches',
+      rows: [
+        { label: 'Count',         value: summary.upper_touches_count },
+        { label: 'Avg drop ($)',  value: summary.avg_upper_touch_drop },
+        { label: 'Avg days',      value: summary.avg_upper_touch_in_days }
+      ]
+    },
+    {
+      title: 'Lower Touches',
+      rows: [
+        { label: 'Count',         value: summary.lower_touches_count },
+        { label: 'Avg bounce ($)', value: summary.avg_lower_touch_bounce },
+        { label: 'Avg days',       value: summary.avg_lower_touch_bounce_in_days }
+      ]
+    },
+    {
+      title: 'Upper Hugs',
+      rows: [
+        { label: 'Count',           value: summary.hug_events_upper_count },
+        { label: 'Avg drop ($)',    value: summary.avg_upper_hug_drop },
+        { label: 'Avg days',        value: summary.avg_upper_hug_drop_in_days },
+        { label: 'Avg hug length',  value: summary.avg_upper_hug_length },
+        { label: 'Avg hug change',  value: summary.avg_upper_hug_change },
+        { label: 'Avg hug touches', value: summary.avg_upper_hug_touch_count }
+      ]
+    },
+    {
+      title: 'Lower Hugs',
+      rows: [
+        { label: 'Count',           value: summary.hug_events_lower_count },
+        { label: 'Avg bounce ($)',  value: summary.avg_lower_hug_bounce },
+        { label: 'Avg days',        value: summary.avg_lower_hug_bounce_in_days },
+        { label: 'Avg hug length',  value: summary.avg_lower_hug_length },
+        { label: 'Avg hug change',  value: summary.avg_lower_hug_change },
+        { label: 'Avg hug touches', value: summary.avg_lower_hug_touch_count }
+      ]
+    }
+  ];
+
+  return (
+    <Grid container spacing={2} sx={{ mt: 2 }}>
+      {statsColumns.map((col) => (
+        <Grid item xs={12} sm={6} key={col.title}>
+          <StatCard title={col.title} rows={col.rows} />
+        </Grid>
+      ))}
+    </Grid>
+  );
+};
+
 
   return (
     <Box sx={{ maxWidth: 900, mx: 'auto', mt: 4 }}>
