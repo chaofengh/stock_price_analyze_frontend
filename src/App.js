@@ -5,18 +5,22 @@ import StockAnalysis from '../src/components/StockAnalysis';
 
 const theme = createTheme({
   palette: {
-    mode: 'light', // or 'dark' for a dark theme
-    primary: { main: '#1976d2' },
-    secondary: { main: '#dc004e' },
+    mode: 'light',
+    primary: { main: '#0d47a1' },
+    secondary: { main: '#f57c00' },
   },
   typography: {
     fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
+    h4: { fontWeight: 700 },
+    h5: { fontWeight: 600 },
   },
-  shadows: [
-    'none',
-    '0px 1px 3px rgba(0,0,0,0.12), 0px 1px 2px rgba(0,0,0,0.24)',
-    // … add custom shadow definitions as needed
-  ],
+  components: {
+    MuiPaper: {
+      styleOverrides: {
+        root: { borderRadius: 12 },
+      },
+    },
+  },
 });
 
 function App() {
@@ -25,10 +29,10 @@ function App() {
       <CssBaseline />
       <AppBar position="static" elevation={4}>
         <Toolbar>
-          <Typography variant="h6">Amazing Stock Dashboard</Typography>
+          <Typography variant="h6">Premium Stock Dashboard</Typography>
         </Toolbar>
       </AppBar>
-      <Container maxWidth="lg" sx={{ mt: 4 }}>
+      <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
         <StockAnalysis />
       </Container>
     </ThemeProvider>
