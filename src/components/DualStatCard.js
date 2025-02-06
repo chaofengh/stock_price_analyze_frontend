@@ -1,4 +1,3 @@
-// DualStatCard.js
 import React from 'react';
 import { Card, CardContent, Typography, Box } from '@mui/material';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
@@ -7,40 +6,34 @@ import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 const DualStatCard = ({ label, value5, trend5, value10, trend10 }) => {
   const renderIcon = (trend) => {
     if (trend === 'up') {
-      return <ArrowUpwardIcon fontSize="small" sx={{ color: 'green', ml: 0.5 }} />;
+      return <ArrowUpwardIcon fontSize="small" sx={{ color: 'green' }} />;
     } else if (trend === 'down') {
-      return <ArrowDownwardIcon fontSize="small" sx={{ color: 'red', ml: 0.5 }} />;
+      return <ArrowDownwardIcon fontSize="small" sx={{ color: 'red' }} />;
     }
     return null;
   };
 
   return (
     <Card
-      elevation={3}
       sx={{
-        borderRadius: 2,
-        p: 1,
-        transition: 'transform 0.3s, box-shadow 0.3s',
-        '&:hover': { transform: 'scale(1.02)', boxShadow: 6 },
+        borderRadius: 4,
+        p: 2,
+        transition: 'transform 0.3s',
+        '&:hover': { transform: 'scale(1.02)' },
       }}
+      elevation={1}
     >
-      <CardContent>
-        <Typography variant="subtitle2" color="textSecondary">
+      <CardContent sx={{ p: 0 }}>
+        <Typography variant="caption" color="textSecondary">
           {label}
         </Typography>
-        <Box display="flex" justifyContent="space-between" alignItems="center" mt={1}>
+        <Box mt={1} display="flex" justifyContent="space-between">
           <Box textAlign="center">
             <Typography variant="caption" color="textSecondary">
               5-Day
             </Typography>
             <Box display="flex" alignItems="center" justifyContent="center">
-              <Typography
-                variant="h6"
-                sx={{
-                  fontWeight: 'bold',
-                  color: trend5 === 'up' ? 'green' : trend5 === 'down' ? 'red' : 'textPrimary',
-                }}
-              >
+              <Typography variant="h6" sx={{ fontWeight: 'medium', ml: 0.5 }}>
                 {value5}
               </Typography>
               {renderIcon(trend5)}
@@ -51,13 +44,7 @@ const DualStatCard = ({ label, value5, trend5, value10, trend10 }) => {
               10-Day
             </Typography>
             <Box display="flex" alignItems="center" justifyContent="center">
-              <Typography
-                variant="h6"
-                sx={{
-                  fontWeight: 'bold',
-                  color: trend10 === 'up' ? 'green' : trend10 === 'down' ? 'red' : 'textPrimary',
-                }}
-              >
+              <Typography variant="h6" sx={{ fontWeight: 'medium', ml: 0.5 }}>
                 {value10}
               </Typography>
               {renderIcon(trend10)}

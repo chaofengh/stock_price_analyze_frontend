@@ -1,14 +1,15 @@
-// KpiTiles.js
 import React from 'react';
 import { Grid, Paper, Typography, Box } from '@mui/material';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import TrendingDownIcon from '@mui/icons-material/TrendingDown';
 
-function KpiTiles({ summary }) {
+const KpiTiles = ({ summary }) => {
   if (!summary) return null;
+  console.log(summary);
 
   const priceChange = summary.price_change_in_dollars;
-  const priceChangeColor = priceChange > 0 ? 'green' : priceChange < 0 ? 'red' : 'textPrimary';
+  const priceChangeColor =
+    priceChange > 0 ? 'green' : priceChange < 0 ? 'red' : 'textPrimary';
   const priceChangeIcon =
     priceChange > 0 ? (
       <TrendingUpIcon fontSize="small" sx={{ color: 'green', mr: 0.5 }} />
@@ -26,29 +27,53 @@ function KpiTiles({ summary }) {
       color: priceChangeColor,
     },
     {
-      label: 'Final Price',
-      value: summary.final_price != null ? `$${summary.final_price.toFixed(2)}` : '-',
+      label: 'Current Price',
+      value:
+        summary.final_price != null
+          ? `$${summary.final_price.toFixed(2)}`
+          : '-',
     },
     {
-      label: 'Trading Days',
-      value: summary.trading_days ?? '-',
-    },
-    {
-      label: 'PE Ratio',
-      value: summary.PE_ratio ?? '-',
+      label: 'Trailing PE',
+      value:
+        summary.trailingPE != null ? summary.trailingPE.toFixed(2) : '-',
     },
     {
       label: 'PEG',
-      value: summary.PEG ?? '-',
+      value: summary.PEG != null ? summary.PEG.toFixed(2) : '-',
+    },
+    // New insightful metrics
+    {
+      label: 'Beta',
+      value: summary.beta != null ? summary.beta.toFixed(2) : '-',
+    },
+    {
+      label: 'Market Cap',
+      value:
+        summary.marketCap != null
+          ? `$${(summary.marketCap / 1e12).toFixed(2)}T`
+          : '-',
+    },
+    {
+      label: 'Dividend Yield',
+      value:
+        summary.dividendYield != null
+          ? `${(summary.dividendYield * 100).toFixed(2)}%`
+          : '-',
+    },
+    {
+      label: 'Forward P/E',
+      value:
+        summary.forwardPE != null ? summary.forwardPE.toFixed(2) : '-',
     },
   ];
 
   return (
-    <Grid container spacing={3} sx={{ mb: 3 }}>
+    <Grid container spacing={3}>
       {tiles.map(({ label, value, extra, icon, color }, idx) => (
         <Grid item xs={12} sm={6} key={idx}>
-          <Paper elevation={4} sx={{ p: 3, textAlign: 'center', borderRadius: 2 }}>
-            <Typography variant="subtitle2" color="textSecondary">
+          <Paper sx={{ p: 3, textAlign: 'center', borderRadius: 4 }} elevation={1}>
+            <Typography variant="caption" color="textSecondary">
               {label}
             </Typography>
             <Box display="flex" alignItems="center" justifyContent="center" mt={1}>
@@ -59,7 +84,7 @@ function KpiTiles({ summary }) {
             </Box>
             {extra && (
               <Typography variant="caption" color="textSecondary">
-                ({extra})
+                {extra}
               </Typography>
             )}
           </Paper>
@@ -67,6 +92,6 @@ function KpiTiles({ summary }) {
       ))}
     </Grid>
   );
-}
+};
 
 export default KpiTiles;

@@ -1,7 +1,7 @@
 // App.js
 import React from 'react';
 import { ThemeProvider, createTheme, CssBaseline, Container, AppBar, Toolbar, Typography } from '@mui/material';
-import StockAnalysis from '../src/components/StockAnalysis';
+import StockDashboard from './components/StockDashboard';
 
 const theme = createTheme({
   palette: {
@@ -12,10 +12,15 @@ const theme = createTheme({
   typography: {
     fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
     h4: { fontWeight: 700 },
-    h5: { fontWeight: 600 },
+    h6: { fontWeight: 600 },
   },
   components: {
     MuiPaper: {
+      styleOverrides: {
+        root: { borderRadius: 12 },
+      },
+    },
+    MuiCard: {
       styleOverrides: {
         root: { borderRadius: 12 },
       },
@@ -29,11 +34,11 @@ function App() {
       <CssBaseline />
       <AppBar position="static" elevation={4}>
         <Toolbar>
-          <Typography variant="h6">Premium Stock Dashboard</Typography>
+          <Typography variant="h6">UltraPro Stock Dashboard</Typography>
         </Toolbar>
       </AppBar>
-      <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-        <StockAnalysis />
+      <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
+        <StockDashboard />
       </Container>
     </ThemeProvider>
   );

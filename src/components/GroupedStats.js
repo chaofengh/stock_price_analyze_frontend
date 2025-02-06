@@ -1,6 +1,5 @@
-// GroupedStats.js
 import React, { useState } from 'react';
-import { Box, Tabs, Tab, Grid, Typography, Divider, Fade } from '@mui/material';
+import { Box, Tabs, Tab, Grid, Typography, Divider } from '@mui/material';
 import DualStatCard from './DualStatCard';
 
 const formatMetric = (num, decimals = 2) => {
@@ -67,46 +66,48 @@ const GroupedStats = ({ summary }) => {
       <Tabs
         value={tab}
         onChange={handleTabChange}
-        centered
         textColor="primary"
         indicatorColor="primary"
-        sx={{ mb: 2 }}
+        centered
+        sx={{ mb: 3 }}
       >
-        <Tab label="Resistance Metrics" />
-        <Tab label="Support Metrics" />
+        <Tab label="Resistance" />
+        <Tab label="Support" />
       </Tabs>
-      <Box>
-        {tab === 0 && (
-          <Fade in={tab === 0}>
-            <Box>
-              <Typography variant="subtitle1" gutterBottom>
-                Touch Metrics
-              </Typography>
-              <Grid container spacing={2}>{renderMetrics(resistanceTouchMetrics)}</Grid>
-              <Divider sx={{ my: 2 }} />
-              <Typography variant="subtitle1" gutterBottom>
-                Hug Metrics
-              </Typography>
-              <Grid container spacing={2}>{renderMetrics(resistanceHugMetrics)}</Grid>
-            </Box>
-          </Fade>
-        )}
-        {tab === 1 && (
-          <Fade in={tab === 1}>
-            <Box>
-              <Typography variant="subtitle1" gutterBottom>
-                Touch Metrics
-              </Typography>
-              <Grid container spacing={2}>{renderMetrics(supportTouchMetrics)}</Grid>
-              <Divider sx={{ my: 2 }} />
-              <Typography variant="subtitle1" gutterBottom>
-                Hug Metrics
-              </Typography>
-              <Grid container spacing={2}>{renderMetrics(supportHugMetrics)}</Grid>
-            </Box>
-          </Fade>
-        )}
-      </Box>
+      {tab === 0 && (
+        <Box>
+          <Typography variant="subtitle1" sx={{ mb: 1 }}>
+            Touch Metrics
+          </Typography>
+          <Grid container spacing={2}>
+            {renderMetrics(resistanceTouchMetrics)}
+          </Grid>
+          <Divider sx={{ my: 3 }} />
+          <Typography variant="subtitle1" sx={{ mb: 1 }}>
+            Hug Metrics
+          </Typography>
+          <Grid container spacing={2}>
+            {renderMetrics(resistanceHugMetrics)}
+          </Grid>
+        </Box>
+      )}
+      {tab === 1 && (
+        <Box>
+          <Typography variant="subtitle1" sx={{ mb: 1 }}>
+            Touch Metrics
+          </Typography>
+          <Grid container spacing={2}>
+            {renderMetrics(supportTouchMetrics)}
+          </Grid>
+          <Divider sx={{ my: 3 }} />
+          <Typography variant="subtitle1" sx={{ mb: 1 }}>
+            Hug Metrics
+          </Typography>
+          <Grid container spacing={2}>
+            {renderMetrics(supportHugMetrics)}
+          </Grid>
+        </Box>
+      )}
     </Box>
   );
 };
