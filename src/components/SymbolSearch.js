@@ -6,6 +6,7 @@ import {
   Paper,
   List,
   ListItem,
+  ListItemButton,
   ListItemText
 } from '@mui/material';
 
@@ -13,25 +14,20 @@ const SymbolSearch = ({ onSelectSymbol, placeholder = 'Search for a Stock' }) =>
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
-
-  // Ref used for debouncing
   const debounceTimer = useRef(null);
 
   useEffect(() => {
-    // If empty, clear suggestions
     if (!searchTerm) {
       setSearchResults([]);
       setShowSuggestions(false);
       return;
     }
 
-    // Debounce to avoid spam-calling the API
     clearTimeout(debounceTimer.current);
     debounceTimer.current = setTimeout(() => {
       fetchMatches(searchTerm);
     }, 300);
 
-    // Cleanup if component unmounts
     return () => clearTimeout(debounceTimer.current);
   }, [searchTerm]);
 
@@ -39,10 +35,8 @@ const SymbolSearch = ({ onSelectSymbol, placeholder = 'Search for a Stock' }) =>
     try {
       const apiKey = process.env.REACT_APP_Alpha_Vantage_API_Key;
       const url = `https://www.alphavantage.co/query?function=SYMBOL_SEARCH&keywords=${query}&apikey=${apiKey}`;
-      
       const response = await fetch(url);
       const data = await response.json();
-
       if (data.bestMatches) {
         setSearchResults(data.bestMatches);
         setShowSuggestions(true);
@@ -55,19 +49,17 @@ const SymbolSearch = ({ onSelectSymbol, placeholder = 'Search for a Stock' }) =>
     }
   };
 
-  // Submitting the form by pressing Enter or button
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!searchTerm) return;
-    // We pass the typed input upward
     onSelectSymbol(searchTerm.toUpperCase());
     setShowSuggestions(false);
+    setSearchTerm(''); // Clear the text field after submission
   };
 
-  // Clicking a suggestion from the dropdown
   const handleSelectSuggestion = (selectedSymbol) => {
     onSelectSymbol(selectedSymbol.toUpperCase());
-    setSearchTerm(selectedSymbol.toUpperCase());
+    setSearchTerm(''); // Clear the text field after selection
     setShowSuggestions(false);
   };
 
@@ -102,27 +94,17 @@ const SymbolSearch = ({ onSelectSymbol, placeholder = 'Search for a Stock' }) =>
               const symbolMatch = item['1. symbol'];
               const companyName = item['2. name'];
               return (
-                <ListItem
-                  button
-                  key={idx}
-                  onClick={() => handleSelectSuggestion(symbolMatch)}
-                >
-                  <ListItemText
-                    primary={symbolMatch}
-                    secondary={companyName}
-                  />
+                <ListItem key={idx} disablePadding>
+                  <ListItemButton onClick={() => handleSelectSuggestion(symbolMatch)}>
+                    <ListItemText primary={symbolMatch} secondary={companyName} />
+                  </ListItemButton>
                 </ListItem>
               );
             })}
           </List>
         </Paper>
       )}
-      <Button
-        fullWidth
-        type="submit"
-        variant="contained"
-        sx={{ mt: 2 }}
-      >
+      <Button fullWidth type="submit" variant="contained" sx={{ mt: 2 }}>
         Search
       </Button>
     </Box>
