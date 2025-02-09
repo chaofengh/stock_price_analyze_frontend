@@ -21,6 +21,8 @@ const GroupedStats = ({ summary }) => {
   const resistanceTouchMetrics = [
     { label: 'Avg Upper Touch Drop', key: 'avg_upper_touch_drop', decimals: 2 },
     { label: 'Drop Duration (Days)', key: 'avg_upper_touch_in_days', decimals: 1, disableTrend: true },
+    {label:'Accuracy', key: 'upper_touch_accuracy', decimals: 2, disableTrend: true },
+    { label: 'Touch Count', key: 'upper_touch_count', decimals: 0, disableTrend: true },
   ];
   const resistanceHugMetrics = [
     { label: 'Avg Upper Hug Change', key: 'avg_upper_hug_change', decimals: 2 },
@@ -33,6 +35,8 @@ const GroupedStats = ({ summary }) => {
     { label: 'Avg Lower Touch Bounce', key: 'avg_lower_touch_bounce', decimals: 2 },
     // Added disableTrend: true to remove arrows for Bounce Duration (Days)
     { label: 'Bounce Duration (Days)', key: 'avg_lower_touch_bounce_in_days', decimals: 1, disableTrend: true },
+    { label: 'Accuracy', key: 'lower_touch_accuracy', decimals: 2, disableTrend: true },
+    { label: 'Touch Count', key: 'lower_touch_count', decimals: 0, disableTrend: true}
   ];
   const supportHugMetrics = [
     { label: 'Avg Lower Hug Change', key: 'avg_lower_hug_change', decimals: 2 },

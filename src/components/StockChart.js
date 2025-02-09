@@ -215,7 +215,7 @@ function StockChart({ summary, eventMap }) {
       } else if (pt.isHug) {
         const key = pt.date;
         if (eventTypeMappingHug[key] === 'lower_hug') {
-          return '00C853';
+          return '#00C853';
         } else if (eventTypeMappingHug[key] === 'upper_hug') {
           return '#D50000';
         }
@@ -299,15 +299,17 @@ function StockChart({ summary, eventMap }) {
         bodyItem.lines.forEach((line) => {
           // Customize the numeric value for 'Drop' and 'Bounce'
           if (line.startsWith('Drop:')) {
-            line = line.replace(
-              /(Drop:\s*)(\$\d+(\.\d+)?)/,
-              "$1<span style='background-color: red; color: white; padding: 2px 4px;'>$2</span>"
-            );
+            line = line.replace(/^(Drop:\s*)(-?\$\d+(\.\d+)?)/, (match, prefix, amount) => {
+              const numericValue = parseFloat(amount.replace('$', ''));
+              const color = numericValue >= 0 ? 'green' : 'red';
+              return prefix + `<span style="background-color: ${color}; color: white; padding: 2px 4px;">${amount}</span>`;
+            });
           } else if (line.startsWith('Bounce:')) {
-            line = line.replace(
-              /(Bounce:\s*)(\$\d+(\.\d+)?)/,
-              "$1<span style='background-color: green; color: white; padding: 2px 4px;'>$2</span>"
-            );
+            line = line.replace(/^(Bounce:\s*)(-?\$\d+(\.\d+)?)/, (match, prefix, amount) => {
+              const numericValue = parseFloat(amount.replace('$', ''));
+              const color = numericValue >= 0 ? 'green' : 'red';
+              return prefix + `<span style="background-color: ${color}; color: white; padding: 2px 4px;">${amount}</span>`;
+            });
           }
           // Wrap the label (everything before the first colon) in <strong> to make it bold.
           line = line.replace(/^([^:]+:\s*)/, "<strong>$1</strong>");
