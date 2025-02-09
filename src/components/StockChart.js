@@ -215,9 +215,9 @@ function StockChart({ summary, eventMap }) {
       } else if (pt.isHug) {
         const key = pt.date;
         if (eventTypeMappingHug[key] === 'lower_hug') {
-          return 'rgb(13, 71, 161)';
+          return '00C853';
         } else if (eventTypeMappingHug[key] === 'upper_hug') {
-          return 'rgb(13, 71, 161)';
+          return '#D50000';
         }
         return '#FF9800';
       }
