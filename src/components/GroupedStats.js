@@ -21,27 +21,25 @@ const GroupedStats = ({ summary }) => {
   const resistanceTouchMetrics = [
     { label: 'Avg Upper Touch Drop', key: 'avg_upper_touch_drop', decimals: 2 },
     { label: 'Drop Duration (Days)', key: 'avg_upper_touch_in_days', decimals: 1, disableTrend: true },
-    {label:'Accuracy', key: 'upper_touch_accuracy', decimals: 2, disableTrend: true },
+    { label: 'Accuracy', key: 'upper_touch_accuracy', decimals: 0, disableTrend: true },
     { label: 'Touch Count', key: 'upper_touch_count', decimals: 0, disableTrend: true },
   ];
   const resistanceHugMetrics = [
-    { label: 'Avg Upper Hug Change', key: 'avg_upper_hug_change', decimals: 2 },
     { label: 'Avg Upper Hug Drop', key: 'avg_upper_hug_drop', decimals: 2 },
+    { label: 'Avg Upper Hug Change', key: 'avg_upper_hug_change', decimals: 2 },
     { label: 'Hug Drop Duration (Days)', key: 'avg_upper_hug_drop_in_days', decimals: 1, disableTrend: true },
     { label: 'Avg Hug Length (Days)', key: 'avg_upper_hug_length_in_days', decimals: 1, disableTrend: true },
     { label: 'Hug Touch Count', key: 'avg_upper_hug_touch_count', decimals: 0, disableTrend: true },
   ];
   const supportTouchMetrics = [
     { label: 'Avg Lower Touch Bounce', key: 'avg_lower_touch_bounce', decimals: 2 },
-    // Added disableTrend: true to remove arrows for Bounce Duration (Days)
     { label: 'Bounce Duration (Days)', key: 'avg_lower_touch_bounce_in_days', decimals: 1, disableTrend: true },
-    { label: 'Accuracy', key: 'lower_touch_accuracy', decimals: 2, disableTrend: true },
-    { label: 'Touch Count', key: 'lower_touch_count', decimals: 0, disableTrend: true}
+    { label: 'Accuracy', key: 'lower_touch_accuracy', decimals: 0, disableTrend: true },
+    { label: 'Touch Count', key: 'lower_touch_count', decimals: 0, disableTrend: true }
   ];
   const supportHugMetrics = [
-    { label: 'Avg Lower Hug Change', key: 'avg_lower_hug_change', decimals: 2 },
     { label: 'Avg Lower Hug Bounce', key: 'avg_lower_hug_bounce', decimals: 2 },
-    // Added disableTrend: true to remove arrows for Bounce Duration (Days)
+    { label: 'Avg Lower Hug Change', key: 'avg_lower_hug_change', decimals: 2 },
     { label: 'Bounce Duration (Days)', key: 'avg_lower_hug_bounce_in_days', decimals: 1, disableTrend: true },
     { label: 'Avg Hug Length (Days)', key: 'avg_lower_hug_length_in_days', decimals: 1, disableTrend: true },
     { label: 'Hug Touch Count', key: 'avg_lower_hug_touch_count', decimals: 0, disableTrend: true },
@@ -53,10 +51,21 @@ const GroupedStats = ({ summary }) => {
     metrics.map((metric, index) => {
       const num5 = agg5[metric.key];
       const num10 = agg10[metric.key];
-      const { formatted: formatted5, trend: trend5 } = formatMetric(num5, metric.decimals);
-      const { formatted: formatted10, trend: trend10 } = formatMetric(num10, metric.decimals);
 
-      // If disableTrend is set, override the trend values to null
+      // If the metric is "Accuracy", multiply the values by 100.
+      const value5 = metric.label === 'Accuracy' ? num5 * 100 : num5;
+      const value10 = metric.label === 'Accuracy' ? num10 * 100 : num10;
+
+      let { formatted: formatted5, trend: trend5 } = formatMetric(value5, metric.decimals);
+      let { formatted: formatted10, trend: trend10 } = formatMetric(value10, metric.decimals);
+
+      // Append percentage sign for Accuracy metrics.
+      if (metric.label === 'Accuracy') {
+        formatted5 = `${formatted5}%`;
+        formatted10 = `${formatted10}%`;
+      }
+
+      // Override trend values to null if disableTrend is set.
       const finalTrend5 = metric.disableTrend ? null : trend5;
       const finalTrend10 = metric.disableTrend ? null : trend10;
 
@@ -64,10 +73,10 @@ const GroupedStats = ({ summary }) => {
         <Grid item xs={12} sm={6} md={4} key={index}>
           <DualStatCard
             label={metric.label}
-            value5={formatted5}
             trend5={finalTrend5}
-            value10={formatted10}
+            value5={formatted5}
             trend10={finalTrend10}
+            value10={formatted10}
           />
         </Grid>
       );

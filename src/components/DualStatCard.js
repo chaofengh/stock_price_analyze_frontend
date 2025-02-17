@@ -33,10 +33,10 @@ const DualStatCard = ({ label, value5, trend5, value10, trend10 }) => {
               5-Day
             </Typography>
             <Box display="flex" alignItems="center" justifyContent="center">
+              {renderIcon(trend5)}
               <Typography variant="h6" sx={{ fontWeight: 'medium', ml: 0.5 }}>
                 {value5}
               </Typography>
-              {renderIcon(trend5)}
             </Box>
           </Box>
           <Box textAlign="center">
@@ -44,10 +44,10 @@ const DualStatCard = ({ label, value5, trend5, value10, trend10 }) => {
               10-Day
             </Typography>
             <Box display="flex" alignItems="center" justifyContent="center">
+              {renderIcon(trend10)}
               <Typography variant="h6" sx={{ fontWeight: 'medium', ml: 0.5 }}>
                 {value10}
               </Typography>
-              {renderIcon(trend10)}
             </Box>
           </Box>
         </Box>

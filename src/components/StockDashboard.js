@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Grid, Box, Paper, CircularProgress, Typography } from '@mui/material';
-import Sidebar from './Sidebar';
+import Sidebar from './SideBar/Sidebar';
 import MainContent from './MainContent';
 import { fetchStockSummary } from '../API/StockService';
 
