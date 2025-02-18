@@ -26,25 +26,25 @@ const SymbolSearch = ({ onSelectSymbol, placeholder = 'Search for a Stock' }) =>
     clearTimeout(debounceTimer.current);
     debounceTimer.current = setTimeout(() => {
       fetchMatches(searchTerm);
-    }, 300);
+    }, 200);
 
     return () => clearTimeout(debounceTimer.current);
   }, [searchTerm]);
 
   const fetchMatches = async (query) => {
     try {
-      const apiKey = process.env.REACT_APP_Alpha_Vantage_API_Key;
-      const url = `https://www.alphavantage.co/query?function=SYMBOL_SEARCH&keywords=${query}&apikey=${apiKey}`;
-      const response = await fetch(url);
+      const apiKey = process.env.REACT_APP_Finnhub_API_Key;
+      const response = await fetch(`https://finnhub.io/api/v1/search?q=${query}&token=${apiKey}&exchange=US`);
       const data = await response.json();
-      if (data.bestMatches) {
-        setSearchResults(data.bestMatches);
+
+      if (data.result) {
+        setSearchResults(data.result);
         setShowSuggestions(true);
       } else {
         setSearchResults([]);
       }
     } catch (err) {
-      console.error('Error fetching from Alpha Vantage:', err);
+      console.error('Error fetching from Finnhub:', err);
       setSearchResults([]);
     }
   };
@@ -59,7 +59,7 @@ const SymbolSearch = ({ onSelectSymbol, placeholder = 'Search for a Stock' }) =>
 
   const handleSelectSuggestion = (selectedSymbol) => {
     onSelectSymbol(selectedSymbol.toUpperCase());
-    setSearchTerm(''); // Clear the text field after selection
+    setSearchTerm(''); // Clear the text field
     setShowSuggestions(false);
   };
 
@@ -77,6 +77,7 @@ const SymbolSearch = ({ onSelectSymbol, placeholder = 'Search for a Stock' }) =>
           }
         }}
       />
+
       {showSuggestions && searchResults.length > 0 && (
         <Paper
           elevation={3}
@@ -90,20 +91,20 @@ const SymbolSearch = ({ onSelectSymbol, placeholder = 'Search for a Stock' }) =>
           }}
         >
           <List dense>
-            {searchResults.map((item, idx) => {
-              const symbolMatch = item['1. symbol'];
-              const companyName = item['2. name'];
-              return (
-                <ListItem key={idx} disablePadding>
-                  <ListItemButton onClick={() => handleSelectSuggestion(symbolMatch)}>
-                    <ListItemText primary={symbolMatch} secondary={companyName} />
-                  </ListItemButton>
-                </ListItem>
-              );
-            })}
+            {searchResults.map((item, idx) => (
+              <ListItem key={idx} disablePadding>
+                <ListItemButton onClick={() => handleSelectSuggestion(item.symbol)}>
+                  <ListItemText
+                    primary={item.symbol}
+                    secondary={item.description}
+                  />
+                </ListItemButton>
+              </ListItem>
+            ))}
           </List>
         </Paper>
       )}
+
       <Button fullWidth type="submit" variant="contained" sx={{ mt: 2 }}>
         Search
       </Button>
