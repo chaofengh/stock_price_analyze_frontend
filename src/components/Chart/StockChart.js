@@ -1,5 +1,6 @@
-import React, { useCallback } from 'react';
-import { Box } from '@mui/material';
+import React, { useCallback, useState, useRef } from 'react';
+import { Box, Paper, Typography, IconButton, Fade } from '@mui/material';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -18,7 +19,7 @@ import { useHugEventTypes, useHugTooltipMappings } from './useHugMappings';
 import { useChartData } from './useChartData';
 import { useExternalTooltipHandler } from './TooltipHandler';
 
-// Custom plugin to draw a vertical line + date label
+// Custom plugin to draw a vertical crosshair line and date label
 const CrosshairLinePlugin = {
   id: 'crosshairLinePlugin',
   afterDatasetsDraw(chart) {
@@ -27,7 +28,6 @@ const CrosshairLinePlugin = {
     const { ctx, chartArea, scales } = chart;
     const hoverIndex = chart.$currentHoverIndex;
     const xScale = scales.x;
-
     const xPixel = xScale.getPixelForValue(hoverIndex);
     if (Number.isNaN(xPixel)) return;
 
@@ -44,7 +44,6 @@ const CrosshairLinePlugin = {
     // Draw date label
     const rawDate = chart.data.labels?.[hoverIndex];
     if (!rawDate) return;
-
     ctx.save();
     ctx.font = 'bold 16px Roboto, sans-serif';
     ctx.fillStyle = '#000';
@@ -56,7 +55,6 @@ const CrosshairLinePlugin = {
   },
 };
 
-// Register everything
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -70,6 +68,11 @@ ChartJS.register(
 );
 
 function StockChart({ summary, eventMap, onHoverPriceChange }) {
+  // Ref for the chart instance to allow resetZoom functionality
+  const chartRef = useRef(null);
+  // State to hold the measurement info from dragging
+  const [dragInfo, setDragInfo] = useState(null);
+
   // Helper: convert date to YYYY-MM-DD
   const formatDate = (dateStr) => {
     const d = new Date(dateStr);
@@ -77,20 +80,18 @@ function StockChart({ summary, eventMap, onHoverPriceChange }) {
     return d.toISOString().split('T')[0];
   };
 
-  // Build data + color mappings
+  // Build data and color mappings
   const eventTypeMappingTouch = useTouchEventTypes(summary, formatDate);
   const tooltipMappingTouch = useTouchTooltipMappings(summary, formatDate);
   const eventTypeMappingHug = useHugEventTypes(summary, formatDate);
   const tooltipMappingHug = useHugTooltipMappings(summary, formatDate);
-
   const data = useChartData(summary, eventTypeMappingTouch, eventTypeMappingHug);
   const externalTooltipHandler = useExternalTooltipHandler();
 
-  // onHover logic (crosshair)
+  // onHover logic for crosshair
   const handleHover = useCallback(
     (event, chartElements, chart) => {
       if (!summary?.chart_data) return;
-
       if (event.type === 'mouseout') {
         if (chart.$currentHoverIndex != null) {
           chart.$currentHoverIndex = null;
@@ -99,7 +100,6 @@ function StockChart({ summary, eventMap, onHoverPriceChange }) {
         }
         return;
       }
-
       if (!chartElements.length) {
         if (chart.$currentHoverIndex != null) {
           chart.$currentHoverIndex = null;
@@ -108,70 +108,72 @@ function StockChart({ summary, eventMap, onHoverPriceChange }) {
         }
         return;
       }
-
       const newHoverIndex = chartElements[0].index;
-      if (newHoverIndex === chart.$currentHoverIndex) {
-        return;
-      }
-
+      if (newHoverIndex === chart.$currentHoverIndex) return;
       chart.$currentHoverIndex = newHoverIndex;
-
       const hoveredPoint = summary.chart_data[newHoverIndex];
       onHoverPriceChange?.({
         date: hoveredPoint.date,
         price: hoveredPoint.close,
       });
-
       chart.update('none');
     },
     [summary, onHoverPriceChange]
   );
 
-  // We'll handle the "zoom complete" event to compute price difference
+  // Compute price difference, capture start/end dates, and calculate duration on zoom complete
   const handleZoomComplete = useCallback(({ chart }) => {
-    // Because x is a category scale, .min/.max are numeric indexes
     const xScale = chart.scales.x;
+    // Since x is a category scale, .min/.max are numeric indexes
     const minIndex = Math.floor(xScale.min);
     const maxIndex = Math.ceil(xScale.max);
-
-    // If out of bounds, clamp
+    // Clamp indices within data bounds
     const clampedMin = Math.max(0, minIndex);
     const clampedMax = Math.min(summary.chart_data.length - 1, maxIndex);
-
     const points = summary.chart_data.slice(clampedMin, clampedMax + 1);
     if (points.length < 2) {
       console.log('Not enough points in the zoomed range.');
       return;
     }
-
     const firstPrice = points[0].close;
     const lastPrice = points[points.length - 1].close;
     const diff = lastPrice - firstPrice;
     const pct = (diff / firstPrice) * 100;
+    const startDate = points[0].date;
+    const endDate = points[points.length - 1].date;
     
-    // For now, just log it; you could store in state to display
-    console.log(
-      `Zoom Range Price Change: $${diff.toFixed(2)} (${pct.toFixed(2)}%)`
-    );
+    // Calculate duration in days
+    const durationMs = new Date(endDate) - new Date(startDate);
+    const durationDays = Math.round(durationMs / (1000 * 60 * 60 * 24));
+    
+    // Update state to display overlay info
+    setDragInfo({
+      diff: diff.toFixed(2),
+      pct: pct.toFixed(2),
+      startDate,
+      endDate,
+      duration: durationDays,
+    });
+    
+    // Uncomment the next line if you wish to reset zoom automatically after measurement
+    // chart.resetZoom();
   }, [summary]);
 
-  // Chart options, enabling "drag to zoom" in the x direction
+  // Reset zoom and clear overlay when reset button is clicked
+  const handleResetZoom = useCallback(() => {
+    if (chartRef.current) {
+      chartRef.current.resetZoom();
+    }
+    setDragInfo(null);
+  }, []);
+
   const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
-    layout: {
-      padding: { top: 20 }
-    },
+    layout: { padding: { top: 20 } },
     scales: {
-      x: {
-        type: 'category', // indexes
-        display: false,
-        grid: { display: false },
-      },
-      y: {
-        display: false,
-        grid: { display: false },
-      },
+      x: { type: 'category', display: false, grid: { display: false } },
+      y: { display: false, grid: { display: false } },
     },
     plugins: {
       legend: { display: false },
@@ -183,7 +185,6 @@ function StockChart({ summary, eventMap, onHoverPriceChange }) {
             const dataIndex = context.dataIndex;
             const chartPoint = summary.chart_data[dataIndex];
             const pointDate = chartPoint?.date;
-
             if (chartPoint.isHug && tooltipMappingHug[pointDate]) {
               return tooltipMappingHug[pointDate];
             }
@@ -194,34 +195,70 @@ function StockChart({ summary, eventMap, onHoverPriceChange }) {
           },
         },
       },
-      // chartjs-plugin-zoom config
       zoom: {
         zoom: {
           drag: {
-            enabled: true,     // Click+drag to zoom
-            backgroundColor: 'rgba(0,0,0,0.2)' // optional highlight color
+            enabled: true,
+            backgroundColor: 'rgba(0,0,0,0.2)'
           },
-          mode: 'x',          // Zoom in the x direction
+          mode: 'x',
           onZoomComplete: handleZoomComplete
         },
-        pan: {
-          enabled: true,      // Allow panning
-          mode: 'x'
-        }
+        pan: { enabled: true, mode: 'x' }
       }
     },
-    // For crosshair hover
-    interaction: {
-      mode: 'point',
-      intersect: true,
-    },
+    interaction: { mode: 'point', intersect: true },
     events: ['mousemove', 'mouseout', 'click', 'touchstart', 'touchmove'],
     onHover: handleHover,
   };
 
   return (
     <Box sx={{ height: 400, mb: 3, position: 'relative' }}>
-      <Line data={data} options={chartOptions} />
+      {dragInfo && (
+        <Fade in timeout={500}>
+          <Paper 
+            elevation={3}
+            sx={{
+              position: 'absolute',
+              top: 16,
+              left: 16,
+              padding: 2,
+              backgroundColor: 'rgba(255,255,255,0.9)',
+              borderRadius: 2,
+              minWidth: 240,
+              color: 'text.primary',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 1
+            }}
+          >
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                Price Change
+              </Typography>
+              <IconButton onClick={handleResetZoom} size="small" color="primary" aria-label="Reset Zoom">
+                <RefreshIcon />
+              </IconButton>
+            </Box>
+            <Typography variant="body2" sx={{ fontWeight: 500 }}>
+              From: {dragInfo.startDate}
+            </Typography>
+            <Typography variant="body2" sx={{ fontWeight: 500 }}>
+              To: {dragInfo.endDate}
+            </Typography>
+            <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
+              Duration: {dragInfo.duration} day{dragInfo.duration > 1 ? 's' : ''}
+            </Typography>
+            <Typography 
+              variant="body1" 
+              sx={{ fontWeight: 'bold', color: parseFloat(dragInfo.diff) >= 0 ? 'green' : 'red' }}
+            >
+              ${dragInfo.diff} ({dragInfo.pct}%)
+            </Typography>
+          </Paper>
+        </Fade>
+      )}
+      <Line ref={chartRef} data={data} options={chartOptions} />
     </Box>
   );
 }
