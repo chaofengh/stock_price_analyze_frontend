@@ -36,7 +36,7 @@ export function useChartData(summary, eventTypeMappingTouch, eventTypeMappingHug
       labels,
       datasets: [
         {
-          label: 'Closing Price',
+          label: 'Price',
           data: closingValues,
           tension: 0.3,
           borderWidth: 2,

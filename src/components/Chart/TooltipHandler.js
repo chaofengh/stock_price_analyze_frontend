@@ -34,15 +34,15 @@ export function useExternalTooltipHandler() {
     let innerHtml = '';
 
     // Title
-    if (tooltipModel.title) {
-      innerHtml += `
-        <div style="font-family: Roboto, sans-serif; font-size: 16px; font-weight: bold; color: #333; margin-bottom: 4px;">
-      `;
-      tooltipModel.title.forEach((title) => {
-        innerHtml += title + '<br/>';
-      });
-      innerHtml += `</div>`;
-    }
+    // if (tooltipModel.title) {
+    //   innerHtml += `
+    //     <div style="font-family: Roboto, sans-serif; font-size: 16px; font-weight: bold; color: #333; margin-bottom: 4px;">
+    //   `;
+    //   tooltipModel.title.forEach((title) => {
+    //     innerHtml += title + '<br/>';
+    //   });
+    //   innerHtml += `</div>`;
+    // }
 
     // Body
     if (tooltipModel.body) {

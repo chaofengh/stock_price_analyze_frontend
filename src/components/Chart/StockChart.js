@@ -8,10 +8,10 @@ import {
   LineElement,
   Title,
   Tooltip as ChartTooltip,
-  Legend,
-  // If you were using time-based scales, you’d also import TimeScale, etc.
+  Legend
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
+import zoomPlugin from 'chartjs-plugin-zoom';
 
 import { useTouchEventTypes, useTouchTooltipMappings } from './useTouchMappings';
 import { useHugEventTypes, useHugTooltipMappings } from './useHugMappings';
@@ -22,48 +22,41 @@ import { useExternalTooltipHandler } from './TooltipHandler';
 const CrosshairLinePlugin = {
   id: 'crosshairLinePlugin',
   afterDatasetsDraw(chart) {
-    // If we haven't hovered over a point yet, do nothing
     if (chart.$currentHoverIndex == null) return;
 
     const { ctx, chartArea, scales } = chart;
     const hoverIndex = chart.$currentHoverIndex;
     const xScale = scales.x;
 
-    // Convert the hovered data index to an x pixel
     const xPixel = xScale.getPixelForValue(hoverIndex);
-    if (Number.isNaN(xPixel)) return; // safety check
+    if (Number.isNaN(xPixel)) return;
 
-    // Draw the vertical line
+    // Draw vertical line
     ctx.save();
     ctx.beginPath();
     ctx.moveTo(xPixel, chartArea.top);
     ctx.lineTo(xPixel, chartArea.bottom);
     ctx.lineWidth = 1;
-    // Light/semi-transparent line; adjust color as needed
     ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
     ctx.stroke();
     ctx.restore();
 
-    // Now draw the date label above the line
+    // Draw date label
     const rawDate = chart.data.labels?.[hoverIndex];
     if (!rawDate) return;
 
-    const dateLabel = rawDate; // "YYYY-MM-DD" or however your labels look
-
     ctx.save();
-    ctx.font = '12px Roboto, sans-serif';
+    ctx.font = 'bold 16px Roboto, sans-serif';
     ctx.fillStyle = '#000';
-    const textWidth = ctx.measureText(dateLabel).width;
-    // Center the text horizontally above the line
+    const textWidth = ctx.measureText(rawDate).width;
     const textX = xPixel - textWidth / 2;
-    // Place it a few pixels above the chart area
-    const textY = chartArea.top - 6;
-    ctx.fillText(dateLabel, textX, textY);
+    const textY = chartArea.top + 12;
+    ctx.fillText(rawDate, textX, textY);
     ctx.restore();
   },
 };
 
-// Register the plugin + necessary Chart.js components
+// Register everything
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -72,7 +65,8 @@ ChartJS.register(
   Title,
   ChartTooltip,
   Legend,
-  CrosshairLinePlugin
+  CrosshairLinePlugin,
+  zoomPlugin
 );
 
 function StockChart({ summary, eventMap, onHoverPriceChange }) {
@@ -83,52 +77,94 @@ function StockChart({ summary, eventMap, onHoverPriceChange }) {
     return d.toISOString().split('T')[0];
   };
 
-  // Touch/Hug event + tooltip mappings
+  // Build data + color mappings
   const eventTypeMappingTouch = useTouchEventTypes(summary, formatDate);
   const tooltipMappingTouch = useTouchTooltipMappings(summary, formatDate);
   const eventTypeMappingHug = useHugEventTypes(summary, formatDate);
   const tooltipMappingHug = useHugTooltipMappings(summary, formatDate);
 
-  // Build datasets & labels
   const data = useChartData(summary, eventTypeMappingTouch, eventTypeMappingHug);
-
-  // External tooltip logic
   const externalTooltipHandler = useExternalTooltipHandler();
 
-  // onHover: store the hovered index on chart, call parent's callback if any
+  // onHover logic (crosshair)
   const handleHover = useCallback(
     (event, chartElements, chart) => {
       if (!summary?.chart_data) return;
 
-      if (chartElements.length) {
-        const elem = chartElements[0];
-        chart.$currentHoverIndex = elem.index; // store for crosshair plugin
-        const hoveredPoint = summary.chart_data[elem.index];
-
-        // Let the parent know which price is hovered (for roller effect)
-        onHoverPriceChange?.({
-          date: hoveredPoint.date,
-          price: hoveredPoint.close,
-        });
-      } else {
-        chart.$currentHoverIndex = null;
-        onHoverPriceChange?.(null);
+      if (event.type === 'mouseout') {
+        if (chart.$currentHoverIndex != null) {
+          chart.$currentHoverIndex = null;
+          onHoverPriceChange?.(null);
+          chart.update('none');
+        }
+        return;
       }
 
-      // Force re-draw so the crosshair line updates
-      chart.update('none'); // 'none' = no animation
+      if (!chartElements.length) {
+        if (chart.$currentHoverIndex != null) {
+          chart.$currentHoverIndex = null;
+          onHoverPriceChange?.(null);
+          chart.update('none');
+        }
+        return;
+      }
+
+      const newHoverIndex = chartElements[0].index;
+      if (newHoverIndex === chart.$currentHoverIndex) {
+        return;
+      }
+
+      chart.$currentHoverIndex = newHoverIndex;
+
+      const hoveredPoint = summary.chart_data[newHoverIndex];
+      onHoverPriceChange?.({
+        date: hoveredPoint.date,
+        price: hoveredPoint.close,
+      });
+
+      chart.update('none');
     },
     [summary, onHoverPriceChange]
   );
 
-  // Chart options
+  // We'll handle the "zoom complete" event to compute price difference
+  const handleZoomComplete = useCallback(({ chart }) => {
+    // Because x is a category scale, .min/.max are numeric indexes
+    const xScale = chart.scales.x;
+    const minIndex = Math.floor(xScale.min);
+    const maxIndex = Math.ceil(xScale.max);
+
+    // If out of bounds, clamp
+    const clampedMin = Math.max(0, minIndex);
+    const clampedMax = Math.min(summary.chart_data.length - 1, maxIndex);
+
+    const points = summary.chart_data.slice(clampedMin, clampedMax + 1);
+    if (points.length < 2) {
+      console.log('Not enough points in the zoomed range.');
+      return;
+    }
+
+    const firstPrice = points[0].close;
+    const lastPrice = points[points.length - 1].close;
+    const diff = lastPrice - firstPrice;
+    const pct = (diff / firstPrice) * 100;
+    
+    // For now, just log it; you could store in state to display
+    console.log(
+      `Zoom Range Price Change: $${diff.toFixed(2)} (${pct.toFixed(2)}%)`
+    );
+  }, [summary]);
+
+  // Chart options, enabling "drag to zoom" in the x direction
   const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
+    layout: {
+      padding: { top: 20 }
+    },
     scales: {
-      // Using a category scale for x so that getPixelForValue(hoverIndex) works
       x: {
-        type: 'category',
+        type: 'category', // indexes
         display: false,
         grid: { display: false },
       },
@@ -145,27 +181,39 @@ function StockChart({ summary, eventMap, onHoverPriceChange }) {
         callbacks: {
           label: function (context) {
             const dataIndex = context.dataIndex;
-            const datasetIndex = context.datasetIndex;
-            // We can still get the raw chartPoint from summary
             const chartPoint = summary.chart_data[dataIndex];
-            const pointDate = summary.chart_data[dataIndex].date;
+            const pointDate = chartPoint?.date;
 
-            // Hug or Touch tooltip lines
             if (chartPoint.isHug && tooltipMappingHug[pointDate]) {
               return tooltipMappingHug[pointDate];
             }
             if (chartPoint.isTouch && tooltipMappingTouch[pointDate]) {
               return tooltipMappingTouch[pointDate];
             }
-            // Default fallback
-            return `Close: ${context.parsed.y}`;
+            return `Close: ${context.parsed.y.toFixed(2)}`;
           },
         },
       },
+      // chartjs-plugin-zoom config
+      zoom: {
+        zoom: {
+          drag: {
+            enabled: true,     // Click+drag to zoom
+            backgroundColor: 'rgba(0,0,0,0.2)' // optional highlight color
+          },
+          mode: 'x',          // Zoom in the x direction
+          onZoomComplete: handleZoomComplete
+        },
+        pan: {
+          enabled: true,      // Allow panning
+          mode: 'x'
+        }
+      }
     },
+    // For crosshair hover
     interaction: {
-      mode: 'index',
-      intersect: false,
+      mode: 'point',
+      intersect: true,
     },
     events: ['mousemove', 'mouseout', 'click', 'touchstart', 'touchmove'],
     onHover: handleHover,
