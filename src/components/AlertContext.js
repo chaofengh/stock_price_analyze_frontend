@@ -28,8 +28,13 @@ export const AlertsProvider = ({ children }) => {
     };
   }, []);
 
+  // Clears the current alerts (Mark as Read)
+  const clearAlerts = () => {
+    setAlerts([]);
+  };
+
   return (
-    <AlertsContext.Provider value={{ alerts, timestamp }}>
+    <AlertsContext.Provider value={{ alerts, timestamp, clearAlerts }}>
       {children}
     </AlertsContext.Provider>
   );
