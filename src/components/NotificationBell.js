@@ -25,8 +25,9 @@ import {
 import { Notifications, ArrowUpward, ArrowDownward } from '@mui/icons-material';
 import { AlertsContext } from './AlertContext';
 import { useTheme } from '@mui/system';
+import { useDispatch } from 'react-redux';
+import { fetchSummary } from './Redux/summarySlice';
 
-// Helper function to format prices
 const formatPrice = (price) => (typeof price === 'number' ? price.toFixed(2) : price);
 
 const NotificationBell = () => {
@@ -35,19 +36,18 @@ const NotificationBell = () => {
   const [sortOption, setSortOption] = useState('symbol');
 
   const theme = useTheme();
-  // Check if current screen is "small" or below
   const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
+
+  const dispatch = useDispatch();
 
   const alertCount = alerts.length;
 
-  // Sort alerts based on the chosen sortOption
+  // Sort alerts
   const sortedAlerts = useMemo(() => {
     const newArr = [...alerts];
     if (sortOption === 'symbol') {
-      // Alphabetical by symbol
       newArr.sort((a, b) => a.symbol.localeCompare(b.symbol));
     } else if (sortOption === 'side') {
-      // Group Upper first, then Lower (alphabetical)
       newArr.sort((a, b) => a.touched_side.localeCompare(b.touched_side));
     }
     return newArr;
@@ -55,8 +55,6 @@ const NotificationBell = () => {
 
   const handleOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
-
-  // Mark all as read: calls clearAlerts from context
   const handleMarkAsRead = () => {
     clearAlerts();
     handleClose();
@@ -64,24 +62,18 @@ const NotificationBell = () => {
 
   return (
     <>
-      {/* Bell Icon with Badge */}
       <IconButton color="inherit" onClick={handleOpen}>
         <Badge badgeContent={alertCount} color="secondary">
           <Notifications />
         </Badge>
       </IconButton>
 
-      {/* Modal Dialog */}
       <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
         <DialogTitle sx={{ fontWeight: 'bold' }}>
           {alertCount > 0 ? 'Daily Bollinger Alerts' : 'No Current Alerts'}
         </DialogTitle>
-
         {alertCount > 0 && (
-          <Typography
-            variant="subtitle2"
-            sx={{ ml: 3, mt: -1, color: 'text.secondary' }}
-          >
+          <Typography variant="subtitle2" sx={{ ml: 3, mt: -1, color: 'text.secondary' }}>
             Updated at {timestamp}
           </Typography>
         )}
@@ -89,7 +81,6 @@ const NotificationBell = () => {
         <DialogContent dividers>
           {alertCount > 0 && (
             <>
-              {/* Sorting Options */}
               <Box display="flex" justifyContent="flex-end" sx={{ mb: 2 }}>
                 <FormControl size="small" sx={{ width: 150 }}>
                   <InputLabel>Sort by</InputLabel>
@@ -104,7 +95,6 @@ const NotificationBell = () => {
                 </FormControl>
               </Box>
 
-              {/* List of Alerts */}
               <List>
                 {sortedAlerts.map((alert, idx) => (
                   <React.Fragment key={idx}>
@@ -114,7 +104,6 @@ const NotificationBell = () => {
                           <Box
                             display="flex"
                             alignItems="center"
-                            // Adjust typography for small vs. large screens
                             sx={{
                               typography: {
                                 sm: 'subtitle1',
@@ -123,10 +112,7 @@ const NotificationBell = () => {
                               fontWeight: 700
                             }}
                           >
-                            {/* Symbol */}
                             {alert.symbol}
-
-                            {/* Chip: Touched Upper/Lower */}
                             <Chip
                               label={
                                 alert.touched_side === 'Upper'
@@ -136,25 +122,16 @@ const NotificationBell = () => {
                               size="small"
                               icon={
                                 alert.touched_side === 'Upper' ? (
-                                  <ArrowUpward
-                                    sx={{ color: '#c62828 !important' }}
-                                  />
+                                  <ArrowUpward sx={{ color: '#c62828 !important' }} />
                                 ) : (
-                                  <ArrowDownward
-                                    sx={{ color: '#2e7d32 !important' }}
-                                  />
+                                  <ArrowDownward sx={{ color: '#2e7d32 !important' }} />
                                 )
                               }
                               sx={{
                                 ml: 2,
                                 backgroundColor:
-                                  alert.touched_side === 'Upper'
-                                    ? '#ffebee'
-                                    : '#e8f5e9',
-                                color:
-                                  alert.touched_side === 'Upper'
-                                    ? '#c62828'
-                                    : '#2e7d32',
+                                  alert.touched_side === 'Upper' ? '#ffebee' : '#e8f5e9',
+                                color: alert.touched_side === 'Upper' ? '#c62828' : '#2e7d32',
                                 fontWeight: 500
                               }}
                             />
@@ -163,26 +140,17 @@ const NotificationBell = () => {
                         secondary={
                           <Grid container spacing={1} sx={{ mt: 0.5 }}>
                             <Grid item xs={12}>
-                              <Typography
-                                variant={isSmallScreen ? 'body2' : 'body1'}
-                                component="span"
-                              >
+                              <Typography variant={isSmallScreen ? 'body2' : 'body1'} component="span">
                                 <strong>Close Price:</strong> {formatPrice(alert.close_price)}
                               </Typography>
                             </Grid>
                             <Grid item xs={12} sm={6}>
-                              <Typography
-                                variant={isSmallScreen ? 'body2' : 'body1'}
-                                component="span"
-                              >
+                              <Typography variant={isSmallScreen ? 'body2' : 'body1'} component="span">
                                 <strong>BB Upper:</strong> {formatPrice(alert.bb_upper)}
                               </Typography>
                             </Grid>
                             <Grid item xs={12} sm={6}>
-                              <Typography
-                                variant={isSmallScreen ? 'body2' : 'body1'}
-                                component="span"
-                              >
+                              <Typography variant={isSmallScreen ? 'body2' : 'body1'} component="span">
                                 <strong>BB Lower:</strong> {formatPrice(alert.bb_lower)}
                               </Typography>
                             </Grid>
@@ -190,14 +158,15 @@ const NotificationBell = () => {
                         }
                       />
 
-                      {/* Optional Button to view details */}
                       <Box sx={{ ml: 2 }}>
                         <Button
                           variant="outlined"
                           size="small"
                           onClick={() => {
-                            console.log(`View details for ${alert.symbol}`);
-                            // e.g., navigate(`/stocks/${alert.symbol}`)
+                            // Dispatch Redux action to fetch 'summary' for the clicked symbol
+                            dispatch(fetchSummary(alert.symbol));
+                            // If you have a route for StockDashboard, you could do:
+                            // navigate(`/stocks/${alert.symbol}`);
                           }}
                         >
                           View Details
@@ -205,9 +174,7 @@ const NotificationBell = () => {
                       </Box>
                     </ListItem>
 
-                    {idx < sortedAlerts.length - 1 && (
-                      <Divider sx={{ my: 1 }} />
-                    )}
+                    {idx < sortedAlerts.length - 1 && <Divider sx={{ my: 1 }} />}
                   </React.Fragment>
                 ))}
               </List>
@@ -221,7 +188,6 @@ const NotificationBell = () => {
           )}
         </DialogContent>
 
-        {/* Dialog Actions */}
         <DialogActions>
           {alertCount > 0 && (
             <Button onClick={handleMarkAsRead} color="warning">

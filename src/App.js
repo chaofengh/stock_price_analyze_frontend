@@ -6,6 +6,7 @@ import StockDashboard from './components/StockDashboard';
 import NotificationBell from './components/NotificationBell';
 import AlertsSnackbar from './components/AlertsSnackbar';
 
+
 const theme = createTheme({
   palette: {
     mode: 'light',

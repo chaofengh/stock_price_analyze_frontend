@@ -1,27 +1,26 @@
+// src/components/StockDashboard.jsx
 import React, { useState, useMemo } from 'react';
 import { Grid, Box, Paper, CircularProgress, Typography } from '@mui/material';
 import Sidebar from './SideBar/Sidebar';
 import MainContent from './MainContent';
-import { fetchStockSummary } from '../API/StockService';
+import { useSelector, useDispatch } from 'react-redux';
+import { fetchSummary } from './Redux/summarySlice';
 
 const StockDashboard = () => {
   const [symbol, setSymbol] = useState('');
-  const [summary, setSummary] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const dispatch = useDispatch();
 
-  const handleSymbolSubmit = async (sym) => {
-    setLoading(true);
-    setError('');
-    setSummary(null);
-    try {
-      const data = await fetchStockSummary(sym);
-      setSummary(data);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
+  // Pull the Redux state for summary
+  const {
+    data: summary,
+    loading,
+    error
+  } = useSelector((state) => state.summary);
+
+  // When user submits a new symbol from the Sidebar
+  const handleSymbolSubmit = (sym) => {
+    setSymbol(sym);            // keep track of current symbol in local state if desired
+    dispatch(fetchSummary(sym)); // fetch new summary from server
   };
 
   // Build eventMap for StockChart (using window_5 data)
@@ -29,6 +28,7 @@ const StockDashboard = () => {
     if (!summary) return {};
     const windowData = summary.window_5 || {};
     const map = {};
+
     function pushEvent(dateStr, eventObj) {
       if (!map[dateStr]) map[dateStr] = [];
       map[dateStr].push(eventObj);
@@ -45,6 +45,7 @@ const StockDashboard = () => {
     (windowData.lower_hug_bounces || []).forEach((b) =>
       pushEvent(b.hug_start_date || b.touch_date, { type: 'lower_hug_bounce', ...b })
     );
+
     return map;
   }, [summary]);
 
@@ -56,6 +57,7 @@ const StockDashboard = () => {
             symbol={symbol}
             setSymbol={setSymbol}
             onSubmit={handleSymbolSubmit}
+            // We can still pass the error down if Sidebar needs to show it
             summary={summary}
             error={error}
           />
@@ -72,6 +74,11 @@ const StockDashboard = () => {
               <Typography variant="h6" color="textSecondary">
                 Enter a stock symbol to begin analysis.
               </Typography>
+              {error && (
+                <Typography variant="body2" color="error" sx={{ mt: 1 }}>
+                  {error}
+                </Typography>
+              )}
             </Paper>
           )}
         </Grid>
