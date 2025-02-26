@@ -5,7 +5,7 @@
   "dependencies": {
     "@emotion/react": "^11.10.0",
     "@emotion/styled": "^11.10.0",
-    "@mui/icons-material": "^6.4.2",
+    "@mui/icons-material": "^6.4.5",
     "@mui/material": "^6.4.1",
     "chart.js": "^4.4.7",
     "chartjs-plugin-zoom": "^2.2.0",
