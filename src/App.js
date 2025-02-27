@@ -1,10 +1,10 @@
 // src/App.js
 import React from 'react';
 import { ThemeProvider, createTheme, CssBaseline, Container, AppBar, Toolbar, Typography } from '@mui/material';
-import {AlertsProvider} from './components/AlertContext'
+import {AlertsProvider} from './components/Notification/AlertContext'
 import StockDashboard from './components/StockDashboard';
-import NotificationBell from './components/NotificationBell';
-import AlertsSnackbar from './components/AlertsSnackbar';
+import NotificationBell from './components//Notification/NotificationBell';
+import AlertsSnackbar from './components/Notification/AlertsSnackbar';
 
 
 const theme = createTheme({

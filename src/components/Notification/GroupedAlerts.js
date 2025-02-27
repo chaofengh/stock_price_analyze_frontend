@@ -1,0 +1,59 @@
+import React, { useState } from 'react';
+import { Typography, Box, IconButton, Collapse } from '@mui/material';
+import { ExpandMore, ExpandLess } from '@mui/icons-material';
+import AlertItem from './AlertItem';
+
+const GroupedAlerts = ({
+  title,
+  alerts,
+  onViewDetails,
+  isSmallScreen,
+  bandSide
+}) => {
+  const [open, setOpen] = useState(true);
+
+  const handleToggle = (e) => {
+    e.stopPropagation();
+    setOpen((prev) => !prev);
+  };
+
+  return (
+    <Box sx={{ mb: 2 }}>
+      <Box
+        onClick={handleToggle}
+        display="flex"
+        alignItems="center"
+        justifyContent="space-between"
+        sx={{
+          backgroundColor: '#f7f7f7',
+          borderRadius: 1,
+          p: 1,
+          cursor: 'pointer'
+        }}
+      >
+        <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
+          {title}
+        </Typography>
+        <IconButton size="small" onClick={handleToggle}>
+          {open ? <ExpandLess /> : <ExpandMore />}
+        </IconButton>
+      </Box>
+
+      <Collapse in={open} timeout="auto" unmountOnExit>
+        <Box sx={{ mt: 1 }}>
+          {alerts.map((alert, idx) => (
+            <AlertItem
+              key={`${alert.symbol}-${idx}`}
+              alert={alert}
+              bandSide={bandSide}
+              onViewDetails={onViewDetails}
+              isSmallScreen={isSmallScreen}
+            />
+          ))}
+        </Box>
+      </Collapse>
+    </Box>
+  );
+};
+
+export default GroupedAlerts;
