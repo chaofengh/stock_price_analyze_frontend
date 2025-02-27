@@ -1,3 +1,5 @@
+// GroupedAlerts.jsx
+
 import React, { useState } from 'react';
 import { Typography, Box, IconButton, Collapse } from '@mui/material';
 import { ExpandMore, ExpandLess } from '@mui/icons-material';
@@ -46,7 +48,7 @@ const GroupedAlerts = ({
               key={`${alert.symbol}-${idx}`}
               alert={alert}
               bandSide={bandSide}
-              onViewDetails={onViewDetails}
+              onViewDetails={onViewDetails} // Pass down
               isSmallScreen={isSmallScreen}
             />
           ))}

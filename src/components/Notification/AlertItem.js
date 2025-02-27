@@ -1,3 +1,5 @@
+// AlertItem.jsx
+
 import React, { useEffect, useState } from "react";
 import {
   Box,
@@ -22,7 +24,6 @@ const FINNHUB_API_KEY = process.env.REACT_APP_Finnhub_API_Key;
 const formatPrice = (price) =>
   typeof price === "number" ? price.toFixed(2) : price;
 
-// We keep a color scheme for "Crossed Above" vs. "Crossed Below"
 const sideStyles = {
   Upper: {
     bgColor: "#ffebee",
@@ -135,19 +136,46 @@ const AlertItem = ({ alert, bandSide, onViewDetails, isSmallScreen, index }) => 
           <Divider sx={{ mb: 2 }} />
 
           {/* BOTTOM ROW: Key Prices + View Details Button */}
-          <Box display="flex" flexDirection={isSmallScreen ? "column" : "row"} justifyContent="space-between" alignItems="center" gap={2}>
-            {/* Show the numeric data inline or in separate columns */}
+          <Box
+            display="flex"
+            flexDirection={isSmallScreen ? "column" : "row"}
+            justifyContent="space-between"
+            alignItems="center"
+            gap={2}
+          >
             <Box display="flex" gap={3} flexWrap="wrap">
-            <Typography variant="body2"
-              style={{ backgroundColor: "#f8d7da", color: "#dc3545", padding: "0.2rem 0.5rem", borderRadius: "4px" }}>
+              <Typography
+                variant="body2"
+                style={{
+                  backgroundColor: "#f8d7da",
+                  color: "#dc3545",
+                  padding: "0.2rem 0.5rem",
+                  borderRadius: "4px"
+                }}
+              >
                 <strong>BB Lower Price:</strong> {formatPrice(bb_lower)}
               </Typography>
-              <Typography variant="body2"
-                style={{ color: "#333", padding: "0.2rem 0.5rem", borderRadius: "4px" }}>
+
+              <Typography
+                variant="body2"
+                style={{
+                  color: "#333",
+                  padding: "0.2rem 0.5rem",
+                  borderRadius: "4px"
+                }}
+              >
                 <strong>Close Price:</strong> {formatPrice(close_price)}
               </Typography>
-              <Typography variant="body2"
-                style={{ backgroundColor: "#d4edda", color: "#28a745", padding: "0.2rem 0.5rem", borderRadius: "4px" }}>
+
+              <Typography
+                variant="body2"
+                style={{
+                  backgroundColor: "#d4edda",
+                  color: "#28a745",
+                  padding: "0.2rem 0.5rem",
+                  borderRadius: "4px"
+                }}
+              >
                 <strong>BB Upper Price:</strong> {formatPrice(bb_upper)}
               </Typography>
             </Box>
@@ -155,6 +183,14 @@ const AlertItem = ({ alert, bandSide, onViewDetails, isSmallScreen, index }) => 
             <Button
               variant="contained"
               size="small"
+              // 1) Add slight elevation via boxShadow
+              sx={{
+                boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
+                ":hover": {
+                  boxShadow: "0 4px 8px rgba(0,0,0,0.25)",
+                },
+              }}
+              // 2) On click, call parent's onViewDetails function
               onClick={() => onViewDetails(symbol)}
             >
               View Details

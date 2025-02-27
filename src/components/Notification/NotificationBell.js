@@ -1,3 +1,5 @@
+// NotificationBell.jsx
+
 import React, { useState, useContext, useMemo } from 'react';
 import {
   IconButton,
@@ -63,6 +65,12 @@ const NotificationBell = () => {
     handleClose();
   };
 
+  // 1) Helper function that calls fetchSummary, then closes the dialog
+  const handleViewDetailsAndClose = (symbol) => {
+    dispatch(fetchSummary(symbol));
+    handleClose(); // closes the dialog
+  };
+
   return (
     <>
       <IconButton color="inherit" onClick={handleOpen}>
@@ -113,7 +121,7 @@ const NotificationBell = () => {
                     groupedAlerts.Upper.length
                   } Stocks Crossed Above the Upper Bollinger Band`}
                   alerts={groupedAlerts.Upper}
-                  onViewDetails={(symbol) => dispatch(fetchSummary(symbol))}
+                  onViewDetails={handleViewDetailsAndClose} // pass our function here
                   isSmallScreen={isSmallScreen}
                   bandSide="Upper"
                 />
@@ -126,7 +134,7 @@ const NotificationBell = () => {
                     groupedAlerts.Lower.length
                   } Stocks Crossed Below the Lower Bollinger Band`}
                   alerts={groupedAlerts.Lower}
-                  onViewDetails={(symbol) => dispatch(fetchSummary(symbol))}
+                  onViewDetails={handleViewDetailsAndClose} // pass our function here
                   isSmallScreen={isSmallScreen}
                   bandSide="Lower"
                 />
