@@ -5,35 +5,36 @@ import {
   Chip,
   Button,
   Grow,
-  Grid,
-  Divider,
   Card,
   CardContent,
-  Avatar
+  Avatar,
+  Divider
 } from "@mui/material";
 import { ArrowUpward, ArrowDownward } from "@mui/icons-material";
-import SparklineChart from "./SparklineChart";
 import axios from "axios";
 
-// Get Finnhub API Key from .env file
+// Import new visual components
+import SparklineChart from "./SparklineChart";
+import BandBreakoutMeter from "./BandBreakoutMeter";
+
 const FINNHUB_API_KEY = process.env.REACT_APP_Finnhub_API_Key;
 
 const formatPrice = (price) =>
   typeof price === "number" ? price.toFixed(2) : price;
 
-// Define color sets for 'Upper' vs. 'Lower'
+// We keep a color scheme for "Crossed Above" vs. "Crossed Below"
 const sideStyles = {
   Upper: {
     bgColor: "#ffebee",
-    textColor: "#c62828",
-    icon: <ArrowUpward sx={{ color: "#c62828 !important" }} />,
-    label: "Crossed Above Upper Band",
+    textColor: "#d32f2f",
+    icon: <ArrowUpward sx={{ color: "#d32f2f !important" }} />,
+    label: "Overbought",
   },
   Lower: {
     bgColor: "#e8f5e9",
     textColor: "#2e7d32",
     icon: <ArrowDownward sx={{ color: "#2e7d32 !important" }} />,
-    label: "Crossed Below Lower Band",
+    label: "Oversold",
   },
 };
 
@@ -65,85 +66,97 @@ const AlertItem = ({ alert, bandSide, onViewDetails, isSmallScreen, index }) => 
       <Card
         elevation={3}
         sx={{
-          mb: 10, // More vertical spacing
-          backgroundColor: index % 2 === 0 ? "#f9f9f9" : "#ffffff", // Alternate background
+          mb: 10,
           borderRadius: 2,
+          backgroundColor: index % 2 === 0 ? "#fafafa" : "#ffffff",
         }}
       >
         <CardContent>
-          {/* Top row: Logo + Symbol + "Crossed" Chip + Sparkline */}
+          {/* TOP ROW: Logo + Symbol + Overbought/Oversold Chip */}
+          <Box
+            display="flex"
+            flexDirection="row"
+            alignItems="center"
+            justifyContent="space-between"
+            sx={{ mb: 2 }}
+          >
+            {/* Left side: Logo + Symbol */}
+            <Box display="flex" alignItems="center" gap={2}>
+              {logo ? (
+                <Avatar src={logo} alt={symbol} sx={{ width: 40, height: 40 }} />
+              ) : (
+                <Avatar sx={{ width: 40, height: 40, bgcolor: "#bdbdbd" }}>
+                  {symbol[0]}
+                </Avatar>
+              )}
+              <Typography variant="h6" fontWeight="bold" sx={{ color: "#333" }}>
+                {symbol}
+              </Typography>
+            </Box>
+
+            {/* Right side: Overbought / Oversold Chip */}
+            <Chip
+              label={styleSet.label}
+              size="small"
+              icon={styleSet.icon}
+              sx={{
+                backgroundColor: styleSet.bgColor,
+                color: styleSet.textColor,
+                fontWeight: 500,
+              }}
+            />
+          </Box>
+
+          <Divider sx={{ mb: 2 }} />
+
+          {/* MIDDLE ROW: BandBreakoutMeter + Sparkline side by side */}
           <Box
             display="flex"
             flexDirection={isSmallScreen ? "column" : "row"}
             alignItems={isSmallScreen ? "flex-start" : "center"}
             justifyContent="space-between"
+            gap={3}
             sx={{ mb: 2 }}
           >
-            {/* Logo + Symbol + Chip */}
-            <Box display="flex" alignItems="center" gap={2}>
-              {/* Logo */}
-              {logo ? (
-                <Avatar src={logo} alt={symbol} sx={{ width: 40, height: 40 }} />
-              ) : (
-                <Avatar sx={{ width: 40, height: 40, bgcolor: "#e0e0e0" }}>
-                  {symbol[0]}
-                </Avatar>
-              )}
-
-              {/* Symbol and Chip */}
-              <Box>
-                <Typography
-                  variant="h6"
-                  fontWeight="bold"
-                  sx={{ color: "#333" }} // More distinct heading
-                >
-                  {symbol}
-                </Typography>
-                <Chip
-                  label={styleSet.label}
-                  size="small"
-                  sx={{
-                    backgroundColor: styleSet.bgColor,
-                    color: styleSet.textColor,
-                    fontWeight: 500,
-                  }}
-                  icon={styleSet.icon}
-                />
-              </Box>
+            <Box sx={{ flex: 1 }}>
+              <BandBreakoutMeter
+                close={close_price}
+                lower={bb_lower}
+                upper={bb_upper}
+                bandSide={bandSide}
+              />
             </Box>
 
-            {/* Mini Sparkline chart */}
-            {recent_closes.length > 0 && (
-              <Box sx={{ width: isSmallScreen ? "100%" : "120px", mt: isSmallScreen ? 2 : 0 }}>
-                <SparklineChart data={recent_closes} bandSide={bandSide} />
-              </Box>
-            )}
+            <Box sx={{ flex: 1 }}>
+              <SparklineChart data={recent_closes} bandSide={bandSide} />
+            </Box>
           </Box>
 
           <Divider sx={{ mb: 2 }} />
 
-          {/* Middle row: Key prices */}
-          <Grid container spacing={2}>
-            <Grid item xs={6} sm={4} md={3}>
-              <Typography variant="body1">
-                <strong>Close:</strong> {formatPrice(close_price)}
+          {/* BOTTOM ROW: Key Prices + View Details Button */}
+          <Box display="flex" flexDirection={isSmallScreen ? "column" : "row"} justifyContent="space-between" alignItems="center" gap={2}>
+            {/* Show the numeric data inline or in separate columns */}
+            <Box display="flex" gap={3} flexWrap="wrap">
+            <Typography variant="body2"
+              style={{ backgroundColor: "#f8d7da", color: "#dc3545", padding: "0.2rem 0.5rem", borderRadius: "4px" }}>
+                <strong>BB Lower Price:</strong> {formatPrice(bb_lower)}
               </Typography>
-            </Grid>
-            <Grid item xs={6} sm={4} md={3}>
-              <Typography variant="body1">
-                <strong>BB Upper:</strong> {formatPrice(bb_upper)}
+              <Typography variant="body2"
+                style={{ color: "#333", padding: "0.2rem 0.5rem", borderRadius: "4px" }}>
+                <strong>Close Price:</strong> {formatPrice(close_price)}
               </Typography>
-            </Grid>
-            <Grid item xs={6} sm={4} md={3}>
-              <Typography variant="body1">
-                <strong>BB Lower:</strong> {formatPrice(bb_lower)}
+              <Typography variant="body2"
+                style={{ backgroundColor: "#d4edda", color: "#28a745", padding: "0.2rem 0.5rem", borderRadius: "4px" }}>
+                <strong>BB Upper Price:</strong> {formatPrice(bb_upper)}
               </Typography>
-            </Grid>
-          </Grid>
+            </Box>
 
-          {/* Bottom row: "View Details" button */}
-          <Box display="flex" justifyContent="flex-end" mt={2}>
-            <Button variant="contained" size="small" onClick={() => onViewDetails(symbol)}>
+            <Button
+              variant="contained"
+              size="small"
+              onClick={() => onViewDetails(symbol)}
+            >
               View Details
             </Button>
           </Box>
