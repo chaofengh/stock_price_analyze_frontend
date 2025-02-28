@@ -7,6 +7,7 @@ import MarketSentiment from "./MarketSentiment";
 import NewsWidget from "./NewsWidget";
 import { fetchCompanyLogo } from '../API/FetchCompanyLogo'
 import { useAnimatedNumber } from "../utils/NumberAnimation";
+import RollingNumber from "../utils/RollingDigit";
 
 
 const MainContent = ({ summary, eventMap }) => {
