@@ -5,24 +5,9 @@ import GroupedStats from "./GroupedStats";
 import AdvancedMetrics from "./AdvancedMetrics";
 import MarketSentiment from "./MarketSentiment";
 import NewsWidget from "./NewsWidget";
-import RollingNumber from "../utils/RollingNumber";
-import axios from "axios";
+import { fetchCompanyLogo } from '../API/FetchCompanyLogo'
+import { useAnimatedNumber } from "../utils/NumberAnimation";
 
-// Finnhub API Key from .env file
-const FINNHUB_API_KEY = process.env.REACT_APP_Finnhub_API_Key;
-
-// Fetch company logo from Finnhub API
-const fetchCompanyLogo = async (symbol) => {
-  try {
-    const response = await axios.get(
-      `https://finnhub.io/api/v1/stock/profile2?symbol=${symbol}&token=${FINNHUB_API_KEY}`
-    );
-    return response.data.logo || null;
-  } catch (error) {
-    console.error(`Error fetching logo for ${symbol}:`, error);
-    return null;
-  }
-};
 
 const MainContent = ({ summary, eventMap }) => {
   // State to store hovered price/date from the chart
@@ -37,6 +22,7 @@ const MainContent = ({ summary, eventMap }) => {
 
   // Use hovered price if available, otherwise fallback to final price
   const rawPrice = hoverData?.price ?? summary?.final_price ?? 0;
+  const animatedPrice = useAnimatedNumber(rawPrice);
 
   // Determine price color based on daily change
   const priceChange = summary?.price_change_in_dollars ?? 0;
@@ -69,7 +55,9 @@ const MainContent = ({ summary, eventMap }) => {
             {/* Symbol and Price */}
             <Typography variant="h4" fontWeight="bold">
               {summary.symbol || "Company Name"} -{" "}
-              <RollingNumber value={rawPrice.toFixed(2)} animationDuration={500} priceColor={priceColor}/>
+            </Typography>
+            <Typography variant="h4" fontWeight='bold' color={priceColor}>
+              ${animatedPrice.toFixed(2)}
             </Typography>
           </Box>
 
