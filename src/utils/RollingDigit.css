@@ -1,7 +1,7 @@
 .rolling-digit {
     position: relative;
     display: inline-block;
-    width: 0.9em; /* Adjust to taste or match your font-size more precisely */
+    width: 0.55em; /* Adjust to taste or match your font-size more precisely */
     height: 1em;
     overflow: hidden;
     text-align: center;

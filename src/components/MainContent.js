@@ -58,7 +58,7 @@ const MainContent = ({ summary, eventMap }) => {
               {summary.symbol || "Company Name"} -{" "}
             </Typography>
             <Typography variant="h4" fontWeight='bold' color={priceColor}>
-              ${animatedPrice.toFixed(2)}
+              <RollingNumber number={animatedPrice} />
             </Typography>
           </Box>
 

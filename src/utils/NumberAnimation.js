@@ -26,14 +26,8 @@ function buildNumberSteps(startStr, endStr) {
   return steps;
 }
 
-/**
- * Custom hook: Animate an integer *digit by digit*, left to right.
- *
- * @param {number} value - The target number to animate to.
- * @param {number} duration - Total animation time (ms).
- * @param {number} decimals - How many decimals to keep (optional).
- */
-export function useAnimatedNumber(value, duration = 500, decimals = 0) {
+
+export function useAnimatedNumber(value, duration = 100, decimals = 2) {
   const [displayValue, setDisplayValue] = useState(value);
   const prevValueRef = useRef(value);
   const timeoutsRef = useRef([]); // Track timeouts so we can clear if needed
