@@ -1,42 +1,15 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Box, Paper, Typography, Grid, Avatar } from "@mui/material";
 import StockChart from "./Chart/StockChart";
 import GroupedStats from "./GroupedStats";
 import AdvancedMetrics from "./AdvancedMetrics";
 import MarketSentiment from "./MarketSentiment";
 import NewsWidget from "./NewsWidget";
+import RollingNumber from "../utils/RollingNumber";
 import axios from "axios";
 
 // Finnhub API Key from .env file
 const FINNHUB_API_KEY = process.env.REACT_APP_Finnhub_API_Key;
-
-// Custom hook: Animate a number from its previous value to a new one
-function useAnimatedNumber(value, duration = 400) {
-  const [displayValue, setDisplayValue] = useState(value);
-  const prevValueRef = useRef(value);
-
-  useEffect(() => {
-    const startValue = prevValueRef.current;
-    let startTime = null;
-
-    function animate(timestamp) {
-      if (!startTime) startTime = timestamp;
-      const elapsed = timestamp - startTime;
-      const progress = Math.min(elapsed / duration, 1);
-      const current = startValue + (value - startValue) * progress;
-      setDisplayValue(current);
-      if (progress < 1) {
-        requestAnimationFrame(animate);
-      } else {
-        prevValueRef.current = value;
-      }
-    }
-
-    requestAnimationFrame(animate);
-  }, [value, duration]);
-
-  return displayValue;
-}
 
 // Fetch company logo from Finnhub API
 const fetchCompanyLogo = async (symbol) => {
@@ -64,7 +37,6 @@ const MainContent = ({ summary, eventMap }) => {
 
   // Use hovered price if available, otherwise fallback to final price
   const rawPrice = hoverData?.price ?? summary?.final_price ?? 0;
-  const animatedPrice = useAnimatedNumber(rawPrice);
 
   // Determine price color based on daily change
   const priceChange = summary?.price_change_in_dollars ?? 0;
@@ -97,7 +69,7 @@ const MainContent = ({ summary, eventMap }) => {
             {/* Symbol and Price */}
             <Typography variant="h4" fontWeight="bold">
               {summary.symbol || "Company Name"} -{" "}
-              <span style={{ color: priceColor }}>${animatedPrice.toFixed(2)}</span>
+              <RollingNumber value={rawPrice.toFixed(2)} animationDuration={500} priceColor={priceColor}/>
             </Typography>
           </Box>
 

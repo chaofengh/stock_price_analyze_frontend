@@ -93,6 +93,16 @@ const AlertItem = ({ alert, bandSide, onViewDetails, isSmallScreen, index }) => 
               <Typography variant="h6" fontWeight="bold" sx={{ color: "#333" }}>
                 {symbol}
               </Typography>
+              <Typography
+                variant="h6"
+                style={{
+                  color: "#333",
+                  padding: "0.2rem 0.5rem",
+                  borderRadius: "4px"
+                }}
+              >
+            ${formatPrice(close_price)}
+              </Typography>
             </Box>
 
             {/* Right side: Overbought / Oversold Chip */}
@@ -106,6 +116,7 @@ const AlertItem = ({ alert, bandSide, onViewDetails, isSmallScreen, index }) => 
                 fontWeight: 500,
               }}
             />
+            
           </Box>
 
           <Divider sx={{ mb: 2 }} />
@@ -154,17 +165,6 @@ const AlertItem = ({ alert, bandSide, onViewDetails, isSmallScreen, index }) => 
                 }}
               >
                 <strong>BB Lower Price:</strong> {formatPrice(bb_lower)}
-              </Typography>
-
-              <Typography
-                variant="body2"
-                style={{
-                  color: "#333",
-                  padding: "0.2rem 0.5rem",
-                  borderRadius: "4px"
-                }}
-              >
-                <strong>Close Price:</strong> {formatPrice(close_price)}
               </Typography>
 
               <Typography

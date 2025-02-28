@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useRef, useEffect } from 'react';
+import React, { useCallback, useState, useRef, useEffect, useMemo } from 'react';
 import {
   Box,
   Paper,
@@ -109,9 +109,13 @@ function StockChart({ summary, eventMap, onHoverPriceChange }) {
   // 2) Extract Bollinger band data
   //    (We assume each pt has pt.upper & pt.lower)
   // ----------------------------------------
-  const closePrices = summary?.chart_data?.map(pt => pt.close) || [];
-  const upperBand = summary?.chart_data?.map(pt => pt.upper ?? null) || [];
-  const lowerBand = summary?.chart_data?.map(pt => pt.lower ?? null) || [];
+  const upperBand = useMemo(() => {
+    return summary?.chart_data?.map(pt => pt.upper ?? null) || [];
+  }, [summary]);
+
+  const lowerBand = useMemo(() => {
+    return summary?.chart_data?.map(pt => pt.lower ?? null) || [];
+  }, [summary]);
 
   // We'll build the final chartData in state so we can apply a gradient fill.
   const [chartData, setChartData] = useState({
@@ -161,7 +165,7 @@ function StockChart({ summary, eventMap, onHoverPriceChange }) {
       order: 1
     };
 
-    // Upper band dataset (fill down to the lower band)
+    // Upper band dataset (fill down to the lower band) with faster animation
     const upperBB = {
       type: 'line',
       label: 'Upper BB',
@@ -172,7 +176,11 @@ function StockChart({ summary, eventMap, onHoverPriceChange }) {
       fill: '-1', // Fill from this dataset down to the previous dataset (lowerBB)
       backgroundColor: 'rgba(75,192,192,0.1)',
       yAxisID: 'y',
-      order: 1
+      order: 1,
+      animations: {
+        x: { duration: 50, easing: 'easeOutQuad' },
+        y: { duration: 50, easing: 'easeOutQuad' }
+      }
     };
 
     // Combine them
@@ -186,7 +194,7 @@ function StockChart({ summary, eventMap, onHoverPriceChange }) {
       labels: baseChartData.labels,
       datasets: newDatasets
     });
-  }, [baseChartData]);
+  }, []);
 
   // ---------------------
   // External Tooltip
@@ -203,7 +211,7 @@ function StockChart({ summary, eventMap, onHoverPriceChange }) {
         if (chart.$currentHoverIndex != null) {
           chart.$currentHoverIndex = null;
           onHoverPriceChange?.(null);
-          chart.update('none');
+          // chart.update('none');
         }
         return;
       }
@@ -211,7 +219,7 @@ function StockChart({ summary, eventMap, onHoverPriceChange }) {
         if (chart.$currentHoverIndex != null) {
           chart.$currentHoverIndex = null;
           onHoverPriceChange?.(null);
-          chart.update('none');
+          // chart.update('none');
         }
         return;
       }
@@ -223,7 +231,7 @@ function StockChart({ summary, eventMap, onHoverPriceChange }) {
         date: hoveredPoint.date,
         price: hoveredPoint.close,
       });
-      chart.update('none');
+      // chart.update('none');
     },
     [summary, onHoverPriceChange]
   );
@@ -340,10 +348,8 @@ function StockChart({ summary, eventMap, onHoverPriceChange }) {
           mode: 'x'
         }
       },
-      // Optional: highlight highest/lowest closes
       annotation: {
-        annotations: {
-        }
+        annotations: {}
       }
     },
     events: ['mousemove', 'mouseout', 'click', 'touchstart', 'touchmove'],

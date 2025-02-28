@@ -89,6 +89,14 @@ const KpiTiles = ({ summary }) => {
       isLowerBetter: true
     },
     {
+      label: 'Forward P/E',
+      rawValue: summary.forwardPE,
+      value:
+        summary.forwardPE != null ? summary.forwardPE.toFixed(2) : '-',
+      peerAvg: summary.avg_peer_forwardPE,
+      isLowerBetter: true
+    },
+    {
       label: 'Beta',
       rawValue: summary.beta,
       value: summary.beta != null ? summary.beta.toFixed(2) : '-',
@@ -109,14 +117,6 @@ const KpiTiles = ({ summary }) => {
           ? `${(summary.dividendYield * 100).toFixed(2)}%`
           : '-'
     },
-    {
-      label: 'Forward P/E',
-      rawValue: summary.forwardPE,
-      value:
-        summary.forwardPE != null ? summary.forwardPE.toFixed(2) : '-',
-      peerAvg: summary.avg_peer_forwardPE,
-      isLowerBetter: true
-    }
   ];
 
   return (
