@@ -34,15 +34,23 @@ const AnnualFinancials = ({ annualReports }) => {
     let netIncomeChange = null;
     let netMarginChange = null;
 
-    // Compare to previous year if available (remember, the reports are ordered most-recent first)
+    // Compare to previous year if available (reports are ordered most-recent first)
     if (index < lastThreeReports.length - 1) {
       const prevRevenue = parseFloat(lastThreeReports[index + 1].totalRevenue);
       const prevNetIncome = parseFloat(lastThreeReports[index + 1].netIncome);
       const prevNetMargin = prevRevenue
         ? (parseFloat(lastThreeReports[index + 1].netIncome) / prevRevenue) * 100
         : null;
-      revenueChange = prevRevenue ? ((revenue - prevRevenue) / prevRevenue) * 100 : null;
-      netIncomeChange = prevNetIncome ? ((netIncome - prevNetIncome) / prevNetIncome) * 100 : null;
+
+      revenueChange = prevRevenue
+        ? ((revenue - prevRevenue) / prevRevenue) * 100
+        : null;
+
+      // Use absolute value of prevNetIncome to handle negative-to-positive changes
+      netIncomeChange = prevNetIncome
+        ? ((netIncome - prevNetIncome) / Math.abs(prevNetIncome)) * 100
+        : null;
+
       if (prevNetMargin !== null && netMargin !== null) {
         netMarginChange = netMargin - prevNetMargin;
       }
@@ -126,11 +134,11 @@ const AnnualFinancials = ({ annualReports }) => {
       <Table size="small">
         <TableHead>
           <TableRow>
-            <TableCell sx={{ py: 2 }} >
+            <TableCell sx={{ py: 2 }}>
               <strong>Metric</strong>
             </TableCell>
             {reportsData.map((report) => (
-              <TableCell key={report.fiscalDateEnding} align="center" sx={{ py: 2 }} >
+              <TableCell key={report.fiscalDateEnding} align="center" sx={{ py: 2 }}>
                 <strong>{new Date(report.fiscalDateEnding).getFullYear()}</strong>
               </TableCell>
             ))}
@@ -139,11 +147,11 @@ const AnnualFinancials = ({ annualReports }) => {
         <TableBody>
           {metrics.map((metric) => (
             <TableRow key={metric.label}>
-              <TableCell component="th" scope="row" sx={{ py: 2 }} >
+              <TableCell component="th" scope="row" sx={{ py: 2 }}>
                 {metric.label}
               </TableCell>
               {reportsData.map((report) => (
-                <TableCell key={report.fiscalDateEnding} align="center" sx={{ py: 2 }} >
+                <TableCell key={report.fiscalDateEnding} align="center" sx={{ py: 2 }}>
                   <Box display="flex" flexDirection="column" alignItems="center">
                     <Typography variant="body2" sx={{ fontWeight: 'bold', lineHeight: 1 }}>
                       {metric.formatter(report[metric.field])}
