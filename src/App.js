@@ -4,6 +4,7 @@ import { ThemeProvider, createTheme, CssBaseline, Container, AppBar, Toolbar, Ty
 import {AlertsProvider} from './components/Notification/AlertContext'
 import StockDashboard from './components/StockDashboard';
 import NotificationBell from './components//Notification/NotificationBell';
+import TickerList from './components/TickerList';
 import AlertsSnackbar from './components/Notification/AlertsSnackbar';
 
 
@@ -39,6 +40,7 @@ function App() {
             </Typography>
             {/* Notification Bell */}
             <NotificationBell />
+            <TickerList />
           </Toolbar>
         </AppBar>
         
