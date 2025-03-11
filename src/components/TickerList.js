@@ -3,8 +3,6 @@ import {
   Box,
   Typography,
   IconButton,
-  Menu,
-  MenuItem,
   Button,
   TextField,
   Paper
@@ -16,20 +14,17 @@ import { Sparklines, SparklinesLine } from 'react-sparklines';
 function TickerList() {
   const [tickerData, setTickerData] = useState({});
   const [loading, setLoading] = useState(false);
-  const [anchorEl, setAnchorEl] = useState(null);
+  const [open, setOpen] = useState(false);
 
   // For adding new tickers
   const [newTicker, setNewTicker] = useState('');
 
-  // Open the menu and fetch data
-  const handleClick = (event) => {
-    setAnchorEl(event.currentTarget);
-    fetchData();
-  };
-
-  // Close the menu
-  const handleClose = () => {
-    setAnchorEl(null);
+  const handleToggle = () => {
+    // If we're about to open, fetch data
+    if (!open) {
+      fetchData();
+    }
+    setOpen((prev) => !prev);
   };
 
   // Fetch tickers from backend
@@ -57,13 +52,13 @@ function TickerList() {
       const response = await fetch(`${process.env.REACT_APP_summary_root_api}/tickers`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ticker: newTicker.toUpperCase() })
+        body: JSON.stringify({ ticker: newTicker.trim().toUpperCase() })
       });
       if (!response.ok) {
         throw new Error(`Failed to add ticker: ${response.status} ${response.statusText}`);
       }
-      setNewTicker('');      // clear input
-      await fetchData();     // refresh ticker list
+      setNewTicker('');
+      await fetchData(); // refresh ticker list
     } catch (error) {
       console.error('Error adding ticker:', error);
     }
@@ -87,84 +82,85 @@ function TickerList() {
   };
 
   return (
-    <Box sx={{ ml: 2, display: 'flex', alignItems: 'center' }}>
-      {/* Icon button (white icon) to open dropdown */}
+    <Box sx={{ position: 'relative' }}>
+      {/* Icon button to toggle the list */}
       <IconButton
         color="inherit"
-        onClick={handleClick}
-        aria-controls={anchorEl ? 'ticker-menu' : undefined}
-        aria-haspopup="true"
+        onClick={handleToggle}
+        aria-label="Open ticker list"
       >
         <ListIcon />
       </IconButton>
 
-      {/* Optional: Show a small loading text next to the icon */}
+      {/* Optional loading text next to icon */}
       {loading && (
         <Typography variant="body2" sx={{ ml: 1 }}>
           Loading...
         </Typography>
       )}
 
-      {/* The dropdown menu */}
-      <Menu
-        id="ticker-menu"
-        anchorEl={anchorEl}
-        open={Boolean(anchorEl)}
-        onClose={handleClose}
-        // Optionally fix the width or style further:
-        // PaperProps={{ sx: { width: 400 } }}
-      >
-        {/* 1) "Add Ticker" row at the top of the dropdown */}
-        <MenuItem
-          // Prevent menu from closing when clicking this item
-          onClick={(e) => e.stopPropagation()}
-          disableRipple
-          sx={{ pt: 1, pb: 1, display: 'block' }} // display block to hold form content
+      {open && (
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            position: 'absolute',
+            top: 48,      // Adjust as needed so it sits below the icon
+            right: 0,     // Pin to the right edge
+            width: 380,   // Adjust to match your desired dropdown width
+            bgcolor: 'background.paper',
+            boxShadow: 3,
+            borderRadius: 1,
+            p: 1,
+            zIndex: 9999, // Ensure it's on top of other elements
+
+          }}
         >
-          <Box sx={{ display: 'flex', gap: 1 }}>
+          {/* Add-ticker row */}
+          <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
             <TextField
               variant="outlined"
               size="small"
               label="New Ticker"
               value={newTicker}
               onChange={(e) => setNewTicker(e.target.value)}
-              sx={{flexGrow: 1}}
+              sx={{ flexGrow: 1 }}
             />
-            <Button variant="contained" onClick={(e) => {
-              e.stopPropagation(); // keep menu open
-              handleAddTicker();
-            }}>
-              Add
+            <Button
+              variant="contained"
+              onClick={(e) => {
+                e.stopPropagation(); // does nothing special here, but left for consistency
+                handleAddTicker();
+              }}
+            >
+              ADD
             </Button>
           </Box>
-        </MenuItem>
 
-        {/* 2) Ticker items */}
-        {Object.entries(tickerData).map(([symbol, rows]) => {
-          if (!rows || rows.length === 0) return null;
+          {/* List of tickers */}
+          {Object.entries(tickerData).map(([symbol, rows]) => {
+            if (!rows || rows.length === 0) return null;
 
-          const closePrices = rows.map((row) => row.close);
-          const firstClose = closePrices[0];
-          const lastClose = closePrices[closePrices.length - 1];
-          const pctChange = ((lastClose - firstClose) / firstClose) * 100;
+            const closePrices = rows.map((r) => r.close);
+            const firstClose = closePrices[0];
+            const lastClose = closePrices[closePrices.length - 1];
+            const pctChange = ((lastClose - firstClose) / firstClose) * 100;
 
-          return (
-            <MenuItem
-              key={symbol}
-              // Prevent menu from closing on item click
-              onClick={(e) => e.stopPropagation()}
-              disableRipple
-              sx={{ display: 'block', py: 1 }}
-            >
+            return (
               <Paper
+                key={symbol}
                 sx={{
                   p: 1,
                   display: 'grid',
-                  gridTemplateColumns: '80px 80px 80px auto',
+                  gridTemplateColumns: '80px 80px 80px 80px',
                   alignItems: 'center',
-                  gap: 2
+                  justifyItems: 'center',
+                  gap: 1,
+                  mb: 1, // spacing between items
                 }}
                 elevation={0}
+                onClick={(e) => e.stopPropagation()}
               >
                 {/* Symbol */}
                 <Typography variant="caption" sx={{ fontWeight: 600 }}>
@@ -194,17 +190,17 @@ function TickerList() {
                 <IconButton
                   size="small"
                   onClick={(e) => {
-                    e.stopPropagation(); // keep menu open
+                    e.stopPropagation();
                     handleDeleteTicker(symbol);
                   }}
                 >
                   <DeleteIcon fontSize="small" />
                 </IconButton>
               </Paper>
-            </MenuItem>
-          );
-        })}
-      </Menu>
+            );
+          })}
+        </Box>
+      )}
     </Box>
   );
 }
