@@ -1,5 +1,11 @@
+// OptionPriceRatio.js
 import React, { useState, useEffect } from 'react';
-import { Box, Paper, Typography, CircularProgress } from '@mui/material';
+import {
+  Box,
+  Paper,
+  Typography,
+  CircularProgress
+} from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 
 function OptionPriceRatio() {
@@ -41,18 +47,30 @@ function OptionPriceRatio() {
     }));
 
   const columns = [
-    { field: 'ticker', headerName: 'Ticker', flex: 1 },
+    {
+      field: 'ticker',
+      headerName: 'Ticker',
+      flex: 1,
+      // Center or left align—choose whichever you prefer
+      align: 'center',
+      headerAlign: 'center',
+    },
     {
       field: 'stockPrice',
       headerName: 'Stock Price',
       flex: 1,
       type: 'number',
+      // Right-align numeric data for clarity
+      align: 'right',
+      headerAlign: 'right',
     },
     {
       field: 'ratio',
       headerName: 'Option-to-Price Ratio',
       flex: 1,
       type: 'number',
+      align: 'right',
+      headerAlign: 'right',
     }
   ];
 
@@ -62,9 +80,8 @@ function OptionPriceRatio() {
       sx={{
         p: 2,
         mt: 2,
-        width: '25vw',
-        height: '80vh',
-        // no margin auto or special alignment
+        mx: 'auto',     // center horizontally
+        maxWidth: 600   // set a comfortable max width
       }}
     >
       <Typography variant="h6" gutterBottom>
@@ -90,20 +107,35 @@ function OptionPriceRatio() {
       )}
 
       {!loading && !fetchError && rows.length > 0 && (
-        <Box sx={{ height: 400, mt: 2 }}>
+        <Box sx={{ width: '100%', mt: 2 }}>
           <DataGrid
             rows={rows}
             columns={columns}
             pageSize={5}
             rowsPerPageOptions={[5, 10, 25]}
             disableSelectionOnClick
+            sx={{
+              // Light gray background & bold text for headers
+              '& .MuiDataGrid-columnHeaders': {
+                backgroundColor: '#f5f5f5',
+                fontWeight: 'bold',
+              },
+              // Light gray background for footer
+              '& .MuiDataGrid-footerContainer': {
+                backgroundColor: '#f5f5f5',
+              },
+              // Slight hover effect on rows
+              '& .MuiDataGrid-row:hover': {
+                backgroundColor: 'rgba(0,0,0,0.04)',
+              },
+            }}
           />
         </Box>
       )}
 
       {/* Show any per-ticker errors */}
       {!loading && !fetchError && data.some(item => item.error) && (
-        <Box sx={{ mt: 2}}>
+        <Box sx={{ mt: 2 }}>
           <Typography variant="subtitle1" color="error">
             Some tickers returned errors:
           </Typography>

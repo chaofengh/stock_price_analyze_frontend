@@ -50,6 +50,12 @@ function App() {
         tickerListRef.current &&
         !tickerListRef.current.contains(event.target)
       ) {
+        // Check if the DataGrid column menu popover is open and contains the click
+        const dataGridMenuEl = document.querySelector('.MuiDataGrid-menu');
+        if (dataGridMenuEl && dataGridMenuEl.contains(event.target)) {
+          // If the click is inside the column menu, do not close TickerList
+          return;
+        }
         setSelectedView(null);
       }
 
@@ -83,10 +89,6 @@ function App() {
           </Toolbar>
         </AppBar>
 
-        {/* 
-          Relative container so we can absolutely-position TickerList / Ratio
-          to the top-right, near the 3-dot menu. Adjust 'top' or 'right' to suit.
-        */}
         <Container
           maxWidth="xl"
           sx={{
@@ -105,7 +107,12 @@ function App() {
                 position: 'absolute',
                 top: 0,
                 right: -150,
-                zIndex: 10
+                zIndex: 10,
+                // Set a max height and enable scrolling
+                maxHeight: '90vh',
+                overflowY: 'auto',
+                // Optional width so the box doesn't shrink
+                width: 400
               }}
             >
               <TickerList />
@@ -119,7 +126,11 @@ function App() {
                 position: 'absolute',
                 top: 0,
                 right: -150,
-                zIndex: 10
+                zIndex: 10,
+                maxHeight: '90vh',
+                overflowY: 'auto',
+                // Optional width so the box doesn't shrink
+                width: 400
               }}
             >
               <OptionPriceRatio />

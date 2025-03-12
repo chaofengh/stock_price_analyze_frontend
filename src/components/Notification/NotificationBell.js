@@ -2,13 +2,12 @@
 
 import React, { useState, useContext, useMemo } from 'react';
 import {
-  IconButton,
+  Button,
   Badge,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
-  Button,
   Typography,
   Box,
   FormControl,
@@ -35,17 +34,15 @@ const NotificationBell = () => {
 
   const alertCount = alerts.length;
 
-  // Sort & group
+  // Sort & group the alerts
   const groupedAlerts = useMemo(() => {
     const sorted = [...alerts];
     if (sortOption === 'symbol') {
       sorted.sort((a, b) => a.symbol.localeCompare(b.symbol));
     } else if (sortOption === 'side') {
-      // a.bandSide => 'Upper' or 'Lower'
       sorted.sort((a, b) => a.bandSide.localeCompare(b.bandSide));
     }
 
-    // Group by bandSide => { Upper: [...], Lower: [...] }
     const map = { Upper: [], Lower: [] };
     for (const alert of sorted) {
       if (alert.bandSide === 'Upper') {
@@ -65,19 +62,33 @@ const NotificationBell = () => {
     handleClose();
   };
 
-  // 1) Helper function that calls fetchSummary, then closes the dialog
+  // Dispatch an action to fetch details for a given symbol, then close the dialog
   const handleViewDetailsAndClose = (symbol) => {
     dispatch(fetchSummary(symbol));
-    handleClose(); // closes the dialog
+    handleClose();
   };
 
   return (
     <>
-      <IconButton color="inherit" onClick={handleOpen}>
+      {/* Use a contained Button (like MoreOptionsMenu) instead of IconButton */}
+      <Button
+        variant="contained"
+        color="primary"
+        disableElevation
+        onClick={handleOpen}
+        sx={{
+          // Remove any extra shadow and ensure a darker background on hover
+          boxShadow: 'none',
+          minWidth: 40, // optional: keep button from getting too wide
+          '&:hover': {
+            boxShadow: 'none'
+          }
+        }}
+      >
         <Badge badgeContent={alertCount} color="secondary">
           <Notifications />
         </Badge>
-      </IconButton>
+      </Button>
 
       <Dialog
         open={open}
@@ -117,11 +128,9 @@ const NotificationBell = () => {
               {/* Group: Upper */}
               {groupedAlerts.Upper.length > 0 && (
                 <GroupedAlerts
-                  title={`${
-                    groupedAlerts.Upper.length
-                  } Stocks Crossed Above the Upper Bollinger Band`}
+                  title={`${groupedAlerts.Upper.length} Stocks Crossed Above the Upper Bollinger Band`}
                   alerts={groupedAlerts.Upper}
-                  onViewDetails={handleViewDetailsAndClose} // pass our function here
+                  onViewDetails={handleViewDetailsAndClose}
                   isSmallScreen={isSmallScreen}
                   bandSide="Upper"
                 />
@@ -130,11 +139,9 @@ const NotificationBell = () => {
               {/* Group: Lower */}
               {groupedAlerts.Lower.length > 0 && (
                 <GroupedAlerts
-                  title={`${
-                    groupedAlerts.Lower.length
-                  } Stocks Crossed Below the Lower Bollinger Band`}
+                  title={`${groupedAlerts.Lower.length} Stocks Crossed Below the Lower Bollinger Band`}
                   alerts={groupedAlerts.Lower}
-                  onViewDetails={handleViewDetailsAndClose} // pass our function here
+                  onViewDetails={handleViewDetailsAndClose}
                   isSmallScreen={isSmallScreen}
                   bandSide="Lower"
                 />

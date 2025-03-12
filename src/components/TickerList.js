@@ -213,7 +213,6 @@ function TickerList() {
             pageSize={5}
             rowsPerPageOptions={[5, 10]}
             disableSelectionOnClick
-            autoHeight
             sx={{
               '& .MuiDataGrid-columnHeaders': {
                 backgroundColor: '#f5f5f5',

@@ -25,16 +25,31 @@ function MoreOptionsMenu({ onSelectView }) {
 
   return (
     <>
-      {/* Replace text with icon */}
-      <Button variant="contained" onClick={handleMenuOpen}>
+      {/* Remove shadow on the button by disabling elevation and removing boxShadow */}
+      <Button
+        variant="contained"
+        disableElevation
+        sx={{
+          boxShadow: 'none',
+          '&:hover': {
+            boxShadow: 'none'
+          }
+        }}
+        onClick={handleMenuOpen}
+      >
         <MoreVertIcon />
       </Button>
 
+      {/* Remove shadow from the menu by setting PaperProps.elevation = 0 and boxShadow = 'none' */}
       <Menu
         anchorEl={anchorEl}
         open={Boolean(anchorEl)}
         onClose={() => handleMenuClose(null)}
         keepMounted
+        PaperProps={{
+          elevation: 0,
+          sx: { boxShadow: 'none' }
+        }}
       >
         <MenuItem onClick={() => handleMenuClose('OptionPriceRatio')}>
           <ListItemIcon>
