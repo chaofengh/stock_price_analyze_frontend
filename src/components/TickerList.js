@@ -25,15 +25,6 @@ function SparklineCell({ closePrices }) {
           <SparklinesLine color={pctChange >= 0 ? 'green' : 'red'} />
         </Sparklines>
       </Box>
-      <Typography
-        variant="caption"
-        sx={{
-          color: pctChange >= 0 ? '#28a745' : '#dc3545',
-          fontWeight: 600
-        }}
-      >
-        {pctChange.toFixed(2)}%
-      </Typography>
     </Box>
   );
 }
@@ -63,11 +54,18 @@ function TickerList() {
       // Each "ticker" is a row, with closePrices, etc.
       const newRows = Object.entries(data).map(([symbol, priceArray], idx) => {
         if (!priceArray || priceArray.length === 0) return null;
+
         const closePrices = priceArray.map(r => r.close);
+        const firstClose = closePrices[0];
+        const lastClose = closePrices[closePrices.length - 1];
+        const percentageChange = ((lastClose - firstClose) / firstClose) * 100;
+        
+
         return {
           id: idx,
           symbol,
-          closePrices
+          closePrices,
+          percentageChange
         };
       }).filter(Boolean);
 
@@ -125,9 +123,31 @@ function TickerList() {
       field: 'sparkline',
       headerName: 'Price Movement',
       flex: 2,
-      sortable: true,
+      sortable: false,
       renderCell: (params) => {
         return <SparklineCell closePrices={params.row.closePrices} />;
+      }
+    },
+    {
+      field: 'percentageChange',
+      headerName: '% Change',
+      flex: 1,
+      sortable: true,
+      renderCell: (params) => {
+        // Grab the numeric value
+        const value = params.value;
+        if (typeof value !== 'number') return '';
+    
+        // Pick green or red
+        const color = value >= 0 ? 'green' : 'red';
+        const backgroundColor = value >= 0 ? 'rgba(0, 255, 0, 0.1)' : 'rgba(255, 0, 0, 0.1)';
+    
+        // Format to 2 decimals + '%'
+        return (
+          <Box sx={{ color,backgroundColor,textAlign:'center' }}>
+            {value.toFixed(2)}%
+          </Box>
+        );
       }
     },
     {
@@ -151,7 +171,8 @@ function TickerList() {
       sx={{
         p: 2,
         mt: 2,
-        width: 400
+        width: '25vw',
+        height: '80vh',
       }}
     >
       <Typography variant="h6" gutterBottom>
