@@ -62,7 +62,8 @@ function OptionPriceRatio() {
       sx={{
         p: 2,
         mt: 2,
-        maxWidth: 500,
+        width: '25vw',
+        height: '80vh',
         // no margin auto or special alignment
       }}
     >

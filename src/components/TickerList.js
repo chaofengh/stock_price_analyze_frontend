@@ -12,19 +12,18 @@ import { DataGrid } from '@mui/x-data-grid';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { Sparklines, SparklinesLine } from 'react-sparklines';
 
-// Helper cell renderer for sparkline
 function SparklineCell({ closePrices }) {
   if (!closePrices || closePrices.length === 0) return null;
+
   const firstClose = closePrices[0];
   const lastClose = closePrices[closePrices.length - 1];
   const pctChange = ((lastClose - firstClose) / firstClose) * 100;
+
   return (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-      <Box sx={{ width: 60, height: 30 }}>
-        <Sparklines data={closePrices} width={60} height={30}>
-          <SparklinesLine color={pctChange >= 0 ? 'green' : 'red'} />
-        </Sparklines>
-      </Box>
+    <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+      <Sparklines data={closePrices} width={80} height={30} margin={0}>
+        <SparklinesLine color={pctChange >= 0 ? 'green' : 'red'} />
+      </Sparklines>
     </Box>
   );
 }
@@ -50,24 +49,23 @@ function TickerList() {
       const data = await response.json();
       setTickerData(data);
 
-      // Transform the object of arrays into rows for the DataGrid
-      // Each "ticker" is a row, with closePrices, etc.
-      const newRows = Object.entries(data).map(([symbol, priceArray], idx) => {
-        if (!priceArray || priceArray.length === 0) return null;
+      const newRows = Object.entries(data)
+        .map(([symbol, priceArray], idx) => {
+          if (!priceArray || priceArray.length === 0) return null;
 
-        const closePrices = priceArray.map(r => r.close);
-        const firstClose = closePrices[0];
-        const lastClose = closePrices[closePrices.length - 1];
-        const percentageChange = ((lastClose - firstClose) / firstClose) * 100;
-        
+          const closePrices = priceArray.map(r => r.close);
+          const firstClose = closePrices[0];
+          const lastClose = closePrices[closePrices.length - 1];
+          const percentageChange = ((lastClose - firstClose) / firstClose) * 100;
 
-        return {
-          id: idx,
-          symbol,
-          closePrices,
-          percentageChange
-        };
-      }).filter(Boolean);
+          return {
+            id: idx,
+            symbol,
+            closePrices,
+            percentageChange
+          };
+        })
+        .filter(Boolean);
 
       setRows(newRows);
     } catch (error) {
@@ -111,18 +109,20 @@ function TickerList() {
     }
   };
 
-  // We’ll define DataGrid columns with custom renderers
   const columns = [
     {
       field: 'symbol',
       headerName: 'Symbol',
-      flex: 1,
-      sortable: true
+      // Use smaller flex and center alignment
+      flex: 0.8,
+      sortable: true,
+      align: 'center',
+      headerAlign: 'center',
     },
     {
       field: 'sparkline',
-      headerName: 'Price Movement',
-      flex: 2,
+      headerName: 'Chart',
+      flex: 1,
       sortable: false,
       renderCell: (params) => {
         return <SparklineCell closePrices={params.row.closePrices} />;
@@ -133,18 +133,17 @@ function TickerList() {
       headerName: '% Change',
       flex: 1,
       sortable: true,
+      align: 'center',
+      headerAlign: 'center',
       renderCell: (params) => {
-        // Grab the numeric value
         const value = params.value;
         if (typeof value !== 'number') return '';
-    
-        // Pick green or red
+
         const color = value >= 0 ? 'green' : 'red';
         const backgroundColor = value >= 0 ? 'rgba(0, 255, 0, 0.1)' : 'rgba(255, 0, 0, 0.1)';
-    
-        // Format to 2 decimals + '%'
+
         return (
-          <Box sx={{ color,backgroundColor,textAlign:'center' }}>
+          <Box sx={{ color, backgroundColor, textAlign: 'center', borderRadius: 1, px: 1 }}>
             {value.toFixed(2)}%
           </Box>
         );
@@ -153,6 +152,7 @@ function TickerList() {
     {
       field: 'actions',
       headerName: '',
+      flex: 0.5,
       sortable: false,
       renderCell: (params) => (
         <IconButton
@@ -171,8 +171,8 @@ function TickerList() {
       sx={{
         p: 2,
         mt: 2,
-        width: '25vw',
-        height: '80vh',
+        mx: 'auto',
+        maxWidth: 600
       }}
     >
       <Typography variant="h6" gutterBottom>
@@ -198,26 +198,34 @@ function TickerList() {
       </Box>
 
       {loading && (
-        <Typography variant="body2">
-          Loading...
-        </Typography>
+        <Typography variant="body2">Loading...</Typography>
       )}
 
       {!loading && rows.length === 0 && (
-        <Typography variant="body2">
-          No tickers in the list.
-        </Typography>
+        <Typography variant="body2">No tickers in the list.</Typography>
       )}
 
-      {/* DataGrid for sorting */}
       {!loading && rows.length > 0 && (
-        <Box sx={{ height: 400 }}>
+        <Box sx={{ width: '100%' }}>
           <DataGrid
             rows={rows}
             columns={columns}
             pageSize={5}
             rowsPerPageOptions={[5, 10]}
             disableSelectionOnClick
+            autoHeight
+            sx={{
+              '& .MuiDataGrid-columnHeaders': {
+                backgroundColor: '#f5f5f5',
+                fontWeight: 'bold',
+              },
+              '& .MuiDataGrid-footerContainer': {
+                backgroundColor: '#f5f5f5',
+              },
+              '& .MuiDataGrid-row:hover': {
+                backgroundColor: 'rgba(0,0,0,0.04)',
+              },
+            }}
           />
         </Box>
       )}
