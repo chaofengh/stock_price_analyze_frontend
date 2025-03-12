@@ -1,33 +1,54 @@
-import React, { useState } from 'react';
+// TickerList.js
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
-  IconButton,
   Button,
   TextField,
-  Paper
+  Paper,
+  IconButton
 } from '@mui/material';
-import ListIcon from '@mui/icons-material/List';
+import { DataGrid } from '@mui/x-data-grid';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { Sparklines, SparklinesLine } from 'react-sparklines';
 
+// Helper cell renderer for sparkline
+function SparklineCell({ closePrices }) {
+  if (!closePrices || closePrices.length === 0) return null;
+  const firstClose = closePrices[0];
+  const lastClose = closePrices[closePrices.length - 1];
+  const pctChange = ((lastClose - firstClose) / firstClose) * 100;
+  return (
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+      <Box sx={{ width: 60, height: 30 }}>
+        <Sparklines data={closePrices} width={60} height={30}>
+          <SparklinesLine color={pctChange >= 0 ? 'green' : 'red'} />
+        </Sparklines>
+      </Box>
+      <Typography
+        variant="caption"
+        sx={{
+          color: pctChange >= 0 ? '#28a745' : '#dc3545',
+          fontWeight: 600
+        }}
+      >
+        {pctChange.toFixed(2)}%
+      </Typography>
+    </Box>
+  );
+}
+
 function TickerList() {
   const [tickerData, setTickerData] = useState({});
+  const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [open, setOpen] = useState(false);
-
-  // For adding new tickers
   const [newTicker, setNewTicker] = useState('');
 
-  const handleToggle = () => {
-    // If we're about to open, fetch data
-    if (!open) {
-      fetchData();
-    }
-    setOpen((prev) => !prev);
-  };
+  useEffect(() => {
+    fetchData();
+    // eslint-disable-next-line
+  }, []);
 
-  // Fetch tickers from backend
   const fetchData = async () => {
     setLoading(true);
     try {
@@ -37,6 +58,20 @@ function TickerList() {
       }
       const data = await response.json();
       setTickerData(data);
+
+      // Transform the object of arrays into rows for the DataGrid
+      // Each "ticker" is a row, with closePrices, etc.
+      const newRows = Object.entries(data).map(([symbol, priceArray], idx) => {
+        if (!priceArray || priceArray.length === 0) return null;
+        const closePrices = priceArray.map(r => r.close);
+        return {
+          id: idx,
+          symbol,
+          closePrices
+        };
+      }).filter(Boolean);
+
+      setRows(newRows);
     } catch (error) {
       console.error('Error fetching ticker data:', error);
     } finally {
@@ -44,10 +79,8 @@ function TickerList() {
     }
   };
 
-  // POST /api/tickers to add a new ticker
   const handleAddTicker = async () => {
-    if (!newTicker.trim()) return; // ignore empty input
-
+    if (!newTicker.trim()) return;
     try {
       const response = await fetch(`${process.env.REACT_APP_summary_root_api}/tickers`, {
         method: 'POST',
@@ -58,13 +91,12 @@ function TickerList() {
         throw new Error(`Failed to add ticker: ${response.status} ${response.statusText}`);
       }
       setNewTicker('');
-      await fetchData(); // refresh ticker list
+      await fetchData();
     } catch (error) {
       console.error('Error adding ticker:', error);
     }
   };
 
-  // DELETE /api/tickers to remove a ticker
   const handleDeleteTicker = async (symbol) => {
     try {
       const response = await fetch(`${process.env.REACT_APP_summary_root_api}/tickers`, {
@@ -75,133 +107,100 @@ function TickerList() {
       if (!response.ok) {
         throw new Error(`Failed to delete ticker: ${response.status} ${response.statusText}`);
       }
-      await fetchData(); // refresh ticker list
+      await fetchData();
     } catch (error) {
       console.error('Error deleting ticker:', error);
     }
   };
 
-  return (
-    <Box sx={{ position: 'relative' }}>
-      {/* Icon button to toggle the list */}
-      <IconButton
-        color="inherit"
-        onClick={handleToggle}
-        aria-label="Open ticker list"
-      >
-        <ListIcon />
-      </IconButton>
+  // We’ll define DataGrid columns with custom renderers
+  const columns = [
+    {
+      field: 'symbol',
+      headerName: 'Symbol',
+      flex: 1,
+      sortable: true
+    },
+    {
+      field: 'sparkline',
+      headerName: 'Price Movement',
+      flex: 2,
+      sortable: true,
+      renderCell: (params) => {
+        return <SparklineCell closePrices={params.row.closePrices} />;
+      }
+    },
+    {
+      field: 'actions',
+      headerName: '',
+      sortable: false,
+      renderCell: (params) => (
+        <IconButton
+          size="small"
+          onClick={() => handleDeleteTicker(params.row.symbol)}
+        >
+          <DeleteIcon fontSize="small" />
+        </IconButton>
+      )
+    }
+  ];
 
-      {/* Optional loading text next to icon */}
+  return (
+    <Paper
+      elevation={3}
+      sx={{
+        p: 2,
+        mt: 2,
+        width: 400
+      }}
+    >
+      <Typography variant="h6" gutterBottom>
+        Watch List
+      </Typography>
+
+      <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+        <TextField
+          variant="outlined"
+          size="small"
+          label="New Ticker"
+          value={newTicker}
+          onChange={(e) => setNewTicker(e.target.value)}
+          sx={{ flexGrow: 1 }}
+        />
+        <Button
+          variant="contained"
+          onClick={handleAddTicker}
+          disabled={loading}
+        >
+          ADD
+        </Button>
+      </Box>
+
       {loading && (
-        <Typography variant="body2" sx={{ ml: 1 }}>
+        <Typography variant="body2">
           Loading...
         </Typography>
       )}
 
-      {open && (
-        <Box
-          sx={{
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'center',
-            position: 'absolute',
-            top: 48,      // Adjust as needed so it sits below the icon
-            right: 0,     // Pin to the right edge
-            width: 380,   // Adjust to match your desired dropdown width
-            bgcolor: 'background.paper',
-            boxShadow: 3,
-            borderRadius: 1,
-            p: 1,
-            zIndex: 9999, // Ensure it's on top of other elements
+      {!loading && rows.length === 0 && (
+        <Typography variant="body2">
+          No tickers in the list.
+        </Typography>
+      )}
 
-          }}
-        >
-          {/* Add-ticker row */}
-          <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
-            <TextField
-              variant="outlined"
-              size="small"
-              label="New Ticker"
-              value={newTicker}
-              onChange={(e) => setNewTicker(e.target.value)}
-              sx={{ flexGrow: 1 }}
-            />
-            <Button
-              variant="contained"
-              onClick={(e) => {
-                e.stopPropagation(); // does nothing special here, but left for consistency
-                handleAddTicker();
-              }}
-            >
-              ADD
-            </Button>
-          </Box>
-
-          {/* List of tickers */}
-          {Object.entries(tickerData).map(([symbol, rows]) => {
-            if (!rows || rows.length === 0) return null;
-
-            const closePrices = rows.map((r) => r.close);
-            const firstClose = closePrices[0];
-            const lastClose = closePrices[closePrices.length - 1];
-            const pctChange = ((lastClose - firstClose) / firstClose) * 100;
-
-            return (
-              <Paper
-                key={symbol}
-                sx={{
-                  p: 1,
-                  display: 'grid',
-                  gridTemplateColumns: '80px 80px 80px 80px',
-                  alignItems: 'center',
-                  justifyItems: 'center',
-                  gap: 1,
-                  mb: 1, // spacing between items
-                }}
-                elevation={0}
-                onClick={(e) => e.stopPropagation()}
-              >
-                {/* Symbol */}
-                <Typography variant="caption" sx={{ fontWeight: 600 }}>
-                  {symbol}
-                </Typography>
-
-                {/* Sparkline */}
-                <Box sx={{ width: 60, height: 30 }}>
-                  <Sparklines data={closePrices} width={60} height={30}>
-                    <SparklinesLine color={pctChange >= 0 ? 'green' : 'red'} />
-                  </Sparklines>
-                </Box>
-
-                {/* % Change */}
-                <Typography
-                  variant="caption"
-                  sx={{
-                    color: pctChange >= 0 ? '#28a745' : '#dc3545',
-                    fontWeight: 600,
-                    textAlign: 'center'
-                  }}
-                >
-                  {pctChange.toFixed(2)}%
-                </Typography>
-
-                {/* Delete icon */}
-                <IconButton
-                  size="small"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDeleteTicker(symbol);
-                  }}
-                >
-                  <DeleteIcon fontSize="small" />
-                </IconButton>
-              </Paper>
-            );
-          })}
+      {/* DataGrid for sorting */}
+      {!loading && rows.length > 0 && (
+        <Box sx={{ height: 400 }}>
+          <DataGrid
+            rows={rows}
+            columns={columns}
+            pageSize={5}
+            rowsPerPageOptions={[5, 10]}
+            disableSelectionOnClick
+          />
         </Box>
       )}
-    </Box>
+    </Paper>
   );
 }
 
