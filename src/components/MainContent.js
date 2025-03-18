@@ -8,12 +8,14 @@ import NewsWidget from "./NewsWidget";
 import { fetchCompanyLogo } from '../API/FetchCompanyLogo'
 import { useAnimatedNumber } from "../utils/NumberAnimation";
 import RollingNumber from "../utils/RollingDigit";
+import PeopleAlsoView from "./PeopleAlsoView";
 
 
 const MainContent = ({ summary, eventMap }) => {
   // State to store hovered price/date from the chart
   const [hoverData, setHoverData] = useState(null);
   const [logo, setLogo] = useState(null);
+  console.log(summary)
 
   useEffect(() => {
     if (summary?.symbol) {
@@ -114,6 +116,10 @@ const MainContent = ({ summary, eventMap }) => {
 
       <Paper sx={{ p: 3, mb: 3 }}>
         <GroupedStats summary={summary} />
+      </Paper >
+
+      <Paper sx={{ p: 3, mb: 3 }}>
+        <PeopleAlsoView summary={summary} />
       </Paper>
 
       <Grid container spacing={3}>
