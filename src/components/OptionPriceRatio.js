@@ -7,8 +7,11 @@ import {
   CircularProgress
 } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
+import { useDispatch } from 'react-redux';
+import { fetchSummary } from './Redux/summarySlice';
 
 function OptionPriceRatio() {
+  const dispatch = useDispatch();
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [fetchError, setFetchError] = useState(null);
@@ -45,6 +48,12 @@ function OptionPriceRatio() {
       stockPrice: item.stock_price ? item.stock_price.toFixed(2) : null,
       ratio: item.best_put_ratio ? item.best_put_ratio.toFixed(4) : null
     }));
+
+    const handleCellClick = (params)=>{
+      if(params.field === 'ticker'){
+        dispatch(fetchSummary(params.value));
+      }
+    }
 
   const columns = [
     {
@@ -114,6 +123,7 @@ function OptionPriceRatio() {
             pageSize={5}
             rowsPerPageOptions={[5, 10, 25]}
             disableSelectionOnClick
+            onCellClick={handleCellClick}
             sx={{
               // Light gray background & bold text for headers
               '& .MuiDataGrid-columnHeaders': {

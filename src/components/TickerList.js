@@ -11,6 +11,8 @@ import {
 import { DataGrid } from '@mui/x-data-grid';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { Sparklines, SparklinesLine } from 'react-sparklines';
+import {useDispatch} from 'react-redux';
+import {fetchSummary} from './Redux/summarySlice'
 
 function SparklineCell({ closePrices }) {
   if (!closePrices || closePrices.length === 0) return null;
@@ -29,6 +31,7 @@ function SparklineCell({ closePrices }) {
 }
 
 function TickerList() {
+  const dispatch = useDispatch();
   const [tickerData, setTickerData] = useState({});
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -108,6 +111,13 @@ function TickerList() {
       console.error('Error deleting ticker:', error);
     }
   };
+  
+  const handleCellClick = (params) => {
+    if(params.field === 'symbol'){
+      dispatch(fetchSummary(params.value));
+    }
+  }
+  
 
   const columns = [
     {
@@ -213,6 +223,7 @@ function TickerList() {
             pageSize={5}
             rowsPerPageOptions={[5, 10]}
             disableSelectionOnClick
+            onCellClick={handleCellClick}
             sx={{
               '& .MuiDataGrid-columnHeaders': {
                 backgroundColor: '#f5f5f5',
