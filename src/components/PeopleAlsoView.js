@@ -23,7 +23,7 @@ function PeopleAlsoView({ summary }) {
     <Box sx={{ mt: 1 }}>
       {/* Section Header */}
       <Typography variant="h6" gutterBottom textAlign="center">
-        People also own
+        People also view
       </Typography>
       <Typography
         variant="body2"

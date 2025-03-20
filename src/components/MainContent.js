@@ -4,7 +4,7 @@ import StockChart from "./Chart/StockChart";
 import GroupedStats from "./GroupedStats";
 import AdvancedMetrics from "./AdvancedMetrics";
 import MarketSentiment from "./MarketSentiment";
-import NewsWidget from "./NewsWidget";
+import FinancialWidget from "./FinancialWidget";
 import { fetchCompanyLogo } from '../API/FetchCompanyLogo'
 import { useAnimatedNumber } from "../utils/NumberAnimation";
 import RollingNumber from "../utils/RollingDigit";
@@ -15,13 +15,14 @@ const MainContent = ({ summary, eventMap }) => {
   // State to store hovered price/date from the chart
   const [hoverData, setHoverData] = useState(null);
   const [logo, setLogo] = useState(null);
-  console.log(summary)
 
   useEffect(() => {
     if (summary?.symbol) {
       fetchCompanyLogo(summary.symbol).then(setLogo);
     }
   }, [summary?.symbol]);
+
+  console.log(summary)
 
   // Use hovered price if available, otherwise fallback to final price
   const rawPrice = hoverData?.price ?? summary?.final_price ?? 0;
@@ -130,7 +131,7 @@ const MainContent = ({ summary, eventMap }) => {
           <MarketSentiment />
         </Grid>
         <Grid item xs={12} md={4}>
-          <NewsWidget />
+          <FinancialWidget  income_statement={summary.income_statement}/>
         </Grid>
       </Grid>
     </Box>

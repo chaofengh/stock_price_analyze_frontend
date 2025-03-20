@@ -10,6 +10,7 @@ import {
   Typography,
   Box
 } from '@mui/material';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AlertsProvider } from './components/Notification/AlertContext';
 import StockDashboard from './components/StockDashboard';
 import NotificationBell from './components/Notification/NotificationBell';
@@ -17,6 +18,8 @@ import MoreOptionsMenu from './components/MoreOptionsMenu';
 import AlertsSnackbar from './components/Notification/AlertsSnackbar';
 import OptionPriceRatio from './components/OptionPriceRatio';
 import TickerList from './components/TickerList';
+import FinancialAnalysisPage from './components/FinancialAnalysisPage';
+
 
 const theme = createTheme({
   palette: {
@@ -74,71 +77,75 @@ function App() {
   }, [selectedView]);
 
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <AlertsProvider>
-        <AlertsSnackbar />
+    <Router>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <AlertsProvider>
+          <AlertsSnackbar />
 
-        <AppBar position="static" elevation={4}>
-          <Toolbar sx={{ minHeight: 64 }}>
-            <Typography variant="h6" sx={{ flexGrow: 1 }}>
-              UltraPro Stock Dashboard
-            </Typography>
-            <NotificationBell />
-            <MoreOptionsMenu onSelectView={setSelectedView} />
-          </Toolbar>
-        </AppBar>
+          <AppBar position="static" elevation={4}>
+            <Toolbar sx={{ minHeight: 64 }}>
+              <Typography variant="h6" sx={{ flexGrow: 1 }}>
+                UltraPro Stock Dashboard
+              </Typography>
+              <NotificationBell />
+              <MoreOptionsMenu onSelectView={setSelectedView} />
+            </Toolbar>
+          </AppBar>
 
-        <Container
-          maxWidth="xl"
-          sx={{
-            mt: 4,
-            mb: 4,
-            position: 'relative',
-            minHeight: 600,
-          }}
-        >
-          <StockDashboard />
+          <Container
+            maxWidth="xl"
+            sx={{
+              mt: 4,
+              mb: 4,
+              position: 'relative',
+              minHeight: 600,
+            }}
+          >
+            <Routes>
+              <Route path="/" element={<StockDashboard />} />
+              <Route path="/analysis" element={<FinancialAnalysisPage />} />
+            </Routes>
+            {selectedView === 'WatchList' && (
+              <Box
+                ref={tickerListRef}
+                sx={{
+                  position: 'absolute',
+                  top: 0,
+                  right: -150,
+                  zIndex: 10,
+                  // Set a max height and enable scrolling
+                  maxHeight: '90vh',
+                  overflowY: 'auto',
+                  // Optional width so the box doesn't shrink
+                  width: 400
+                }}
+              >
+                <TickerList />
+              </Box>
+            )}
 
-          {selectedView === 'WatchList' && (
-            <Box
-              ref={tickerListRef}
-              sx={{
-                position: 'absolute',
-                top: 0,
-                right: -150,
-                zIndex: 10,
-                // Set a max height and enable scrolling
-                maxHeight: '90vh',
-                overflowY: 'auto',
-                // Optional width so the box doesn't shrink
-                width: 400
-              }}
-            >
-              <TickerList />
-            </Box>
-          )}
-
-          {selectedView === 'OptionPriceRatio' && (
-            <Box
-              ref={ratioRef}
-              sx={{
-                position: 'absolute',
-                top: 0,
-                right: -150,
-                zIndex: 10,
-                maxHeight: '90vh',
-                overflowY: 'auto',
-                // Optional width so the box doesn't shrink
-                width: 400
-              }}
-            >
-              <OptionPriceRatio />
-            </Box>
-          )}
-        </Container>
-      </AlertsProvider>
-    </ThemeProvider>
+            {selectedView === 'OptionPriceRatio' && (
+              <Box
+                ref={ratioRef}
+                sx={{
+                  position: 'absolute',
+                  top: 0,
+                  right: -150,
+                  zIndex: 10,
+                  maxHeight: '90vh',
+                  overflowY: 'auto',
+                  // Optional width so the box doesn't shrink
+                  width: 400
+                }}
+              >
+                <OptionPriceRatio />
+              </Box>
+            )}
+          </Container>
+        </AlertsProvider>
+      </ThemeProvider>
+    </Router>
   );
 }
 
