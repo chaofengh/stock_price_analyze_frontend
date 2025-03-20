@@ -22,8 +22,6 @@ const MainContent = ({ summary, eventMap }) => {
     }
   }, [summary?.symbol]);
 
-  console.log(summary)
-
   // Use hovered price if available, otherwise fallback to final price
   const rawPrice = hoverData?.price ?? summary?.final_price ?? 0;
   const animatedPrice = useAnimatedNumber(rawPrice);
