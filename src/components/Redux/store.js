@@ -1,8 +1,11 @@
 import { configureStore } from '@reduxjs/toolkit';
 import summaryReducer from './summarySlice';
+import financialsReducer from './financialsSlice';
+
 
 export const store = configureStore({
   reducer: {
-    summary: summaryReducer
+    summary: summaryReducer,
+    financials: financialsReducer
   }
 });

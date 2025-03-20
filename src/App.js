@@ -18,7 +18,7 @@ import MoreOptionsMenu from './components/MoreOptionsMenu';
 import AlertsSnackbar from './components/Notification/AlertsSnackbar';
 import OptionPriceRatio from './components/OptionPriceRatio';
 import TickerList from './components/TickerList';
-import FinancialAnalysisPage from './components/FinancialAnalysisPage';
+import FinancialAnalysisPage from './components/statements/FinancialAnalysisPage';
 
 
 const theme = createTheme({
