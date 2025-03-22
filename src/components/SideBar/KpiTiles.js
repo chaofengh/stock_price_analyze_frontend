@@ -114,7 +114,7 @@ const KpiTiles = ({ summary }) => {
       label: 'Dividend Yield',
       value:
         summary.dividendYield != null
-          ? `${(summary.dividendYield * 100).toFixed(2)}%`
+          ? `${summary.dividendYield.toFixed(2)}%`
           : '-'
     },
   ];
