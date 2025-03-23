@@ -86,7 +86,7 @@ function App() {
           <AppBar position="static" elevation={4}>
             <Toolbar sx={{ minHeight: 64 }}>
               <Typography variant="h6" sx={{ flexGrow: 1 }}>
-                UltraPro Stock Dashboard
+                Lumina Stock Insights
               </Typography>
               <NotificationBell />
               <MoreOptionsMenu onSelectView={setSelectedView} />
