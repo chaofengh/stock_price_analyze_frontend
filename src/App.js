@@ -14,27 +14,27 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AlertsProvider } from './components/Notification/AlertContext';
 import StockDashboard from './components/StockDashboard';
 import NotificationBell from './components/Notification/NotificationBell';
-import MoreOptionsMenu from './components/MoreOptionsMenu';
+import MoreOptionsMenu from './components/MoreOption/MoreOptionsMenu';
 import AlertsSnackbar from './components/Notification/AlertsSnackbar';
-import OptionPriceRatio from './components/OptionPriceRatio';
-import TickerList from './components/TickerList';
+import OptionPriceRatio from './components/MoreOption/OptionPriceRatio';
+import TickerList from './components/MoreOption/TickerList';
 import FinancialAnalysisPage from './components/statements/FinancialAnalysisPage';
-
+import News from './components/MoreOption/News'
 
 const theme = createTheme({
   palette: {
     mode: 'light',
     primary: { main: '#0d47a1' },
-    secondary: { main: '#f57c00' },
+    secondary: { main: '#f57c00' }
   },
   typography: {
     fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
-    h6: { fontWeight: 600 },
+    h6: { fontWeight: 600 }
   },
   components: {
     MuiPaper: { styleOverrides: { root: { borderRadius: 12 } } },
-    MuiCard:  { styleOverrides: { root: { borderRadius: 12 } } },
-  },
+    MuiCard: { styleOverrides: { root: { borderRadius: 12 } } }
+  }
 });
 
 function App() {
@@ -43,6 +43,7 @@ function App() {
   // Refs for detecting outside clicks
   const tickerListRef = useRef(null);
   const ratioRef = useRef(null);
+  const newsRef = useRef(null); // <-- Ref for News
 
   // Listen for clicks anywhere on document
   useEffect(() => {
@@ -67,6 +68,15 @@ function App() {
         selectedView === 'OptionPriceRatio' &&
         ratioRef.current &&
         !ratioRef.current.contains(event.target)
+      ) {
+        setSelectedView(null);
+      }
+
+      // If News is open and the click is outside => close it
+      if (
+        selectedView === 'News' &&
+        newsRef.current &&
+        !newsRef.current.contains(event.target)
       ) {
         setSelectedView(null);
       }
@@ -99,13 +109,14 @@ function App() {
               mt: 4,
               mb: 4,
               position: 'relative',
-              minHeight: 600,
+              minHeight: 600
             }}
           >
             <Routes>
               <Route path="/" element={<StockDashboard />} />
               <Route path="/analysis" element={<FinancialAnalysisPage />} />
             </Routes>
+
             {selectedView === 'WatchList' && (
               <Box
                 ref={tickerListRef}
@@ -114,10 +125,8 @@ function App() {
                   top: 0,
                   right: -150,
                   zIndex: 10,
-                  // Set a max height and enable scrolling
                   maxHeight: '90vh',
                   overflowY: 'auto',
-                  // Optional width so the box doesn't shrink
                   width: 400
                 }}
               >
@@ -135,11 +144,28 @@ function App() {
                   zIndex: 10,
                   maxHeight: '90vh',
                   overflowY: 'auto',
-                  // Optional width so the box doesn't shrink
                   width: 400
                 }}
               >
                 <OptionPriceRatio />
+              </Box>
+            )}
+
+            {/* Render News when selected */}
+            {selectedView === 'News' && (
+              <Box
+                ref={newsRef}
+                sx={{
+                  position: 'absolute',
+                  top: 0,
+                  right: -150,
+                  zIndex: 10,
+                  maxHeight: '90vh',
+                  overflowY: 'auto',
+                  width: 400
+                }}
+              >
+                <News />
               </Box>
             )}
           </Container>

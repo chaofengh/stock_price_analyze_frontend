@@ -12,7 +12,7 @@ import { DataGrid } from '@mui/x-data-grid';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { Sparklines, SparklinesLine } from 'react-sparklines';
 import {useDispatch} from 'react-redux';
-import {fetchSummary} from './Redux/summarySlice'
+import {fetchSummary} from '../Redux/summarySlice'
 
 function SparklineCell({ closePrices }) {
   if (!closePrices || closePrices.length === 0) return null;

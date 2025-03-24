@@ -8,7 +8,7 @@ import {
 } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import { useDispatch } from 'react-redux';
-import { fetchSummary } from './Redux/summarySlice';
+import { fetchSummary } from '../Redux/summarySlice';
 
 function OptionPriceRatio() {
   const dispatch = useDispatch();
@@ -39,28 +39,28 @@ function OptionPriceRatio() {
     fetchOptionRatio();
   }, []);
 
-  // Prepare rows for DataGrid
+  // Prepare rows for DataGrid, including trailingPE
   const rows = data
     .filter(item => !item.error)
     .map((item, index) => ({
       id: index,
       ticker: item.ticker,
       stockPrice: item.stock_price ? item.stock_price.toFixed(2) : null,
-      ratio: item.best_put_ratio ? item.best_put_ratio.toFixed(4) : null
+      ratio: item.best_put_ratio ? item.best_put_ratio.toFixed(4) : null,
+      trailingPE: item.trailingPE ? item.trailingPE.toFixed(2) : null
     }));
 
-    const handleCellClick = (params)=>{
-      if(params.field === 'ticker'){
-        dispatch(fetchSummary(params.value));
-      }
+  const handleCellClick = (params) => {
+    if (params.field === 'ticker') {
+      dispatch(fetchSummary(params.value));
     }
+  };
 
   const columns = [
     {
       field: 'ticker',
       headerName: 'Ticker',
       flex: 1,
-      // Center or left align—choose whichever you prefer
       align: 'center',
       headerAlign: 'center',
     },
@@ -69,13 +69,20 @@ function OptionPriceRatio() {
       headerName: 'Stock Price',
       flex: 1,
       type: 'number',
-      // Right-align numeric data for clarity
       align: 'right',
       headerAlign: 'right',
     },
     {
       field: 'ratio',
       headerName: 'Option-to-Price Ratio',
+      flex: 1,
+      type: 'number',
+      align: 'right',
+      headerAlign: 'right',
+    },
+    {
+      field: 'trailingPE',
+      headerName: 'Trailing PE',
       flex: 1,
       type: 'number',
       align: 'right',
@@ -89,8 +96,8 @@ function OptionPriceRatio() {
       sx={{
         p: 2,
         mt: 2,
-        mx: 'auto',     // center horizontally
-        maxWidth: 600   // set a comfortable max width
+        mx: 'auto',
+        maxWidth: 600
       }}
     >
       <Typography variant="h6" gutterBottom>
@@ -125,16 +132,13 @@ function OptionPriceRatio() {
             disableSelectionOnClick
             onCellClick={handleCellClick}
             sx={{
-              // Light gray background & bold text for headers
               '& .MuiDataGrid-columnHeaders': {
                 backgroundColor: '#f5f5f5',
                 fontWeight: 'bold',
               },
-              // Light gray background for footer
               '& .MuiDataGrid-footerContainer': {
                 backgroundColor: '#f5f5f5',
               },
-              // Slight hover effect on rows
               '& .MuiDataGrid-row:hover': {
                 backgroundColor: 'rgba(0,0,0,0.04)',
               },
@@ -143,7 +147,6 @@ function OptionPriceRatio() {
         </Box>
       )}
 
-      {/* Show any per-ticker errors */}
       {!loading && !fetchError && data.some(item => item.error) && (
         <Box sx={{ mt: 2 }}>
           <Typography variant="subtitle1" color="error">

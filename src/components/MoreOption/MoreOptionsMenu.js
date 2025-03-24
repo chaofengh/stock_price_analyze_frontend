@@ -1,3 +1,4 @@
+// src/components/MoreOptionsMenu.js
 import React, { useState } from 'react';
 import {
   Button,
@@ -6,10 +7,11 @@ import {
   ListItemIcon
 } from '@mui/material';
 
-// MUI icons:
+// MUI icons
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import VisibilityIcon from '@mui/icons-material/Visibility';
+import ArticleIcon from '@mui/icons-material/Article'; // <-- Add this
 
 function MoreOptionsMenu({ onSelectView }) {
   const [anchorEl, setAnchorEl] = useState(null);
@@ -25,7 +27,6 @@ function MoreOptionsMenu({ onSelectView }) {
 
   return (
     <>
-      {/* Remove shadow on the button by disabling elevation and removing boxShadow */}
       <Button
         variant="contained"
         disableElevation
@@ -40,7 +41,6 @@ function MoreOptionsMenu({ onSelectView }) {
         <MoreVertIcon />
       </Button>
 
-      {/* Remove shadow from the menu by setting PaperProps.elevation = 0 and boxShadow = 'none' */}
       <Menu
         anchorEl={anchorEl}
         open={Boolean(anchorEl)}
@@ -63,6 +63,14 @@ function MoreOptionsMenu({ onSelectView }) {
             <VisibilityIcon />
           </ListItemIcon>
           Watch List
+        </MenuItem>
+
+        {/* New News Menu Item */}
+        <MenuItem onClick={() => handleMenuClose('News')}>
+          <ListItemIcon>
+            <ArticleIcon />
+          </ListItemIcon>
+          News
         </MenuItem>
       </Menu>
     </>
