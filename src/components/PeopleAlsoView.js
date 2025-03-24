@@ -95,8 +95,11 @@ function PeopleAlsoView({ summary }) {
                   {peerSymbol}
                 </Typography>
 
-                {/* Price */}
-                <Typography variant="h6" sx={{ mt: 0.5, mb: 1, fontWeight: 500 }}>
+                {/* Price with updated styling: bolder and colored based on percentage change */}
+                <Typography
+                  variant="h6"
+                  sx={{ mt: 0.5, mb: 1, fontWeight: 700, color: changeColor }}
+                >
                   ${price}
                 </Typography>
 

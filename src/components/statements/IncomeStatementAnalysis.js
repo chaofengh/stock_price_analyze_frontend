@@ -1,4 +1,3 @@
-// IncomeStatementAnalysis.js
 import React, { useMemo, useState } from 'react';
 import {
   Box,
@@ -41,9 +40,12 @@ function IncomeStatementAnalysis({ incomeStatementData }) {
   const METRICS = [
     { key: 'totalRevenue', label: 'Revenue ($)', isPercentage: false },
     { key: 'grossProfit', label: 'Gross Profit ($)', isPercentage: false },
+    { key: 'operatingExpenses', label: 'Operating Expenses ($)', isPercentage: false },
+    { key: 'researchAndDevelopment', label: 'R&D ($)', isPercentage: false },
     { key: 'netIncome', label: 'Net Income ($)', isPercentage: false },
     { key: 'grossMargin', label: 'Gross Margin (%)', isPercentage: true },
     { key: 'netMargin', label: 'Net Margin (%)', isPercentage: true },
+
   ];
   const [activeMetricIndex, setActiveMetricIndex] = useState(0);
   const activeMetric = METRICS[activeMetricIndex];
@@ -65,22 +67,45 @@ function IncomeStatementAnalysis({ incomeStatementData }) {
     return 'Q4';
   };
 
-  // Unconditionally compute quarterly and annual report arrays.
-  const quarterlyReports = useMemo(() => incomeStatementData?.quarterlyReports || [], [incomeStatementData]);
-  const annualReports = useMemo(() => incomeStatementData?.annualReports || [], [incomeStatementData]);
+  // Memoized data
+  const quarterlyReports = useMemo(
+    () => incomeStatementData?.quarterlyReports || [],
+    [incomeStatementData]
+  );
+  const annualReports = useMemo(
+    () => incomeStatementData?.annualReports || [],
+    [incomeStatementData]
+  );
 
+  // Build quarterly data array
   const quarterlyDataArray = useMemo(() => {
     const arr = quarterlyReports.map((r) => {
       const dateStr = r.fiscalDateEnding; // e.g. "2023-03-31"
       const [year, month] = dateStr.split('-');
       const quarter = getQuarter(month);
+
       const totalRev = Number(r.totalRevenue) || 0;
       const gross = Number(r.grossProfit) || 0;
       const net = Number(r.netIncome) || 0;
+      const opEx = Number(r.operatingExpenses) || 0; // NEW
+      const rAndD = Number(r.researchAndDevelopment) || 0; // NEW
+
       const grossMargin = totalRev ? (gross / totalRev) * 100 : 0;
       const netMargin = totalRev ? (net / totalRev) * 100 : 0;
-      return { year, quarter, totalRevenue: totalRev, grossProfit: gross, netIncome: net, grossMargin, netMargin };
+
+      return {
+        year,
+        quarter,
+        totalRevenue: totalRev,
+        grossProfit: gross,
+        netIncome: net,
+        grossMargin,
+        netMargin,
+        operatingExpenses: opEx,        // NEW
+        researchAndDevelopment: rAndD,  // NEW
+      };
     });
+
     // Sort by year then quarter order
     arr.sort((a, b) => {
       if (a.year !== b.year) return a.year.localeCompare(b.year);
@@ -90,16 +115,33 @@ function IncomeStatementAnalysis({ incomeStatementData }) {
     return arr;
   }, [quarterlyReports]);
 
+  // Build annual data array
   const annualDataArray = useMemo(() => {
     const arr = annualReports.map((r) => {
       const year = r.fiscalDateEnding.split('-')[0];
+
       const totalRev = Number(r.totalRevenue) || 0;
       const gross = Number(r.grossProfit) || 0;
       const net = Number(r.netIncome) || 0;
+      const opEx = Number(r.operatingExpenses) || 0; // NEW
+      const rAndD = Number(r.researchAndDevelopment) || 0; // NEW
+
       const grossMargin = totalRev ? (gross / totalRev) * 100 : 0;
       const netMargin = totalRev ? (net / totalRev) * 100 : 0;
-      return { year, totalRevenue: totalRev, grossProfit: gross, netIncome: net, grossMargin, netMargin };
+
+      return {
+        year,
+        totalRevenue: totalRev,
+        grossProfit: gross,
+        netIncome: net,
+        grossMargin,
+        netMargin,
+        operatingExpenses: opEx,        // NEW
+        researchAndDevelopment: rAndD,  // NEW
+      };
     });
+
+    // Sort ascending by year and keep the last 8
     arr.sort((a, b) => a.year.localeCompare(b.year));
     return arr.slice(-8);
   }, [annualReports]);
@@ -109,15 +151,19 @@ function IncomeStatementAnalysis({ incomeStatementData }) {
   let sumOlder = 0,
     sumNewer = 0;
 
+  // Handle "Quarterly" view
   if (viewType === 'quarterly') {
     if (!quarterlyDataArray.length) {
       return (
         <Paper sx={{ p: 3, m: 3 }}>
-          <Typography variant="h6">No income statement quarterly data available</Typography>
+          <Typography variant="h6">
+            No income statement quarterly data available
+          </Typography>
         </Paper>
       );
     }
 
+    // Split into older vs newer 4 quarters
     const olderGroup = quarterlyDataArray.slice(-8, -4);
     const newerGroup = quarterlyDataArray.slice(-4);
 
@@ -132,8 +178,14 @@ function IncomeStatementAnalysis({ incomeStatementData }) {
       newerMap[item.quarter] = item[activeMetric.key];
     });
 
-    sumOlder = olderGroup.reduce((acc, item) => acc + (item[activeMetric.key] || 0), 0);
-    sumNewer = newerGroup.reduce((acc, item) => acc + (item[activeMetric.key] || 0), 0);
+    sumOlder = olderGroup.reduce(
+      (acc, item) => acc + (item[activeMetric.key] || 0),
+      0
+    );
+    sumNewer = newerGroup.reduce(
+      (acc, item) => acc + (item[activeMetric.key] || 0),
+      0
+    );
 
     chartData = {
       labels: quarterOrder,
@@ -181,6 +233,7 @@ function IncomeStatementAnalysis({ incomeStatementData }) {
       },
     };
 
+    // Prepare table rows
     tableRows = quarterOrder.map((q) => {
       const olderVal = olderMap[q];
       const newerVal = newerMap[q];
@@ -188,17 +241,23 @@ function IncomeStatementAnalysis({ incomeStatementData }) {
       const diffPct = olderVal ? (diff / olderVal) * 100 : 0;
       return { period: q, olderVal, newerVal, diff, diffPct };
     });
-  } else {
+  }
+  // Handle "Annual" view
+  else {
     if (!annualDataArray.length) {
       return (
         <Paper sx={{ p: 3, m: 3 }}>
-          <Typography variant="h6">No income statement annual data available</Typography>
+          <Typography variant="h6">
+            No income statement annual data available
+          </Typography>
         </Paper>
       );
     }
 
     const labelsAnnual = annualDataArray.map((item) => item.year);
-    const datasetValuesAnnual = annualDataArray.map((item) => item[activeMetric.key]);
+    const datasetValuesAnnual = annualDataArray.map(
+      (item) => item[activeMetric.key]
+    );
 
     chartData = {
       labels: labelsAnnual,
@@ -217,17 +276,25 @@ function IncomeStatementAnalysis({ incomeStatementData }) {
         title: { display: true, text: `${activeMetric.label} Over Years` },
         tooltip: {
           callbacks: {
-            label: (context) => `${context.dataset.label}: ${formatValue(context.parsed.y)}`,
+            label: (context) =>
+              `${context.dataset.label}: ${formatValue(context.parsed.y)}`,
           },
         },
       },
       scales: {
-        y: { beginAtZero: true, ticks: { callback: (value) => formatValue(value) } },
+        y: {
+          beginAtZero: true,
+          ticks: {
+            callback: (value) => formatValue(value),
+          },
+        },
       },
     };
 
+    // Prepare table rows
     tableRows = annualDataArray.map((item, index) => {
-      const previousValue = index > 0 ? annualDataArray[index - 1][activeMetric.key] : null;
+      const previousValue =
+        index > 0 ? annualDataArray[index - 1][activeMetric.key] : null;
       const diff = previousValue !== null ? item[activeMetric.key] - previousValue : null;
       const diffPct =
         previousValue && previousValue !== 0 ? (diff / previousValue) * 100 : null;
@@ -310,20 +377,31 @@ function IncomeStatementAnalysis({ incomeStatementData }) {
                   ? tableRows.map((row) => (
                       <TableRow key={row.period}>
                         <TableCell>{row.period}</TableCell>
-                        <TableCell align="right">{formatValue(row.olderVal)}</TableCell>
-                        <TableCell align="right">{formatValue(row.newerVal)}</TableCell>
-                        <TableCell align="right">{formatValue(row.diff)}</TableCell>
-                        <TableCell align="right">{row.diffPct.toFixed(1)}%</TableCell>
+                        {/* Bigger, bolder numeric cells */}
+                        <TableCell align="right" sx={{ fontWeight: 'bold', fontSize: '1.2rem' }}>
+                          {formatValue(row.olderVal)}
+                        </TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 'bold', fontSize: '1.2rem' }}>
+                          {formatValue(row.newerVal)}
+                        </TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 'bold', fontSize: '1.2rem' }}>
+                          {formatValue(row.diff)}
+                        </TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 'bold', fontSize: '1.2rem' }}>
+                          {row.diffPct.toFixed(1)}%
+                        </TableCell>
                       </TableRow>
                     ))
                   : tableRows.map((row) => (
                       <TableRow key={row.period}>
                         <TableCell>{row.period}</TableCell>
-                        <TableCell align="right">{formatValue(row.value)}</TableCell>
-                        <TableCell align="right">
+                        <TableCell align="right" sx={{ fontWeight: 'bold', fontSize: '1.2rem' }}>
+                          {formatValue(row.value)}
+                        </TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 'bold', fontSize: '1.2rem' }}>
                           {row.diff !== null ? formatValue(row.diff) : '-'}
                         </TableCell>
-                        <TableCell align="right">
+                        <TableCell align="right" sx={{ fontWeight: 'bold', fontSize: '1.2rem' }}>
                           {row.diffPct !== null ? row.diffPct.toFixed(1) + '%' : '-'}
                         </TableCell>
                       </TableRow>
@@ -333,22 +411,19 @@ function IncomeStatementAnalysis({ incomeStatementData }) {
                     <TableCell>
                       <strong>Total</strong>
                     </TableCell>
-                    <TableCell align="right">
-                      <strong>{formatValue(sumOlder)}</strong>
+                    <TableCell align="right" sx={{ fontWeight: 'bold', fontSize: '1.2rem' }}>
+                      {formatValue(sumOlder)}
                     </TableCell>
-                    <TableCell align="right">
-                      <strong>{formatValue(sumNewer)}</strong>
+                    <TableCell align="right" sx={{ fontWeight: 'bold', fontSize: '1.2rem' }}>
+                      {formatValue(sumNewer)}
                     </TableCell>
-                    <TableCell align="right">
-                      <strong>{formatValue(sumNewer - sumOlder)}</strong>
+                    <TableCell align="right" sx={{ fontWeight: 'bold', fontSize: '1.2rem' }}>
+                      {formatValue(sumNewer - sumOlder)}
                     </TableCell>
-                    <TableCell align="right">
-                      <strong>
-                        {sumOlder === 0
-                          ? 'N/A'
-                          : (((sumNewer - sumOlder) / sumOlder) * 100).toFixed(1) +
-                            '%'}
-                      </strong>
+                    <TableCell align="right" sx={{ fontWeight: 'bold', fontSize: '1.2rem' }}>
+                      {sumOlder === 0
+                        ? 'N/A'
+                        : (((sumNewer - sumOlder) / sumOlder) * 100).toFixed(1) + '%'}
                     </TableCell>
                   </TableRow>
                 )}

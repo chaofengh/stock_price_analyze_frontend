@@ -1,3 +1,4 @@
+// FinancialAnalysisBase.js
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Box,
@@ -76,11 +77,11 @@ function FinancialAnalysisBase({
     activeMetric.isPercentage ? val.toFixed(1) + '%' : formatLargeNumber(val);
 
   // Pull arrays from the data
-  const annualReports = React.useMemo(
+  const annualReports = useMemo(
     () => statementData?.annualReports || [],
     [statementData]
   );
-  const quarterlyReports = React.useMemo(
+  const quarterlyReports = useMemo(
     () => statementData?.quarterlyReports || [],
     [statementData]
   );
@@ -95,30 +96,40 @@ function FinancialAnalysisBase({
     [quarterlyReports, processQuarterlyReports]
   );
 
-  // Handle loading/error/no-data
+  // Handle loading/error/no-data states
   if (!symbol) {
-    return <Typography variant="h6">No symbol provided</Typography>;
+    return (
+      <Paper sx={{ p: 3, m: 3 }}>
+        <Typography variant="h6">No symbol provided</Typography>
+      </Paper>
+    );
   }
   if (loading) {
     return (
-      <Box sx={{ textAlign: 'center' }}>
-        <CircularProgress />
-        <Typography>Loading data...</Typography>
-      </Box>
+      <Paper sx={{ p: 3, m: 3 }}>
+        <Box sx={{ textAlign: 'center' }}>
+          <CircularProgress />
+          <Typography>Loading data...</Typography>
+        </Box>
+      </Paper>
     );
   }
   if (error) {
     return (
-      <Box>
+      <Paper sx={{ p: 3, m: 3 }}>
         <Typography variant="h6" color="error">
           Error fetching data
         </Typography>
         <Typography>{error}</Typography>
-      </Box>
+      </Paper>
     );
   }
   if (!statementData) {
-    return <Typography variant="h6">No data available</Typography>;
+    return (
+      <Paper sx={{ p: 3, m: 3 }}>
+        <Typography variant="h6">No data available</Typography>
+      </Paper>
+    );
   }
 
   // Build chart & table
@@ -247,7 +258,7 @@ function FinancialAnalysisBase({
     };
 
     // Build table rows for quarter vs quarter
-    tableRows = ['Q1', 'Q2', 'Q3', 'Q4'].map((q) => {
+    tableRows = quarterOrder.map((q) => {
       const olderVal = olderMap[q];
       const newerVal = newerMap[q];
       const diff = newerVal - olderVal;
@@ -256,133 +267,157 @@ function FinancialAnalysisBase({
     });
   }
 
-  // Render
+  // Now mirror the layout of IncomeStatementAnalysis
   return (
-    <Paper sx={{ p: 3, m: 3 }}>
-      <Box sx={{ display: 'flex', p: 1 }}>
-        {/* Sidebar with Metrics */}
-        <Paper elevation={3} sx={{ minWidth: 220, mr: 2 }}>
-          <Typography variant="h6" sx={{ p: 2 }}>
-            {sidebarTitle}
+    <Box sx={{ display: 'flex', height: '100%', p: 1 }}>
+      {/* Sidebar with Metrics */}
+      <Paper elevation={3} sx={{ minWidth: 220, mr: 2 }}>
+        <Typography variant="h6" sx={{ p: 2 }}>
+          {sidebarTitle}
+        </Typography>
+        <Divider />
+        <List>
+          {metrics.map((m, idx) => (
+            <ListItemButton
+              key={m.key}
+              selected={idx === activeMetricIndex}
+              onClick={() => setActiveMetricIndex(idx)}
+            >
+              <ListItemText primary={m.label} />
+            </ListItemButton>
+          ))}
+        </List>
+      </Paper>
+
+      {/* Main Content */}
+      <Box sx={{ flex: 1 }}>
+        {/* Toggle for Annual/Quarterly */}
+        <ToggleButtonGroup
+          value={viewType}
+          exclusive
+          onChange={handleViewTypeChange}
+          sx={{ mb: 2 }}
+        >
+          <ToggleButton value="annual">Annual</ToggleButton>
+          <ToggleButton value="quarterly">Quarterly</ToggleButton>
+        </ToggleButtonGroup>
+
+        {/* Chart Section */}
+        <Paper sx={{ p: 2, mb: 2 }}>
+          <Typography variant="h5" gutterBottom>
+            {activeMetric.label}
           </Typography>
-          <Divider />
-          <List>
-            {metrics.map((m, idx) => (
-              <ListItemButton
-                key={m.key}
-                selected={idx === activeMetricIndex}
-                onClick={() => setActiveMetricIndex(idx)}
-              >
-                <ListItemText primary={m.label} />
-              </ListItemButton>
-            ))}
-          </List>
+          <Bar data={chartData} options={chartOptions} />
         </Paper>
 
-        {/* Main Content */}
-        <Box sx={{ flex: 1 }}>
-          <ToggleButtonGroup
-            value={viewType}
-            exclusive
-            onChange={handleViewTypeChange}
-            sx={{ mb: 2 }}
-          >
-            <ToggleButton value="annual">Annual</ToggleButton>
-            <ToggleButton value="quarterly">Quarterly</ToggleButton>
-          </ToggleButtonGroup>
+        {/* Table Section */}
+        <Paper sx={{ p: 2 }}>
+          <Typography variant="h6" gutterBottom>
+            {viewType === 'quarterly'
+              ? 'Quarter-by-Quarter Comparison'
+              : 'Year-over-Year Comparison'}
+          </Typography>
 
-          <Paper sx={{ p: 2, mb: 2 }}>
-            <Typography variant="h5" gutterBottom>
-              {activeMetric.label}
-            </Typography>
-            <Bar data={chartData} options={chartOptions} />
-          </Paper>
-
-          <Paper sx={{ p: 2 }}>
-            <Typography variant="h6" gutterBottom>
-              {viewType === 'quarterly'
-                ? 'Quarter-by-Quarter Comparison'
-                : 'Year-over-Year Comparison'}
-            </Typography>
-            <TableContainer>
-              <Table size="small">
-                <TableHead>
+          <TableContainer>
+            <Table
+              size="small"
+              sx={{
+                'td, th': {
+                  fontSize: '1.2rem',
+                  fontWeight: 'bold',
+                },
+              }}
+            >
+              <TableHead>
+                <TableRow>
+                  <TableCell>
+                    {viewType === 'quarterly' ? 'Quarter' : 'Year'}
+                  </TableCell>
+                  {viewType === 'quarterly' ? (
+                    <>
+                      <TableCell align="right">Older</TableCell>
+                      <TableCell align="right">Latest</TableCell>
+                      <TableCell align="right">Delta</TableCell>
+                      <TableCell align="right">% Diff</TableCell>
+                    </>
+                  ) : (
+                    <>
+                      <TableCell align="right">Value</TableCell>
+                      <TableCell align="right">Change</TableCell>
+                      <TableCell align="right">% Change</TableCell>
+                    </>
+                  )}
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {viewType === 'quarterly'
+                  ? tableRows.map((row) => (
+                      <TableRow key={row.period}>
+                        <TableCell>{row.period}</TableCell>
+                        <TableCell align="right">
+                          {formatValue(row.olderVal)}
+                        </TableCell>
+                        <TableCell align="right">
+                          {formatValue(row.newerVal)}
+                        </TableCell>
+                        <TableCell align="right">
+                          {formatValue(row.diff)}
+                        </TableCell>
+                        <TableCell align="right">
+                          {row.diffPct.toFixed(1)}%
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  : tableRows.map((row) => {
+                      const { period, value, diff, diffPct } = row;
+                      return (
+                        <TableRow key={period}>
+                          <TableCell>{period}</TableCell>
+                          <TableCell align="right">
+                            {formatValue(value)}
+                          </TableCell>
+                          <TableCell align="right">
+                            {diff !== null ? formatValue(diff) : '-'}
+                          </TableCell>
+                          <TableCell align="right">
+                            {diffPct !== null
+                              ? diffPct.toFixed(1) + '%'
+                              : '-'}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                {viewType === 'quarterly' && (
                   <TableRow>
                     <TableCell>
-                      {viewType === 'quarterly' ? 'Quarter' : 'Year'}
+                      <strong>Total</strong>
                     </TableCell>
-                    {viewType === 'quarterly' ? (
-                      <>
-                        <TableCell align="right">Older</TableCell>
-                        <TableCell align="right">Latest</TableCell>
-                        <TableCell align="right">Delta</TableCell>
-                        <TableCell align="right">% Diff</TableCell>
-                      </>
-                    ) : (
-                      <>
-                        <TableCell align="right">Value</TableCell>
-                        <TableCell align="right">Change</TableCell>
-                        <TableCell align="right">% Change</TableCell>
-                      </>
-                    )}
+                    <TableCell align="right">
+                      <strong>{formatValue(sumOlder)}</strong>
+                    </TableCell>
+                    <TableCell align="right">
+                      <strong>{formatValue(sumNewer)}</strong>
+                    </TableCell>
+                    <TableCell align="right">
+                      <strong>{formatValue(sumNewer - sumOlder)}</strong>
+                    </TableCell>
+                    <TableCell align="right">
+                      <strong>
+                        {sumOlder === 0
+                          ? 'N/A'
+                          : (((sumNewer - sumOlder) / sumOlder) * 100).toFixed(
+                              1
+                            ) + '%'}
+                      </strong>
+                    </TableCell>
                   </TableRow>
-                </TableHead>
-                <TableBody>
-                  {viewType === 'quarterly'
-                    ? tableRows.map((row) => (
-                        <TableRow key={row.period}>
-                          <TableCell>{row.period}</TableCell>
-                          <TableCell align="right">{formatValue(row.olderVal)}</TableCell>
-                          <TableCell align="right">{formatValue(row.newerVal)}</TableCell>
-                          <TableCell align="right">{formatValue(row.diff)}</TableCell>
-                          <TableCell align="right">{row.diffPct.toFixed(1)}%</TableCell>
-                        </TableRow>
-                      ))
-                    : tableRows.map((row) => {
-                        const { period, value, diff, diffPct } = row;
-                        return (
-                          <TableRow key={period}>
-                            <TableCell>{period}</TableCell>
-                            <TableCell align="right">{formatValue(value)}</TableCell>
-                            <TableCell align="right">
-                              {diff !== null ? formatValue(diff) : '-'}
-                            </TableCell>
-                            <TableCell align="right">
-                              {diffPct !== null ? diffPct.toFixed(1) + '%' : '-'}
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                  {viewType === 'quarterly' && (
-                    <TableRow>
-                      <TableCell>
-                        <strong>Total</strong>
-                      </TableCell>
-                      <TableCell align="right">
-                        <strong>{formatValue(sumOlder)}</strong>
-                      </TableCell>
-                      <TableCell align="right">
-                        <strong>{formatValue(sumNewer)}</strong>
-                      </TableCell>
-                      <TableCell align="right">
-                        <strong>{formatValue(sumNewer - sumOlder)}</strong>
-                      </TableCell>
-                      <TableCell align="right">
-                        <strong>
-                          {sumOlder === 0
-                            ? 'N/A'
-                            : (((sumNewer - sumOlder) / sumOlder) * 100).toFixed(1) + '%'}
-                        </strong>
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </Paper>
-        </Box>
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Paper>
       </Box>
-    </Paper>
+    </Box>
   );
 }
 
