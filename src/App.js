@@ -13,6 +13,7 @@ import {
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AlertsProvider } from './components/Notification/AlertContext';
 import StockDashboard from './components/StockDashboard';
+import UserProfileIcon from './components/UserProfileIcon'
 import NotificationBell from './components/Notification/NotificationBell';
 import MoreOptionsMenu from './components/MoreOption/MoreOptionsMenu';
 import AlertsSnackbar from './components/Notification/AlertsSnackbar';
@@ -98,6 +99,7 @@ function App() {
               <Typography variant="h6" sx={{ flexGrow: 1 }}>
                 Lumina Stock Insights
               </Typography>
+              <UserProfileIcon />
               <NotificationBell />
               <MoreOptionsMenu onSelectView={setSelectedView} />
             </Toolbar>

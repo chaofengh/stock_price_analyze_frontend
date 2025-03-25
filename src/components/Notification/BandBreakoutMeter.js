@@ -5,7 +5,7 @@ import { Box, Typography, LinearProgress } from "@mui/material";
  * Renders a simple horizontal meter showing how far the close price
  * is above the upper band (overbought) or below the lower band (oversold).
  */
-const BandBreakoutMeter = ({ close, lower, upper, bandSide }) => {
+const BandBreakoutMeter = ({ close, lower, upper, touched_side }) => {
   if (
     typeof close !== "number" ||
     typeof lower !== "number" ||
@@ -21,7 +21,7 @@ const BandBreakoutMeter = ({ close, lower, upper, bandSide }) => {
   let color = "#1976d2"; // fallback color
   let label = "Band Breakout";
 
-  if (bandSide === "Upper") {
+  if (touched_side === "Upper") {
     // Overbought scenario
     diff = close - upper; // how far above the upper band
     base = upper;
@@ -66,7 +66,7 @@ const BandBreakoutMeter = ({ close, lower, upper, bandSide }) => {
 
       <Typography variant="caption">
         {Math.abs(rawPercentage).toFixed(2)}%{" "}
-        {bandSide === "Upper" ? "above" : "below"} Bollinger Band
+        {touched_side === "Upper" ? "above" : "below"} Bollinger Band
       </Typography>
     </Box>
   );

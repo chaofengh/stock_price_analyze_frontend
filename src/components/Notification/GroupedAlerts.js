@@ -10,7 +10,7 @@ const GroupedAlerts = ({
   alerts,
   onViewDetails,
   isSmallScreen,
-  bandSide
+  touched_side
 }) => {
   const [open, setOpen] = useState(true);
 
@@ -47,7 +47,7 @@ const GroupedAlerts = ({
             <AlertItem
               key={`${alert.symbol}-${idx}`}
               alert={alert}
-              bandSide={bandSide}
+              touched_side={touched_side}
               onViewDetails={onViewDetails} // Pass down
               isSmallScreen={isSmallScreen}
             />

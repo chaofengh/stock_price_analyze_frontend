@@ -15,7 +15,6 @@ export const AlertsProvider = ({ children }) => {
       if (data && data.alerts) {
         setAlerts(data.alerts);
         setTimestamp(data.timestamp);
-        console.log('Received new alerts:', data);
       }
     };
 

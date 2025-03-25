@@ -40,12 +40,12 @@ const NotificationBell = () => {
     if (sortOption === 'symbol') {
       sorted.sort((a, b) => a.symbol.localeCompare(b.symbol));
     } else if (sortOption === 'side') {
-      sorted.sort((a, b) => a.bandSide.localeCompare(b.bandSide));
+      sorted.sort((a, b) => a.touched_side.localeCompare(b.touched_side));
     }
 
     const map = { Upper: [], Lower: [] };
     for (const alert of sorted) {
-      if (alert.bandSide === 'Upper') {
+      if (alert.touched_side === 'Upper') {
         map.Upper.push(alert);
       } else {
         map.Lower.push(alert);
@@ -132,7 +132,7 @@ const NotificationBell = () => {
                   alerts={groupedAlerts.Upper}
                   onViewDetails={handleViewDetailsAndClose}
                   isSmallScreen={isSmallScreen}
-                  bandSide="Upper"
+                  touched_side="Upper"
                 />
               )}
 
@@ -143,7 +143,7 @@ const NotificationBell = () => {
                   alerts={groupedAlerts.Lower}
                   onViewDetails={handleViewDetailsAndClose}
                   isSmallScreen={isSmallScreen}
-                  bandSide="Lower"
+                  touched_side="Lower"
                 />
               )}
             </>

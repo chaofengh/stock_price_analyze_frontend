@@ -2,10 +2,10 @@ import React from "react";
 import { Box, Typography } from "@mui/material";
 import { Sparklines, SparklinesLine, SparklinesReferenceLine } from "react-sparklines";
 
-const SparklineChart = ({ data, bandSide }) => {
+const SparklineChart = ({ data, touched_side }) => {
   if (!data || data.length === 0) return null;
 
-  const lineColor = bandSide === "Upper" ? "#2e7d32" : "#d32f2f" ;
+  const lineColor = touched_side === "Upper" ? "#2e7d32" : "#d32f2f" ;
 
   const firstVal = data[0];
   const lastVal = data[data.length - 1];

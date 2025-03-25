@@ -52,9 +52,9 @@ const fetchCompanyLogo = async (symbol) => {
   }
 };
 
-const AlertItem = ({ alert, bandSide, onViewDetails, isSmallScreen, index }) => {
+const AlertItem = ({ alert, touched_side, onViewDetails, isSmallScreen, index }) => {
   const { symbol, close_price, bb_upper, bb_lower, recent_closes = [] } = alert;
-  const styleSet = sideStyles[bandSide] || sideStyles.Upper;
+  const styleSet = sideStyles[touched_side] || sideStyles.Upper;
 
   const [logo, setLogo] = useState(null);
 
@@ -135,12 +135,12 @@ const AlertItem = ({ alert, bandSide, onViewDetails, isSmallScreen, index }) => 
                 close={close_price}
                 lower={bb_lower}
                 upper={bb_upper}
-                bandSide={bandSide}
+                touched_side={touched_side}
               />
             </Box>
 
             <Box sx={{ flex: 1 }}>
-              <SparklineChart data={recent_closes} bandSide={bandSide} />
+              <SparklineChart data={recent_closes} touched_side={touched_side} />
             </Box>
           </Box>
 
