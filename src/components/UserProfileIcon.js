@@ -1,4 +1,3 @@
-// src/components/UserProfileIcon.js
 import React, { useState } from 'react';
 import {
   IconButton,
@@ -14,18 +13,12 @@ import {
   Alert,
 } from '@mui/material';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
-import ReCAPTCHA from 'react-google-recaptcha';
 import { useSelector, useDispatch } from 'react-redux';
 import { logout } from './Redux/authSlice';
-import {
-  useLoginMutation,
-  useRegisterMutation,
-} from './Redux/authApi';
-
-// For thorough validation, let's do a quick example with Yup
+import { useLoginMutation, useRegisterMutation } from './Redux/authApi';
 import * as Yup from 'yup';
 
-// Example schemas
+// Example schemas remain the same
 const loginSchema = Yup.object().shape({
   email_or_username: Yup.string().required('Email or Username is required'),
   password: Yup.string().min(8, 'Password must be at least 8 chars').required(),
@@ -54,10 +47,12 @@ function UserProfileIcon() {
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
-  // reCAPTCHA
-  const [captchaToken, setCaptchaToken] = useState('');
 
-  // For local error messages from validation or server
+  // Remove captchaToken; add honey trap and form start time state variables
+  const [honeyTrap, setHoneyTrap] = useState('');
+  const [formStartTime, setFormStartTime] = useState(null);
+
+  // For local error messages
   const [localError, setLocalError] = useState('');
 
   const handleMenuOpen = (e) => setAnchorEl(e.currentTarget);
@@ -65,6 +60,7 @@ function UserProfileIcon() {
 
   const handleDialogOpen = (mode) => {
     setAuthMode(mode);
+    setFormStartTime(Date.now());
     setOpenDialog(true);
   };
 
@@ -75,12 +71,14 @@ function UserProfileIcon() {
     setPassword('');
     setEmail('');
     setUsername('');
-    setCaptchaToken('');
+    setHoneyTrap('');
+    setFormStartTime(null);
   };
 
   const switchAuthMode = () => {
     setLocalError('');
     setAuthMode(authMode === 'login' ? 'register' : 'login');
+    setFormStartTime(Date.now());
   };
 
   const handleLogout = () => {
@@ -91,32 +89,32 @@ function UserProfileIcon() {
   // Perform login
   const handleLogin = async () => {
     try {
-      // Validate form fields with Yup
       await loginSchema.validate({ email_or_username: emailOrUsername, password });
-      if (!captchaToken) {
-        setLocalError('Please complete the CAPTCHA.');
+      const elapsed = (Date.now() - formStartTime) / 1000;
+      if (elapsed < 5) {
+        setLocalError('Form submitted too quickly. Please try again.');
+        return;
+      }
+      if (honeyTrap) {
+        setLocalError('Bot detected.');
         return;
       }
 
-      // Attempt login via RTK Query
       const result = await login({
         email_or_username: emailOrUsername,
         password,
-        captcha_token: captchaToken,
+        honey_trap: honeyTrap,
+        form_time: elapsed,
       }).unwrap();
 
-      // On success, RTK Query updates authSlice automatically
       console.log('Login success:', result);
       handleDialogClose();
     } catch (err) {
       if (err.name === 'ValidationError') {
-        // Yup validation error
         setLocalError(err.message);
       } else if (err.data && err.data.error) {
-        // Server error from backend
         setLocalError(err.data.error);
       } else {
-        // Possibly a network or unknown error
         setLocalError(err.message || 'Login failed');
       }
     }
@@ -125,10 +123,14 @@ function UserProfileIcon() {
   // Perform registration
   const handleRegister = async () => {
     try {
-      // Validate with Yup
       await registerSchema.validate({ email, username, password });
-      if (!captchaToken) {
-        setLocalError('Please complete the CAPTCHA.');
+      const elapsed = (Date.now() - formStartTime) / 1000;
+      if (elapsed < 5) {
+        setLocalError('Form submitted too quickly. Please try again.');
+        return;
+      }
+      if (honeyTrap) {
+        setLocalError('Bot detected.');
         return;
       }
 
@@ -136,12 +138,11 @@ function UserProfileIcon() {
         email,
         username,
         password,
-        captcha_token: captchaToken,
+        honey_trap: honeyTrap,
+        form_time: elapsed,
       }).unwrap();
 
       console.log('Register success:', result);
-      // Optionally auto-login here or prompt user
-      // For now, just close dialog
       handleDialogClose();
       alert('Registered successfully! You can now log in.');
     } catch (err) {
@@ -161,11 +162,7 @@ function UserProfileIcon() {
     <>
       {isLoggedIn ? (
         <>
-          <IconButton
-            color="inherit"
-            onClick={handleMenuOpen}
-            sx={{ p: 0.5 }} // reduce padding
-          >
+          <IconButton color="inherit" onClick={handleMenuOpen} sx={{ p: 0.5 }}>
             <AccountCircleIcon sx={{ fontSize: 30 }} />
           </IconButton>
           <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose}>
@@ -174,11 +171,7 @@ function UserProfileIcon() {
           </Menu>
         </>
       ) : (
-        <IconButton
-          color="inherit"
-          onClick={() => handleDialogOpen('login')}
-          sx={{ p: 0.5 }}
-        >
+        <IconButton color="inherit" onClick={() => handleDialogOpen('login')} sx={{ p: 0.5 }}>
           <AccountCircleIcon sx={{ fontSize: 30 }} />
         </IconButton>
       )}
@@ -187,7 +180,6 @@ function UserProfileIcon() {
         <DialogTitle>{authMode === 'login' ? 'Login' : 'Register'}</DialogTitle>
         <DialogContent>
           {localError && <Alert severity="error">{localError}</Alert>}
-
           {authMode === 'login' ? (
             <>
               <TextField
@@ -207,12 +199,13 @@ function UserProfileIcon() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
-              <Box sx={{ mt: 2 }}>
-                <ReCAPTCHA
-                  sitekey={process.env.REACT_APP_RECAPTCHA_SITE_KEY}
-                  onChange={(token) => setCaptchaToken(token)}
-                />
-              </Box>
+              {/* Hidden honey trap field */}
+              <input
+                type="text"
+                value={honeyTrap}
+                onChange={(e) => setHoneyTrap(e.target.value)}
+                style={{ display: 'none' }}
+              />
             </>
           ) : (
             <>
@@ -241,12 +234,13 @@ function UserProfileIcon() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
-              <Box sx={{ mt: 2 }}>
-                <ReCAPTCHA
-                  sitekey={process.env.REACT_APP_RECAPTCHA_SITE_KEY}
-                  onChange={(token) => setCaptchaToken(token)}
-                />
-              </Box>
+              {/* Hidden honey trap field */}
+              <input
+                type="text"
+                value={honeyTrap}
+                onChange={(e) => setHoneyTrap(e.target.value)}
+                style={{ display: 'none' }}
+              />
             </>
           )}
         </DialogContent>
@@ -255,19 +249,11 @@ function UserProfileIcon() {
             {authMode === 'login' ? 'Need to register?' : 'Already have an account?'}
           </Button>
           {authMode === 'login' ? (
-            <Button
-              variant="contained"
-              onClick={handleLogin}
-              disabled={isLoginLoading}
-            >
+            <Button variant="contained" onClick={handleLogin} disabled={isLoginLoading}>
               {isLoginLoading ? 'Logging in...' : 'Login'}
             </Button>
           ) : (
-            <Button
-              variant="contained"
-              onClick={handleRegister}
-              disabled={isRegisterLoading}
-            >
+            <Button variant="contained" onClick={handleRegister} disabled={isRegisterLoading}>
               {isRegisterLoading ? 'Registering...' : 'Register'}
             </Button>
           )}
