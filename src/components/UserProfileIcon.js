@@ -1,19 +1,14 @@
 import React, { useState } from 'react';
-import {
-  IconButton,
-  Menu,
-  MenuItem,
-  Badge,
-} from '@mui/material';
-import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import { useSelector, useDispatch } from 'react-redux';
+import { IconButton, Menu, MenuItem, Avatar } from '@mui/material';
 import { logout } from './Redux/authSlice';
 import AuthDialog from './AuthDialog';
+import { stringToHslColor } from '../utils/stringToColor'; // wherever you placed the utility
 
 function UserProfileIcon() {
   const dispatch = useDispatch();
-  const { accessToken } = useSelector((state) => state.auth);
-  
+  const { user, accessToken } = useSelector((state) => state.auth);
+
   const [anchorEl, setAnchorEl] = useState(null);
   const [openDialog, setOpenDialog] = useState(false);
   const [authMode, setAuthMode] = useState('login');
@@ -37,15 +32,23 @@ function UserProfileIcon() {
     handleMenuClose();
   };
 
+  // For logged-in users, generate a color from their email
+  let avatarColor = '#999'; // fallback color
+  let avatarLetter = '?';   // fallback letter
+
+  if (user?.email) {
+    avatarColor = stringToHslColor(user.email, 70, 50);
+    avatarLetter = user.email.charAt(0).toUpperCase();
+  }
+
   return (
     <>
       {isLoggedIn ? (
         <>
-          {/* Logged in: show a badge & a menu */}
-          <IconButton color="inherit" onClick={handleMenuOpen} sx={{ p: 0.5 }}>
-            <Badge color="success" variant="dot">
-              <AccountCircleIcon sx={{ fontSize: 30 }} />
-            </Badge>
+          <IconButton onClick={handleMenuOpen} sx={{ p: 0.5 }}>
+            <Avatar sx={{ bgcolor: avatarColor }}>
+              {avatarLetter}
+            </Avatar>
           </IconButton>
           <Menu
             anchorEl={anchorEl}
@@ -58,20 +61,13 @@ function UserProfileIcon() {
         </>
       ) : (
         <>
-          {/* Not logged in: different badge/color/icon */}
-          <IconButton
-            color="inherit"
-            onClick={() => handleDialogOpen('login')}
-            sx={{ p: 0.5 }}
-          >
-            <Badge color="error" variant="dot">
-              <AccountCircleIcon sx={{ fontSize: 30 }} />
-            </Badge>
+          {/* Logged out: show a neutral avatar with '?' */}
+          <IconButton onClick={() => handleDialogOpen('login')} sx={{ p: 0.5 }}>
+            <Avatar sx={{ bgcolor: '#555' }}>?</Avatar>
           </IconButton>
         </>
       )}
 
-      {/* Separate dialog component for login/register */}
       <AuthDialog
         open={openDialog}
         mode={authMode}
