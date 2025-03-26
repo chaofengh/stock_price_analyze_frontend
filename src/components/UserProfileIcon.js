@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { IconButton, Menu, MenuItem, Avatar } from '@mui/material';
+import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import { logout } from './Redux/authSlice';
 import AuthDialog from './AuthDialog';
-import { stringToHslColor } from '../utils/stringToColor'; // wherever you placed the utility
+import { stringToHslColor } from '../utils/stringToColor'; // or wherever you keep this helper
 
 function UserProfileIcon() {
   const dispatch = useDispatch();
@@ -32,10 +33,9 @@ function UserProfileIcon() {
     handleMenuClose();
   };
 
-  // For logged-in users, generate a color from their email
-  let avatarColor = '#999'; // fallback color
-  let avatarLetter = '?';   // fallback letter
-
+  // For logged-in users, generate a color from their email and the first letter
+  let avatarColor = '#999'; 
+  let avatarLetter = '?';
   if (user?.email) {
     avatarColor = stringToHslColor(user.email, 70, 50);
     avatarLetter = user.email.charAt(0).toUpperCase();
@@ -45,6 +45,7 @@ function UserProfileIcon() {
     <>
       {isLoggedIn ? (
         <>
+          {/* If logged in, show an Avatar with color-coded background + first letter */}
           <IconButton onClick={handleMenuOpen} sx={{ p: 0.5 }}>
             <Avatar sx={{ bgcolor: avatarColor }}>
               {avatarLetter}
@@ -61,13 +62,17 @@ function UserProfileIcon() {
         </>
       ) : (
         <>
-          {/* Logged out: show a neutral avatar with '?' */}
-          <IconButton onClick={() => handleDialogOpen('login')} sx={{ p: 0.5 }}>
-            <Avatar sx={{ bgcolor: '#555' }}>?</Avatar>
+          {/* If not logged in, show the original AccountCircleIcon */}
+          <IconButton
+            onClick={() => handleDialogOpen('login')}
+            sx={{ p: 0.5 }}
+          >
+             <AccountCircleIcon sx={{ fontSize: 30, color: 'white' }} />
           </IconButton>
         </>
       )}
 
+      {/* The dialog for login/register */}
       <AuthDialog
         open={openDialog}
         mode={authMode}
