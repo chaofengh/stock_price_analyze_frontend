@@ -2,7 +2,7 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import { logout, setAccessToken, setRefreshToken } from './authSlice';
 
-const BASE_URL = process.env.REACT_APP_API_BASE_URL || '';
+const BASE_URL = process.env.REACT_APP_summary_root_api || '';
 
 const baseQuery = fetchBaseQuery({
   baseUrl: BASE_URL,
@@ -58,7 +58,7 @@ export const authApi = createApi({
     // Login endpoint
     login: builder.mutation({
       query: (body) => ({
-        url: '/api/login',
+        url: '/login',
         method: 'POST',
         body,
       }),
@@ -66,7 +66,7 @@ export const authApi = createApi({
     // Register endpoint
     register: builder.mutation({
       query: (body) => ({
-        url: '/api/register',
+        url: '/register',
         method: 'POST',
         body,
       }),
@@ -74,7 +74,7 @@ export const authApi = createApi({
     // Refresh token endpoint (optional, since it's used in baseQueryWithReauth)
     refreshToken: builder.mutation({
       query: (body) => ({
-        url: '/api/refresh_token',
+        url: '/refresh_token',
         method: 'POST',
         body,
       }),
