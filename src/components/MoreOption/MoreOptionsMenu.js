@@ -11,7 +11,7 @@ import {
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import VisibilityIcon from '@mui/icons-material/Visibility';
-import ArticleIcon from '@mui/icons-material/Article'; // <-- Add this
+import ArticleIcon from '@mui/icons-material/Article';
 
 function MoreOptionsMenu({ onSelectView }) {
   const [anchorEl, setAnchorEl] = useState(null);
@@ -32,13 +32,15 @@ function MoreOptionsMenu({ onSelectView }) {
         disableElevation
         sx={{
           boxShadow: 'none',
+          minWidth: 40,
+          p: 0.5,
           '&:hover': {
             boxShadow: 'none'
           }
         }}
         onClick={handleMenuOpen}
       >
-        <MoreVertIcon />
+        <MoreVertIcon sx={{ fontSize: 30 }} />
       </Button>
 
       <Menu
@@ -65,7 +67,6 @@ function MoreOptionsMenu({ onSelectView }) {
           Watch List
         </MenuItem>
 
-        {/* New News Menu Item */}
         <MenuItem onClick={() => handleMenuClose('News')}>
           <ListItemIcon>
             <ArticleIcon />

@@ -99,9 +99,11 @@ function App() {
               <Typography variant="h6" sx={{ flexGrow: 1 }}>
                 Lumina Stock Insights
               </Typography>
-              <UserProfileIcon />
-              <NotificationBell />
-              <MoreOptionsMenu onSelectView={setSelectedView} />
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <UserProfileIcon />
+                <NotificationBell />
+                <MoreOptionsMenu onSelectView={setSelectedView} />
+              </Box>
             </Toolbar>
           </AppBar>
 

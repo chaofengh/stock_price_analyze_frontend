@@ -158,11 +158,15 @@ function UserProfileIcon() {
   const isLoggedIn = !!accessToken;
 
   return (
-    <Box sx={{ display: 'inline-block', mr: 2 }}>
+    <>
       {isLoggedIn ? (
         <>
-          <IconButton color="inherit" onClick={handleMenuOpen}>
-            <AccountCircleIcon sx={{ color: 'lightgreen' }} />
+          <IconButton
+            color="inherit"
+            onClick={handleMenuOpen}
+            sx={{ p: 0.5 }} // reduce padding
+          >
+            <AccountCircleIcon sx={{ fontSize: 30 }} />
           </IconButton>
           <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose}>
             <MenuItem onClick={() => alert('Profile clicked')}>Profile</MenuItem>
@@ -170,8 +174,12 @@ function UserProfileIcon() {
           </Menu>
         </>
       ) : (
-        <IconButton color="inherit" onClick={() => handleDialogOpen('login')}>
-          <AccountCircleIcon />
+        <IconButton
+          color="inherit"
+          onClick={() => handleDialogOpen('login')}
+          sx={{ p: 0.5 }}
+        >
+          <AccountCircleIcon sx={{ fontSize: 30 }} />
         </IconButton>
       )}
 
@@ -265,7 +273,7 @@ function UserProfileIcon() {
           )}
         </DialogActions>
       </Dialog>
-    </Box>
+    </>
   );
 }
 

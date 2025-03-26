@@ -70,23 +70,22 @@ const NotificationBell = () => {
 
   return (
     <>
-      {/* Use a contained Button (like MoreOptionsMenu) instead of IconButton */}
       <Button
         variant="contained"
         color="primary"
         disableElevation
         onClick={handleOpen}
         sx={{
-          // Remove any extra shadow and ensure a darker background on hover
           boxShadow: 'none',
-          minWidth: 40, // optional: keep button from getting too wide
+          minWidth: 40,
+          p: 0.5, // reduce padding
           '&:hover': {
             boxShadow: 'none'
           }
         }}
       >
         <Badge badgeContent={alertCount} color="secondary">
-          <Notifications />
+          <Notifications sx={{ fontSize: 30 }} />
         </Badge>
       </Button>
 
