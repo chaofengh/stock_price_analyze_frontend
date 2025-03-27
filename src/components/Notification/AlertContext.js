@@ -5,9 +5,10 @@ export const AlertsContext = createContext();
 export const AlertsProvider = ({ children }) => {
   const [alerts, setAlerts] = useState([]);
   const [timestamp, setTimestamp] = useState(null);
+  const stock_summary_api_key = process.env.REACT_APP_summary_root_api;
 
   useEffect(() => {
-    const eventSource = new EventSource('http://127.0.0.1:5000/api/alerts/stream');
+    const eventSource = new EventSource(`${stock_summary_api_key}/alerts/stream`);
     
     eventSource.onmessage = (event) => {
       // Parse the SSE data (string => JSON)

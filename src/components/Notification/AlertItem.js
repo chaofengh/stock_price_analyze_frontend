@@ -53,7 +53,7 @@ const fetchCompanyLogo = async (symbol) => {
 };
 
 const AlertItem = ({ alert, touched_side, onViewDetails, isSmallScreen, index }) => {
-  const { symbol, close_price, bb_upper, bb_lower, recent_closes = [] } = alert;
+  const { symbol, close_price,low_price,high_price, bb_upper, bb_lower, recent_closes = [] } = alert;
   const styleSet = sideStyles[touched_side] || sideStyles.Upper;
 
   const [logo, setLogo] = useState(null);
@@ -136,6 +136,8 @@ const AlertItem = ({ alert, touched_side, onViewDetails, isSmallScreen, index })
                 lower={bb_lower}
                 upper={bb_upper}
                 touched_side={touched_side}
+                high_price={high_price}
+                low_price={low_price}
               />
             </Box>
 

@@ -5,7 +5,7 @@ import { Box, Typography, LinearProgress } from "@mui/material";
  * Renders a simple horizontal meter showing how far the close price
  * is above the upper band (overbought) or below the lower band (oversold).
  */
-const BandBreakoutMeter = ({ close, lower, upper, touched_side }) => {
+const BandBreakoutMeter = ({ close,high_price,low_price, lower, upper, touched_side }) => {
   if (
     typeof close !== "number" ||
     typeof lower !== "number" ||
@@ -23,13 +23,13 @@ const BandBreakoutMeter = ({ close, lower, upper, touched_side }) => {
 
   if (touched_side === "Upper") {
     // Overbought scenario
-    diff = close - upper; // how far above the upper band
+    diff = high_price - upper; // how far above the upper band
     base = upper;
     color = "#d32f2f"; // red for overbought
     label = "Overbought Meter";
   } else {
     // Lower => Oversold scenario
-    diff = lower - close; // how far below the lower band
+    diff = lower - low_price; // how far below the lower band
     base = lower;
     color = "#2e7d32"; // green for oversold
     label = "Oversold Meter";
