@@ -121,102 +121,118 @@ function AuthDialog({ open, mode, onClose, onSwitchMode }) {
           </Typography>
         </DialogTitle>
         <DialogContent sx={{ pt: 1, pb: 2 }}>
-          <Stack spacing={2}>
-            {localError && <Alert severity="error">{localError}</Alert>}
-            {mode === 'login' ? (
-              <>
-                <TextField
-                  label="Email or Username"
-                  fullWidth
-                  variant="outlined"
-                  value={emailOrUsername}
-                  onChange={(e) => setEmailOrUsername(e.target.value)}
-                />
-                <TextField
-                  label="Password"
-                  type="password"
-                  fullWidth
-                  variant="outlined"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-                {/* Hidden honey trap */}
-                <input
-                  type="text"
-                  value={honeyTrap}
-                  onChange={(e) => setHoneyTrap(e.target.value)}
-                  style={{ display: 'none' }}
-                />
-                <Grid container>
-                  <Grid item xs>
-                    <Link
-                      component="button"
-                      variant="body2"
-                      onClick={() => setForgotPasswordOpen(true)}
-                      underline="hover"
-                      sx={{ mt: 1 }}
-                    >
-                      Forgot Password?
-                    </Link>
-                  </Grid>
-                </Grid>
-              </>
-            ) : (
-              <>
-                <TextField
-                  label="Email"
-                  fullWidth
-                  variant="outlined"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-                <TextField
-                  label="Username"
-                  fullWidth
-                  variant="outlined"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                />
-                <TextField
-                  label="Password"
-                  type="password"
-                  fullWidth
-                  variant="outlined"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-                {/* Hidden honey trap */}
-                <input
-                  type="text"
-                  value={honeyTrap}
-                  onChange={(e) => setHoneyTrap(e.target.value)}
-                  style={{ display: 'none' }}
-                />
-              </>
-            )}
-          </Stack>
+          {mode === 'login' ? (
+            <Stack spacing={2}>
+              {localError && <Alert severity="error">{localError}</Alert>}
+              <TextField
+                label="Email or Username"
+                fullWidth
+                variant="outlined"
+                value={emailOrUsername}
+                onChange={(e) => setEmailOrUsername(e.target.value)}
+              />
+              <TextField
+                label="Password"
+                type="password"
+                fullWidth
+                variant="outlined"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              {/* Hidden honey trap */}
+              <input
+                type="text"
+                value={honeyTrap}
+                onChange={(e) => setHoneyTrap(e.target.value)}
+                style={{ display: 'none' }}
+              />
+              <Button
+                variant="contained"
+                fullWidth
+                onClick={handleSubmit}
+                disabled={isLoginLoading}
+                sx={{fontWeight: 'bold'}}
+              >
+                {isLoginLoading ? 'Logging in...' : 'Log In'}
+              </Button>
+              <Link
+                component="button"
+                variant="body2"
+                onClick={() => setForgotPasswordOpen(true)}
+                underline="hover"
+                align="center"
+              >
+                Forgot Password?
+              </Link>
+            </Stack>
+          ) : (
+            <Stack spacing={2}>
+              {localError && <Alert severity="error">{localError}</Alert>}
+              <TextField
+                label="Email"
+                fullWidth
+                variant="outlined"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+              <TextField
+                label="Username"
+                fullWidth
+                variant="outlined"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+              />
+              <TextField
+                label="Password"
+                type="password"
+                fullWidth
+                variant="outlined"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              {/* Hidden honey trap */}
+              <input
+                type="text"
+                value={honeyTrap}
+                onChange={(e) => setHoneyTrap(e.target.value)}
+                style={{ display: 'none' }}
+              />
+              <Button
+                variant="contained"
+                fullWidth
+                onClick={handleSubmit}
+                disabled={isRegisterLoading}
+              >
+                {isRegisterLoading ? 'Registering...' : 'Register'}
+              </Button>
+            </Stack>
+          )}
         </DialogContent>
         <Divider />
-        <DialogActions sx={{ justifyContent: 'space-between', px: 3, py: 2 }}>
-          <Button onClick={handleSwitchMode} color="secondary">
-            {mode === 'login' ? 'Need to Register?' : 'Already have an account?'}
-          </Button>
-          <Button
-            variant="contained"
-            onClick={handleSubmit}
-            disabled={mode === 'login' ? isLoginLoading : isRegisterLoading}
-          >
-            {mode === 'login'
-              ? isLoginLoading
-                ? 'Logging in...'
-                : 'Login'
-              : isRegisterLoading
-              ? 'Registering...'
-              : 'Register'}
-          </Button>
-        </DialogActions>
+        {mode === 'login' ? (
+          <Box sx={{ p: 2 }}>
+            <Button
+              fullWidth
+              onClick={handleSwitchMode}
+              sx={{
+                fontWeight: 'bold',
+                backgroundColor: 'secondary.main',
+                color: 'black',
+                '&:hover': { backgroundColor: 'text.primary' },
+              }}
+            >
+              Need to Register?
+            </Button>
+          </Box>
+        ) : (
+          <DialogActions sx={{ justifyContent: 'center' }}>
+            <Button onClick={handleSwitchMode} color="secondary">
+              Already have an account?
+            </Button>
+          </DialogActions>
+        )}
       </Dialog>
-      
+
       {/* Forgot Password Dialog */}
       <ForgotPasswordDialog
         open={forgotPasswordOpen}
