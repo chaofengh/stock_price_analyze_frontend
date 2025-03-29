@@ -216,9 +216,11 @@ function AuthDialog({ open, mode, onClose, onSwitchMode }) {
               onClick={handleSwitchMode}
               sx={{
                 fontWeight: 'bold',
+                border: '1px solid',
                 backgroundColor: 'secondary.main',
                 color: 'black',
-                '&:hover': { backgroundColor: 'text.primary' },
+                '&:hover': { backgroundColor: 'transparent' },
+                borderColor: 'secondary.main',
               }}
             >
               Create New Account
