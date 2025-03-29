@@ -221,7 +221,7 @@ function AuthDialog({ open, mode, onClose, onSwitchMode }) {
                 '&:hover': { backgroundColor: 'text.primary' },
               }}
             >
-              Need to Register?
+              Create New Account
             </Button>
           </Box>
         ) : (

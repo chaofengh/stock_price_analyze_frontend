@@ -3,7 +3,7 @@ import { Box, Card, CardContent, Typography } from '@mui/material';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import { useDispatch } from 'react-redux';
-import { fetchSummary } from './Redux/summarySlice'; // Adjust the path as needed
+import { fetchSummary } from './Redux/summarySlice'; // Adjust path as needed
 
 function PeopleAlsoView({ summary }) {
   const dispatch = useDispatch();
@@ -20,15 +20,15 @@ function PeopleAlsoView({ summary }) {
   };
 
   return (
-    <Box sx={{ mt: 1 }}>
+    <Box sx={{ mt: 2}}>
       {/* Section Header */}
-      <Typography variant="h6" gutterBottom textAlign="center">
+      <Typography variant="h6" gutterBottom textAlign="center" sx={{ mb: 2 }}>
         People also view
       </Typography>
       <Typography
         variant="body2"
         color="text.secondary"
-        sx={{ mb: 2 }}
+        sx={{ mb: 3 }}
         textAlign="center"
       >
         Based on the portfolios of people who view <strong>{symbol}</strong>.
@@ -39,13 +39,12 @@ function PeopleAlsoView({ summary }) {
       <Box
         sx={{
           display: 'flex',
-          overflowX: 'scroll',
-          overflowY: 'hidden',
+          overflowX: 'auto',
           gap: 2,
-          pb: 2, // Extra space so scrollbar doesn't touch the cards
+          pb: 8, // This pushes the scrollbar farther from the cards
           scrollbarWidth: 'auto', // For Firefox
           '::-webkit-scrollbar': {
-            height: '8px', // Adjust scrollbar thickness for WebKit browsers
+            height: '8px', // Adjust scrollbar thickness (Chrome/Safari)
           },
           '::-webkit-scrollbar-track': {
             backgroundColor: '#f1f1f1',
@@ -84,7 +83,7 @@ function PeopleAlsoView({ summary }) {
                 flex: '0 0 auto',
               }}
             >
-              <CardContent sx={{ p: 2 }}>
+              <CardContent sx={{ p: 1 }}>
                 {/* Peer Symbol (clickable) */}
                 <Typography
                   variant="subtitle1"
@@ -95,7 +94,7 @@ function PeopleAlsoView({ summary }) {
                   {peerSymbol}
                 </Typography>
 
-                {/* Price with updated styling: bolder and colored based on percentage change */}
+                {/* Price */}
                 <Typography
                   variant="h6"
                   sx={{ mt: 0.5, mb: 1, fontWeight: 700, color: changeColor }}
