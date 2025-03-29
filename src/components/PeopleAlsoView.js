@@ -81,6 +81,7 @@ function PeopleAlsoView({ summary }) {
                 minWidth: 120,
                 textAlign: 'center',
                 flex: '0 0 auto',
+                backgroundColor: 'rgba(20, 133, 203, 0.2)' ,
               }}
             >
               <CardContent sx={{ p: 1 }}>

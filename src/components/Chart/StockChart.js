@@ -10,6 +10,7 @@ import {
   Title,
   Tooltip as ChartTooltip,
   Legend,
+  Filler
 } from 'chart.js';
 import annotationPlugin from 'chartjs-plugin-annotation';
 import zoomPlugin from 'chartjs-plugin-zoom';
@@ -34,7 +35,8 @@ ChartJS.register(
   Legend,
   annotationPlugin,
   zoomPlugin,
-  CrosshairLinePlugin
+  CrosshairLinePlugin,
+  Filler
 );
 
 function StockChart({ summary, eventMap, onHoverPriceChange }) {
@@ -54,7 +56,7 @@ function StockChart({ summary, eventMap, onHoverPriceChange }) {
   const upperBand = useMemo(() => summary?.chart_data?.map(pt => pt.upper ?? null) || [], [summary]);
   const lowerBand = useMemo(() => summary?.chart_data?.map(pt => pt.lower ?? null) || [], [summary]);
 
-  // Final chartData state to allow for gradient fill
+  // Final chartData state
   const [chartData, setChartData] = useState({
     labels: [],
     datasets: [],
@@ -66,24 +68,19 @@ function StockChart({ summary, eventMap, onHoverPriceChange }) {
       return;
     }
 
-    // Use the chart context for creating a gradient fill
+    // Access chart context (if needed)
     const chartCtx = chartRef.current?.ctx;
     if (!chartCtx) {
       setChartData(baseChartData);
       return;
     }
 
-    const gradient = chartCtx.createLinearGradient(0, 0, 0, 400);
-    gradient.addColorStop(0, 'rgba(25,118,210,0.4)');
-    gradient.addColorStop(1, 'rgba(25,118,210,0)');
-
-    // Main close dataset with gradient
+    // Main close dataset WITHOUT gradient fill
     const mainDataset = {
       ...baseChartData.datasets[0],
       label: 'Close',
       borderColor: '#1976d2',
-      backgroundColor: gradient,
-      fill: true,
+      fill: false, // No fill under the close line
     };
 
     // Lower Bollinger band (no fill)
@@ -107,8 +104,8 @@ function StockChart({ summary, eventMap, onHoverPriceChange }) {
       borderColor: 'rgba(75,192,192,0.8)',
       borderWidth: 2,
       pointRadius: 0,
-      fill: '-1',
-      backgroundColor: 'rgba(75,192,192,0.1)',
+      fill: '-1', // fills to the previous dataset (lowerBB)
+      backgroundColor: 'rgba(20, 133, 203, 0.2)',
       yAxisID: 'y',
       order: 1,
       animations: {
@@ -127,52 +124,58 @@ function StockChart({ summary, eventMap, onHoverPriceChange }) {
   const externalTooltipHandler = useExternalTooltipHandler();
 
   // Crosshair hover event handling
-  const handleHover = useCallback((event, chartElements, chart) => {
-    if (!summary?.chart_data) return;
-    if (event.type === 'mouseout' || !chartElements.length) {
-      if (chart.$currentHoverIndex != null) {
-        chart.$currentHoverIndex = null;
-        onHoverPriceChange?.(null);
+  const handleHover = useCallback(
+    (event, chartElements, chart) => {
+      if (!summary?.chart_data) return;
+      if (event.type === 'mouseout' || !chartElements.length) {
+        if (chart.$currentHoverIndex != null) {
+          chart.$currentHoverIndex = null;
+          onHoverPriceChange?.(null);
+        }
+        return;
       }
-      return;
-    }
-    const newHoverIndex = chartElements[0].index;
-    if (newHoverIndex === chart.$currentHoverIndex) return;
-    chart.$currentHoverIndex = newHoverIndex;
-    const hoveredPoint = summary.chart_data[newHoverIndex];
-    onHoverPriceChange?.({
-      date: hoveredPoint.date,
-      price: hoveredPoint.close,
-    });
-  }, [summary, onHoverPriceChange]);
+      const newHoverIndex = chartElements[0].index;
+      if (newHoverIndex === chart.$currentHoverIndex) return;
+      chart.$currentHoverIndex = newHoverIndex;
+      const hoveredPoint = summary.chart_data[newHoverIndex];
+      onHoverPriceChange?.({
+        date: hoveredPoint.date,
+        price: hoveredPoint.close,
+      });
+    },
+    [summary, onHoverPriceChange]
+  );
 
   // Zoom and pan event handling
-  const handleZoomComplete = useCallback(({ chart }) => {
-    const xScale = chart.scales.x;
-    const minIndex = Math.floor(xScale.min);
-    const maxIndex = Math.ceil(xScale.max);
-    const clampedMin = Math.max(0, minIndex);
-    const clampedMax = Math.min(summary.chart_data.length - 1, maxIndex);
-    const points = summary.chart_data.slice(clampedMin, clampedMax + 1);
-    if (points.length < 2) return;
+  const handleZoomComplete = useCallback(
+    ({ chart }) => {
+      const xScale = chart.scales.x;
+      const minIndex = Math.floor(xScale.min);
+      const maxIndex = Math.ceil(xScale.max);
+      const clampedMin = Math.max(0, minIndex);
+      const clampedMax = Math.min(summary.chart_data.length - 1, maxIndex);
+      const points = summary.chart_data.slice(clampedMin, clampedMax + 1);
+      if (points.length < 2) return;
 
-    const firstPrice = points[0].close;
-    const lastPrice = points[points.length - 1].close;
-    const diff = lastPrice - firstPrice;
-    const pct = (diff / firstPrice) * 100;
-    const startDate = points[0].date;
-    const endDate = points[points.length - 1].date;
-    const durationMs = new Date(endDate) - new Date(startDate);
-    const durationDays = Math.round(durationMs / (1000 * 60 * 60 * 24));
+      const firstPrice = points[0].close;
+      const lastPrice = points[points.length - 1].close;
+      const diff = lastPrice - firstPrice;
+      const pct = (diff / firstPrice) * 100;
+      const startDate = points[0].date;
+      const endDate = points[points.length - 1].date;
+      const durationMs = new Date(endDate) - new Date(startDate);
+      const durationDays = Math.round(durationMs / (1000 * 60 * 60 * 24));
 
-    setDragInfo({
-      diff: diff.toFixed(2),
-      pct: pct.toFixed(2),
-      startDate,
-      endDate,
-      duration: durationDays,
-    });
-  }, [summary]);
+      setDragInfo({
+        diff: diff.toFixed(2),
+        pct: pct.toFixed(2),
+        startDate,
+        endDate,
+        duration: durationDays,
+      });
+    },
+    [summary]
+  );
 
   const handleResetZoom = useCallback(() => {
     if (chartRef.current) {
