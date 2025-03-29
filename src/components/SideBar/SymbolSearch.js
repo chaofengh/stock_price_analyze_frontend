@@ -105,7 +105,7 @@ const SymbolSearch = ({ onSelectSymbol, placeholder = 'Search for a Stock' }) =>
         </Paper>
       )}
 
-      <Button fullWidth type="submit" variant="contained" sx={{ mt: 2 }}>
+      <Button fullWidth type="submit" variant="contained" sx={{ mt: 2, fontWeight: 'bold' }}>
         Search
       </Button>
     </Box>

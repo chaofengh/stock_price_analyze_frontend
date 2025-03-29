@@ -16,6 +16,7 @@ const DualStatCard = ({ label, value5, trend5, value10, trend10 }) => {
   return (
     <Card
       sx={{
+        backgroundColor:'rgba(20, 133, 203, 0.2)',
         borderRadius: 4,
         p: 2,
         transition: 'transform 0.3s',

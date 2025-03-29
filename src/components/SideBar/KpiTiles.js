@@ -131,11 +131,11 @@ const KpiTiles = ({ summary }) => {
           peerAvg != null ? tooltipDescriptions[label] || 'Lower than peer average is considered favorable.' : '';
 
         const tileContent = (
-          <Paper sx={{ p: 3, textAlign: 'center', borderRadius: 4 }} elevation={1}>
+          <Paper sx={{ p: 3, textAlign: 'center', borderRadius: 4, backgroundColor:'rgba(20, 133, 203, 0.2)' }} elevation={1}>
             <Typography variant="caption" color="textSecondary">
               {label}
             </Typography>
-            <Box display="flex" alignItems="center" justifyContent="center" mt={1}>
+            <Box display="flex" alignItems="center" justifyContent="center" mt={1} >
               {icon}
               <Typography
                 variant="h5"

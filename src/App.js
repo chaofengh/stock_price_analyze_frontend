@@ -13,20 +13,26 @@ import {
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AlertsProvider } from './components/Notification/AlertContext';
 import StockDashboard from './components/StockDashboard';
-import UserProfileIcon from './components/UserProfileIcon'
+import UserProfileIcon from './components/UserProfileIcon';
 import NotificationBell from './components/Notification/NotificationBell';
 import MoreOptionsMenu from './components/MoreOption/MoreOptionsMenu';
 import AlertsSnackbar from './components/Notification/AlertsSnackbar';
 import OptionPriceRatio from './components/MoreOption/OptionPriceRatio';
 import TickerList from './components/MoreOption/TickerList';
 import FinancialAnalysisPage from './components/statements/FinancialAnalysisPage';
-import News from './components/MoreOption/News'
+import News from './components/MoreOption/News';
+import { GlobalStyles } from '@mui/material';
 
 const theme = createTheme({
   palette: {
     mode: 'light',
-    primary: { main: '#0d47a1' },
-    secondary: { main: '#f57c00' }
+    primary: { main: '#00246B' },
+    secondary: { main: '#CADCFC' },
+    // This sets the background color for the entire page
+    background: {
+      default: '#e0e0e0', // Light gray
+      paper: '#ffffff'
+    }
   },
   typography: {
     fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
@@ -44,7 +50,7 @@ function App() {
   // Refs for detecting outside clicks
   const tickerListRef = useRef(null);
   const ratioRef = useRef(null);
-  const newsRef = useRef(null); // <-- Ref for News
+  const newsRef = useRef(null);
 
   // Listen for clicks anywhere on document
   useEffect(() => {
@@ -90,6 +96,19 @@ function App() {
   return (
     <Router>
       <ThemeProvider theme={theme}>
+        {/* 
+          Global styles to ensure page is full height and remove default margins.
+          This helps the gray background fill the entire screen.
+        */}
+        <GlobalStyles
+          styles={{
+            'html, body, #root': {
+              height: '100%',
+              margin: 0,
+              padding: 0
+            }
+          }}
+        />
         <CssBaseline />
         <AlertsProvider>
           <AlertsSnackbar />
@@ -121,6 +140,7 @@ function App() {
               <Route path="/analysis" element={<FinancialAnalysisPage />} />
             </Routes>
 
+            {/* WatchList */}
             {selectedView === 'WatchList' && (
               <Box
                 ref={tickerListRef}
@@ -138,6 +158,7 @@ function App() {
               </Box>
             )}
 
+            {/* OptionPriceRatio */}
             {selectedView === 'OptionPriceRatio' && (
               <Box
                 ref={ratioRef}
@@ -155,7 +176,7 @@ function App() {
               </Box>
             )}
 
-            {/* Render News when selected */}
+            {/* News */}
             {selectedView === 'News' && (
               <Box
                 ref={newsRef}
