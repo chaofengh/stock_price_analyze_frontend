@@ -20,6 +20,7 @@ import AlertsSnackbar from './components/Notification/AlertsSnackbar';
 import OptionPriceRatio from './components/MoreOption/OptionPriceRatio';
 import TickerList from './components/MoreOption/TickerList';
 import FinancialAnalysisPage from './components/statements/FinancialAnalysisPage';
+import OpeningRangeBreakout from './components/OpeningRangeBreakout'
 import News from './components/MoreOption/News';
 import { GlobalStyles } from '@mui/material';
 
@@ -138,6 +139,7 @@ function App() {
             <Routes>
               <Route path="/" element={<StockDashboard />} />
               <Route path="/analysis" element={<FinancialAnalysisPage />} />
+              <Route path="/orb" element={<OpeningRangeBreakout />} />
             </Routes>
 
             {/* WatchList */}

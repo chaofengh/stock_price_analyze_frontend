@@ -7,7 +7,7 @@ const FinancialWidget = ({ income_statement }) => {
   return (
     <Paper elevation={3} sx={{ p: 3, height: '100%' }}>
       <Typography variant="h6" gutterBottom>
-        Financial Details
+        Financial Statements
       </Typography>
       <Box sx={{ mt: 2, color: 'text.secondary' }}>
         <Typography variant="body2" sx={{ mb: 2 }}>
