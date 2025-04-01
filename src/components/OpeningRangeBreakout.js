@@ -15,29 +15,7 @@ import DailyTradeDetails from './DailyTradeDetails';
 import CalendarComponent from './CalendarComponent';
 import CandleChart from './CandleChart';
 
-// Helper functions for sorting and aggregation
-function descendingComparator(a, b, orderBy) {
-  if (b[orderBy] < a[orderBy]) return -1;
-  if (b[orderBy] > a[orderBy]) return 1;
-  return 0;
-}
-
-function getComparator(order, orderBy) {
-  return order === 'desc'
-    ? (a, b) => descendingComparator(a, b, orderBy)
-    : (a, b) => -descendingComparator(a, b, orderBy);
-}
-
-function stableSort(array, comparator) {
-  const stabilized = array.map((el, idx) => [el, idx]);
-  stabilized.sort((a, b) => {
-    const cmp = comparator(a[0], b[0]);
-    if (cmp !== 0) return cmp;
-    return a[1] - b[1];
-  });
-  return stabilized.map(el => el[0]);
-}
-
+// Utility functions
 function aggregateDailyPnl(dailyTrades) {
   return dailyTrades.reduce((acc, trade) => {
     const dateKey = new Date(trade.date).toISOString().split('T')[0];
@@ -47,7 +25,7 @@ function aggregateDailyPnl(dailyTrades) {
   }, {});
 }
 
-// Utility: Find the nearest data point for annotations
+// Find the nearest data point for chart annotations
 function findNearestDataPoint(data, targetTime) {
   let minDiff = Infinity;
   let nearest = null;
@@ -65,8 +43,6 @@ const OpeningRangeBreakout = () => {
   const [ticker, setTicker] = useState('');
   const [results, setResults] = useState([]);
   const [error, setError] = useState(null);
-  const [order, setOrder] = useState('asc');
-  const [orderBy, setOrderBy] = useState('scenario_name');
 
   const [openDialog, setOpenDialog] = useState(false);
   const [selectedScenario, setSelectedScenario] = useState(null);
@@ -81,6 +57,7 @@ const OpeningRangeBreakout = () => {
 
   const [showDailyTrades, setShowDailyTrades] = useState(false);
 
+  // Fetch data from backend
   const handleSearch = async () => {
     if (!ticker) return;
     setError(null);
@@ -105,20 +82,14 @@ const OpeningRangeBreakout = () => {
     }
   };
 
+  // Pressing Enter also triggers search
   const handleKeyDown = (e) => {
     if (e.key === 'Enter') {
       handleSearch();
     }
   };
 
-  const handleSort = (property) => {
-    const isAsc = orderBy === property && order === 'asc';
-    setOrder(isAsc ? 'desc' : 'asc');
-    setOrderBy(property);
-  };
-
-  const sortedResults = stableSort(results, getComparator(order, orderBy));
-
+  // When a row is clicked in Data Grid, open the dialog as before
   const handleRowClick = (scenario) => {
     setSelectedScenario(scenario);
     const dailyPnls = aggregateDailyPnl(scenario.daily_trades);
@@ -137,6 +108,7 @@ const OpeningRangeBreakout = () => {
     setAnnotations([]);
   };
 
+  // Calendar tile PnL
   const tileContent = ({ date, view }) => {
     if (view === 'month') {
       const dateStr = date.toISOString().split('T')[0];
@@ -153,10 +125,12 @@ const OpeningRangeBreakout = () => {
     return null;
   };
 
+  // When a date is selected on the calendar, load intraday data
   const handleCalendarChange = (date) => {
     setCalendarValue(date);
     const dateStr = date.toISOString().split('T')[0];
     setSelectedDate(dateStr);
+
     const dayData = intradayDataAll
       .filter(record => record.date.split('T')[0] === dateStr)
       .map(record => ({
@@ -183,7 +157,7 @@ const OpeningRangeBreakout = () => {
             newAnnotations.push({
               date: entryDataPoint.date,
               fill: 'green',
-              path: 'M0,0 L10,10', // Replace with buyPath if available
+              path: 'M0,0 L10,10', // e.g. buy arrow
               tooltip: 'Entry'
             });
           }
@@ -195,7 +169,7 @@ const OpeningRangeBreakout = () => {
             newAnnotations.push({
               date: exitDataPoint.date,
               fill: 'red',
-              path: 'M0,0 L10,10', // Replace with sellPath if available
+              path: 'M0,0 L10,10', // e.g. sell arrow
               tooltip: 'Exit'
             });
           }
@@ -208,6 +182,7 @@ const OpeningRangeBreakout = () => {
       setAnnotations([]);
     }
   };
+
 
   return (
     <Box sx={{ mt: 2 }}>
@@ -227,20 +202,23 @@ const OpeningRangeBreakout = () => {
           Search
         </Button>
       </Box>
+
       {error && (
         <Typography color="error" sx={{ mb: 2 }}>
           {error}
         </Typography>
       )}
+
+      {/* Use the DataGrid-based AggregatedResultsTable, 
+          passing the results and onRowClick handler */}
       {results.length > 0 && (
         <AggregatedResultsTable
-          results={sortedResults}
-          order={order}
-          orderBy={orderBy}
-          onSort={handleSort}
+          results={results}
           onRowClick={handleRowClick}
         />
       )}
+
+      {/* Dialog with Scenario details, calendar, chart, etc. */}
       <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="xl" fullWidth>
         <DialogTitle>
           {selectedScenario?.scenario_name || 'Scenario Details'}

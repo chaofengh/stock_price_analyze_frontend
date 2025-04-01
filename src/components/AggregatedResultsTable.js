@@ -1,70 +1,250 @@
-import React from 'react';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
-  TableSortLabel,
-  Typography,
-  Paper
-} from '@mui/material';
+import React, { useCallback } from 'react';
+import { DataGrid, GridToolbar } from '@mui/x-data-grid';
+import { Box, Paper, Tooltip, Typography, Chip } from '@mui/material';
+import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
+import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
+import InfoIcon from '@mui/icons-material/Info';
 
-function AggregatedResultsTable({ results, order, orderBy, onSort, onRowClick }) {
-  return (
-    <Paper elevation={3} sx={{ mt: 2, p: 2 }}>
-      <Typography variant="h6" gutterBottom>
-        Aggregated Results
+const AggregatedResultsTable = ({ results, onRowClick }) => {
+  // Determine best and worst net PNL for highlighting
+  const netPnLs = results.map((r) => r.net_pnl);
+  const bestPnl = Math.max(...netPnLs);
+  const worstPnl = Math.min(...netPnLs);
+
+  // Helper function to render header with an icon and tooltip
+  const renderHeaderWithTooltip = (headerText, tooltipText) => (
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, overflow: 'visible' }}>
+      <Typography variant="body2" sx={{ fontWeight: 'bold', fontSize: 'inherit' }}>
+        {headerText}
       </Typography>
-      <Table>
-        <TableHead>
-          <TableRow>
-            {[
-              { id: 'scenario_name', label: 'Scenario', align: 'left' },
-              { id: 'win_rate', label: 'Win Rate', align: 'right' },
-              { id: 'profit_factor', label: 'Profit Factor', align: 'right' },
-              { id: 'sharpe_ratio', label: 'Sharpe Ratio', align: 'right' },
-              { id: 'max_drawdown', label: 'Max DD', align: 'right' },
-              { id: 'num_trades', label: '# Trades', align: 'right' },
-              { id: 'net_pnl', label: 'Net PNL', align: 'right' }
-            ].map((headCell) => (
-              <TableCell key={headCell.id} align={headCell.align}>
-                <TableSortLabel
-                  active={orderBy === headCell.id}
-                  direction={orderBy === headCell.id ? order : 'asc'}
-                  onClick={() => onSort(headCell.id)}
-                >
-                  <strong>{headCell.label}</strong>
-                </TableSortLabel>
-              </TableCell>
-            ))}
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {results.map((item, index) => (
-            <TableRow
-              key={index}
-              onClick={() => onRowClick(item)}
-              sx={{ cursor: 'pointer', '&:hover': { backgroundColor: '#f5f5f5' } }}
-            >
-              <TableCell>{item.scenario_name}</TableCell>
-              <TableCell align="right">{item.win_rate}</TableCell>
-              <TableCell align="right">{item.profit_factor}</TableCell>
-              <TableCell align="right">{item.sharpe_ratio}</TableCell>
-              <TableCell align="right">{item.max_drawdown}</TableCell>
-              <TableCell align="right">{item.num_trades}</TableCell>
-              <TableCell align="right" sx={{ color: item.net_pnl < 0 ? 'red' : 'green' }}>
-                {item.net_pnl?.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-      <Typography variant="caption" display="block" sx={{ mt: 1 }}>
-        Click a row to view daily trade details on a calendar.
-      </Typography>
-    </Paper>
+      <Tooltip title={tooltipText}>
+        <InfoIcon sx={{ fontSize: '1rem', cursor: 'help' }} />
+      </Tooltip>
+    </Box>
   );
-}
+
+  // Define columns with "Net PNL" as the second column.
+  const columns = [
+    {
+      field: 'scenario_name',
+      headerName: 'Scenario',
+      flex: 1,
+      renderHeader: () =>
+        renderHeaderWithTooltip('Scenario', 'Scenario name and applied filters'),
+      renderCell: (params) => {
+        const scenario = params.value || '';
+        const filters = params.row.filters || '';
+        return (
+          <Box>
+            <Typography variant="body2" sx={{ fontWeight: 'bold', fontSize: 'inherit' }}>
+              {scenario}
+            </Typography>
+            {filters && (
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ fontWeight: 'bold', fontSize: 'inherit' }}
+              >
+                {filters}
+              </Typography>
+            )}
+          </Box>
+        );
+      },
+    },
+    {
+      field: 'net_pnl',
+      headerName: 'Net PNL',
+      width: 150,
+      renderHeader: () =>
+        renderHeaderWithTooltip('Net PNL', 'Net Profit and Loss'),
+      renderCell: (params) => {
+        const rawVal = params.value;
+        const displayVal = params.row.net_pnl_formatted || rawVal;
+        const color = rawVal < 0 ? 'red' : 'green';
+        const Icon = rawVal < 0 ? ArrowDownwardIcon : ArrowUpwardIcon;
+        let highlight = {};
+        if (rawVal === bestPnl) {
+          highlight = { backgroundColor: 'rgba(0,255,0,0.1)' };
+        } else if (rawVal === worstPnl) {
+          highlight = { backgroundColor: 'rgba(255,0,0,0.1)' };
+        }
+        return (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ...highlight }}>
+            <Icon sx={{ color, fontSize: '1.2rem' }} />
+            <Typography variant="body2" sx={{ color, fontWeight: 'bold', fontSize: 'inherit' }}>
+              {displayVal}
+            </Typography>
+          </Box>
+        );
+      },
+    },
+    {
+      field: 'win_rate',
+      headerName: 'Win Rate',
+      width: 120,
+      align: 'right',
+      headerAlign: 'right',
+      renderHeader: () =>
+        renderHeaderWithTooltip('Win Rate', 'Percentage of winning trades'),
+      renderCell: (params) => {
+        const val = params.row.win_rate;
+        const displayVal =
+          params.row.win_rate_formatted || ((val || 0) * 100).toFixed(1) + '%';
+        let chipColor = 'default';
+        if (val > 0.7) chipColor = 'success';
+        else if (val < 0.3) chipColor = 'error';
+        return (
+          <Chip
+            label={displayVal}
+            color={chipColor}
+            size="small"
+            sx={{ fontWeight: 'bold', fontSize: 'inherit' }}
+          />
+        );
+      },
+    },
+    {
+      field: 'profit_factor',
+      headerName: 'Profit Factor',
+      width: 140,
+      align: 'right',
+      headerAlign: 'right',
+      renderHeader: () =>
+        renderHeaderWithTooltip('Profit Factor', 'Gross profit / gross loss'),
+      renderCell: (params) => {
+        const val = params.row.profit_factor;
+        const displayVal = params.row.profit_factor_formatted || val || '';
+        return (
+          <Tooltip title="Total gross profit divided by total gross loss">
+            <Typography variant="body2" sx={{ fontWeight: 'bold', fontSize: 'inherit' }}>
+              {displayVal}
+            </Typography>
+          </Tooltip>
+        );
+      },
+    },
+    {
+      field: 'sharpe_ratio',
+      headerName: 'Sharpe Ratio',
+      width: 140,
+      align: 'right',
+      headerAlign: 'right',
+      renderHeader: () =>
+        renderHeaderWithTooltip('Sharpe Ratio', 'Risk-adjusted return'),
+      renderCell: (params) => (
+        <Typography variant="body2" sx={{ fontWeight: 'bold', fontSize: 'inherit' }}>
+          {params.row.sharpe_ratio_formatted || params.row.sharpe_ratio || ''}
+        </Typography>
+      ),
+    },
+    {
+      field: 'max_drawdown',
+      headerName: 'Max DD',
+      width: 120,
+      align: 'right',
+      headerAlign: 'right',
+      renderHeader: () =>
+        renderHeaderWithTooltip('Max DD', 'Maximum drawdown from peak equity'),
+      renderCell: (params) => (
+        <Tooltip title="Maximum drawdown from the equity peak">
+          <Typography variant="body2" sx={{ fontWeight: 'bold', fontSize: 'inherit' }}>
+            {params.row.max_drawdown_formatted || params.row.max_drawdown}
+          </Typography>
+        </Tooltip>
+      ),
+    },
+    {
+      field: 'num_trades',
+      headerName: '# Trades',
+      width: 100,
+      align: 'right',
+      headerAlign: 'right',
+      renderHeader: () =>
+        renderHeaderWithTooltip('# Trades', 'Total number of trades executed'),
+      renderCell: (params) => (
+        <Typography variant="body2" sx={{ fontWeight: 'bold', fontSize: 'inherit' }}>
+          {params.row.num_trades}
+        </Typography>
+      ),
+    },
+  ];
+
+  // Convert data to rows (each row must have an id)
+  const rows = results.map((item, index) => ({
+    id: index,
+    ...item,
+  }));
+
+  // Pass row click back to parent
+  const handleRowClick = useCallback(
+    (params) => {
+      onRowClick && onRowClick(params.row);
+    },
+    [onRowClick]
+  );
+
+  return (
+    <Box sx={{ width: '100%', mt: 2 }}>
+      <Paper elevation={3} sx={{ p: 2 }}>
+        <DataGrid
+          rows={rows}
+          columns={columns}
+          components={{ Toolbar: GridToolbar }}
+          disableSelectionOnClick
+          onRowClick={handleRowClick}
+          autoHeight
+          headerHeight={70}
+          sx={{
+            fontSize: '0.95rem',
+            fontFamily: '"Roboto","Helvetica","Arial",sans-serif',
+            // 1) Remove the default DataGrid outline/border if you want it cleaner
+            '& .MuiDataGrid-root': {
+              border: 'none',
+            },
+            // 2) Make the entire header row a single color
+            '& .MuiDataGrid-columnHeaders': {
+              color: 'black',
+              minHeight: '70px !important',
+              borderBottom: '1px solid #ccc',
+              overflow: 'visible !important', // <-- added
+            },
+            // Also override the inner scroll container
+            '& .MuiDataGrid-columnHeadersInner': {
+              overflow: 'visible !important', // <-- added
+            },
+            '& .MuiDataGrid-columnHeadersInner--scrollContainer': {
+              overflow: 'visible !important', // <-- added
+            },
+            // And each column header:
+            '& .MuiDataGrid-columnHeader': {
+              backgroundColor: 'rgba(20, 133, 203, 0.2)',
+              overflow: 'visible !important', // <-- added
+            },
+            // Title container and its content:
+            '& .MuiDataGrid-columnHeaderTitleContainer': {
+              overflow: 'visible !important', // <-- added
+              padding: '0 8px',
+            },
+            '& .MuiDataGrid-columnHeaderTitleContainerContent': {
+              overflow: 'visible !important', // <-- often needed
+            },
+            '& .MuiDataGrid-columnHeaderTitle': {
+              fontWeight: 'bold',
+              whiteSpace: 'normal',
+              lineHeight: '1.2',
+            },
+        
+            // Bold cell text in the table body
+            '& .MuiDataGrid-cell': {
+              fontWeight: 'bold',
+            },
+        
+          }}
+        />
+      </Paper>
+    </Box>
+  );
+};
 
 export default AggregatedResultsTable;
