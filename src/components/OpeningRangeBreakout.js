@@ -157,7 +157,7 @@ const OpeningRangeBreakout = () => {
             newAnnotations.push({
               date: entryDataPoint.date,
               fill: 'green',
-              path: 'M0,0 L10,10', // e.g. buy arrow
+              path: () => 'M0,0 L10,10', // Now a function returning the path string
               tooltip: 'Entry'
             });
           }
@@ -169,7 +169,7 @@ const OpeningRangeBreakout = () => {
             newAnnotations.push({
               date: exitDataPoint.date,
               fill: 'red',
-              path: 'M0,0 L10,10', // e.g. sell arrow
+              path: () => 'M0,0 L10,10', // Now a function returning the path string
               tooltip: 'Exit'
             });
           }
@@ -182,7 +182,6 @@ const OpeningRangeBreakout = () => {
       setAnnotations([]);
     }
   };
-
 
   return (
     <Box sx={{ mt: 2 }}>
@@ -209,8 +208,6 @@ const OpeningRangeBreakout = () => {
         </Typography>
       )}
 
-      {/* Use the DataGrid-based AggregatedResultsTable, 
-          passing the results and onRowClick handler */}
       {results.length > 0 && (
         <AggregatedResultsTable
           results={results}
@@ -218,7 +215,6 @@ const OpeningRangeBreakout = () => {
         />
       )}
 
-      {/* Dialog with Scenario details, calendar, chart, etc. */}
       <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="xl" fullWidth>
         <DialogTitle>
           {selectedScenario?.scenario_name || 'Scenario Details'}
