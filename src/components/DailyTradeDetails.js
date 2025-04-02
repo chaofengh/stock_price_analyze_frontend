@@ -21,29 +21,28 @@ function DailyTradeDetails({ dailyTrades }) {
         </TableHead>
         <TableBody>
           {[...dailyTrades]
-            .sort((a, b) => new Date(b.date) - new Date(a.date))
-            .map((trade, idx) => {
-              const dateStr = new Date(trade.date).toISOString().split('T')[0];
-              return (
-                <TableRow key={idx}>
-                  <TableCell>{dateStr}</TableCell>
-                  <TableCell>{trade.direction}</TableCell>
-                  <TableCell>{trade.entry_price}</TableCell>
-                  <TableCell>{trade.exit_price}</TableCell>
-                  <TableCell>{trade.pnl.toFixed(2)}</TableCell>
-                  <TableCell>
-                    {trade.entry_time
-                      ? new Date(trade.entry_time).toLocaleTimeString()
-                      : '-'}
-                  </TableCell>
-                  <TableCell>
-                    {trade.exit_time
-                      ? new Date(trade.exit_time).toLocaleTimeString()
-                      : '-'}
-                  </TableCell>
-                </TableRow>
-              );
-            })}
+            .sort((a, b) => new Date(b.entry_time) - new Date(a.entry_time))
+            .map((trade, idx) => (
+              <TableRow key={idx}>
+                <TableCell>
+                  {new Date(trade.entry_time).toLocaleDateString()}
+                </TableCell>
+                <TableCell>{trade.direction}</TableCell>
+                <TableCell>{trade.entry_price}</TableCell>
+                <TableCell>{trade.exit_price}</TableCell>
+                <TableCell>{trade.pnl.toFixed(2)}</TableCell>
+                <TableCell>
+                  {trade.entry_time
+                    ? new Date(trade.entry_time).toLocaleTimeString()
+                    : '-'}
+                </TableCell>
+                <TableCell>
+                  {trade.exit_time
+                    ? new Date(trade.exit_time).toLocaleTimeString()
+                    : '-'}
+                </TableCell>
+              </TableRow>
+            ))}
         </TableBody>
       </Table>
     </Box>

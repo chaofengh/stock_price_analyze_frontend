@@ -8,13 +8,8 @@ function CalendarComponent({ value, onChange, tileContent }) {
     <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%', mt: 2, mb: 2 }}>
       <Box
         sx={{
-          // Fixed width (or larger %). Adjust as you like:
           width: '600px',
-          // You could also do: width: '80%', maxWidth: '700px', etc.
-          
-          // Override react-calendar styles
           '& .react-calendar': {
-            // Increase overall font size
             fontSize: '1.2rem',
             border: '1px solid #ccc',
             borderRadius: '8px',
@@ -29,7 +24,7 @@ function CalendarComponent({ value, onChange, tileContent }) {
               minWidth: 'auto',
               background: 'transparent',
               color: '#1976d2',
-              fontSize: '1.2rem',  // Larger nav text
+              fontSize: '1.2rem',
               fontWeight: 'bold',
               '&:hover': {
                 backgroundColor: 'rgba(25, 118, 210, 0.1)',
@@ -38,11 +33,10 @@ function CalendarComponent({ value, onChange, tileContent }) {
           },
           '& .react-calendar__month-view__weekdays': {
             fontWeight: 'bold',
-            fontSize: '1.0rem', // Increase weekday labels
+            fontSize: '1.0rem',
             textAlign: 'center',
           },
           '& .react-calendar__tile': {
-            // Increase tile size and padding
             padding: '1rem 0',
             height: '60px',
             borderRadius: '4px',

@@ -34,6 +34,7 @@ const AggregatedResultsTable = ({ results, onRowClick }) => {
       renderCell: (params) => {
         const scenario = params.value || '';
         const filters = params.row.filters || '';
+
         return (
           <Box>
             <Typography variant="body2" sx={{ fontWeight: 'bold', fontSize: 'inherit' }}>
@@ -174,6 +175,8 @@ const AggregatedResultsTable = ({ results, onRowClick }) => {
   const rows = results.map((item, index) => ({
     id: index,
     ...item,
+    // Use local date formatting for the trade date if needed.
+    date: new Date(item.date).toLocaleDateString()
   }));
 
   // Pass row click back to parent
@@ -198,48 +201,40 @@ const AggregatedResultsTable = ({ results, onRowClick }) => {
           sx={{
             fontSize: '0.95rem',
             fontFamily: '"Roboto","Helvetica","Arial",sans-serif',
-            // 1) Remove the default DataGrid outline/border if you want it cleaner
             '& .MuiDataGrid-root': {
               border: 'none',
             },
-            // 2) Make the entire header row a single color
             '& .MuiDataGrid-columnHeaders': {
               color: 'black',
               minHeight: '70px !important',
               borderBottom: '1px solid #ccc',
-              overflow: 'visible !important', // <-- added
+              overflow: 'visible !important',
             },
-            // Also override the inner scroll container
             '& .MuiDataGrid-columnHeadersInner': {
-              overflow: 'visible !important', // <-- added
+              overflow: 'visible !important',
             },
             '& .MuiDataGrid-columnHeadersInner--scrollContainer': {
-              overflow: 'visible !important', // <-- added
+              overflow: 'visible !important',
             },
-            // And each column header:
             '& .MuiDataGrid-columnHeader': {
               backgroundColor: 'rgba(20, 133, 203, 0.2)',
-              overflow: 'visible !important', // <-- added
+              overflow: 'visible !important',
             },
-            // Title container and its content:
             '& .MuiDataGrid-columnHeaderTitleContainer': {
-              overflow: 'visible !important', // <-- added
+              overflow: 'visible !important',
               padding: '0 8px',
             },
             '& .MuiDataGrid-columnHeaderTitleContainerContent': {
-              overflow: 'visible !important', // <-- often needed
+              overflow: 'visible !important',
             },
             '& .MuiDataGrid-columnHeaderTitle': {
               fontWeight: 'bold',
               whiteSpace: 'normal',
               lineHeight: '1.2',
             },
-        
-            // Bold cell text in the table body
             '& .MuiDataGrid-cell': {
               fontWeight: 'bold',
             },
-        
           }}
         />
       </Paper>

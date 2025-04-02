@@ -15,17 +15,26 @@ import DailyTradeDetails from './DailyTradeDetails';
 import CalendarComponent from './CalendarComponent';
 import CandleChart from './CandleChart';
 
-// Utility functions
+// Convert a date/time string to YYYY-MM-DD in the user's local time
+function getLocalDateString(dateInput) {
+  const d = new Date(dateInput); // parse as local
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+// Sum daily PnL by local date using 'entry_time'
 function aggregateDailyPnl(dailyTrades) {
   return dailyTrades.reduce((acc, trade) => {
-    const dateKey = new Date(trade.date).toISOString().split('T')[0];
+    const dateKey = getLocalDateString(trade.entry_time);
     if (!acc[dateKey]) acc[dateKey] = 0;
     acc[dateKey] += trade.pnl;
     return acc;
   }, {});
 }
 
-// Find the nearest data point for chart annotations
+// For intraday annotation, find nearest candlestick to a given time
 function findNearestDataPoint(data, targetTime) {
   let minDiff = Infinity;
   let nearest = null;
@@ -57,7 +66,7 @@ const OpeningRangeBreakout = () => {
 
   const [showDailyTrades, setShowDailyTrades] = useState(false);
 
-  // Fetch data from backend
+  // Fetch data from the backend
   const handleSearch = async () => {
     if (!ticker) return;
     setError(null);
@@ -82,14 +91,14 @@ const OpeningRangeBreakout = () => {
     }
   };
 
-  // Pressing Enter also triggers search
+  // Allow Enter key to trigger search
   const handleKeyDown = (e) => {
     if (e.key === 'Enter') {
       handleSearch();
     }
   };
 
-  // When a row is clicked in Data Grid, open the dialog as before
+  // Open the scenario dialog and build the daily PnL for the calendar
   const handleRowClick = (scenario) => {
     setSelectedScenario(scenario);
     const dailyPnls = aggregateDailyPnl(scenario.daily_trades);
@@ -108,10 +117,10 @@ const OpeningRangeBreakout = () => {
     setAnnotations([]);
   };
 
-  // Calendar tile PnL
+  // Show daily PnL inside each calendar tile
   const tileContent = ({ date, view }) => {
     if (view === 'month') {
-      const dateStr = date.toISOString().split('T')[0];
+      const dateStr = getLocalDateString(date);
       const pnl = calendarData[dateStr];
       if (pnl !== undefined) {
         const color = pnl > 0 ? 'green' : pnl < 0 ? 'red' : 'inherit';
@@ -125,14 +134,14 @@ const OpeningRangeBreakout = () => {
     return null;
   };
 
-  // When a date is selected on the calendar, load intraday data
+  // When user clicks a calendar date, filter intraday data + build chart annotations
   const handleCalendarChange = (date) => {
     setCalendarValue(date);
-    const dateStr = date.toISOString().split('T')[0];
+    const dateStr = getLocalDateString(date);
     setSelectedDate(dateStr);
 
     const dayData = intradayDataAll
-      .filter(record => record.date.split('T')[0] === dateStr)
+      .filter(record => getLocalDateString(record.date) === dateStr)
       .map(record => ({
         date: new Date(record.date),
         open: record.open,
@@ -145,8 +154,7 @@ const OpeningRangeBreakout = () => {
 
     if (selectedScenario) {
       const trade = selectedScenario.daily_trades.find(t => {
-        const tradeDateStr = new Date(t.date).toISOString().split('T')[0];
-        return tradeDateStr === dateStr;
+        return getLocalDateString(t.entry_time) === dateStr;
       });
       if (trade) {
         const newAnnotations = [];
@@ -157,7 +165,7 @@ const OpeningRangeBreakout = () => {
             newAnnotations.push({
               date: entryDataPoint.date,
               fill: 'green',
-              path: () => 'M0,0 L10,10', // Now a function returning the path string
+              path: () => 'M0,0 L10,10',
               tooltip: 'Entry'
             });
           }
@@ -169,7 +177,7 @@ const OpeningRangeBreakout = () => {
             newAnnotations.push({
               date: exitDataPoint.date,
               fill: 'red',
-              path: () => 'M0,0 L10,10', // Now a function returning the path string
+              path: () => 'M0,0 L10,10',
               tooltip: 'Exit'
             });
           }
