@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import {
+import { 
   Box,
   TextField,
   Button,
@@ -8,8 +8,15 @@ import {
   DialogTitle,
   DialogContent,
   Switch,
-  FormControlLabel
+  FormControlLabel,
+  Paper,
+  Tabs,
+  Tab,
+  Grid,
+  CircularProgress,
+  Tooltip
 } from '@mui/material';
+import { createTheme, ThemeProvider } from '@mui/material/styles';
 import AggregatedResultsTable from './AggregatedResultsTable';
 import DailyTradeDetails from './DailyTradeDetails';
 import CalendarComponent from './CalendarComponent';
@@ -17,7 +24,7 @@ import CandleChart from './CandleChart';
 
 // Convert a date/time string to YYYY-MM-DD in the user's local time
 function getLocalDateString(dateInput) {
-  const d = new Date(dateInput); // parse as local
+  const d = new Date(dateInput);
   const year = d.getFullYear();
   const month = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
@@ -52,30 +59,34 @@ const OpeningRangeBreakout = () => {
   const [ticker, setTicker] = useState('');
   const [results, setResults] = useState([]);
   const [error, setError] = useState(null);
-
+  const [loading, setLoading] = useState(false);
   const [openDialog, setOpenDialog] = useState(false);
   const [selectedScenario, setSelectedScenario] = useState(null);
-
   const [calendarValue, setCalendarValue] = useState(new Date());
   const [calendarData, setCalendarData] = useState({});
   const [selectedDate, setSelectedDate] = useState(null);
-
   const [intradayDataAll, setIntradayDataAll] = useState([]);
   const [intradayData, setIntradayData] = useState([]);
   const [annotations, setAnnotations] = useState([]);
+  const [selectedTab, setSelectedTab] = useState(0);
+  const [darkMode, setDarkMode] = useState(false);
 
-  const [showDailyTrades, setShowDailyTrades] = useState(false);
+  const theme = createTheme({
+    palette: {
+      mode: darkMode ? 'dark' : 'light',
+      primary: { main: '#1976d2' },
+    },
+  });
 
   // Fetch data from the backend
   const handleSearch = async () => {
     if (!ticker) return;
     setError(null);
+    setLoading(true);
     setResults([]);
     setSelectedScenario(null);
     setIntradayData([]);
     setIntradayDataAll([]);
-    setShowDailyTrades(false);
-
     try {
       const endpoint = `${process.env.REACT_APP_summary_root_api}/opening_range_breakout?ticker=${ticker}`;
       const response = await fetch(endpoint);
@@ -88,23 +99,24 @@ const OpeningRangeBreakout = () => {
     } catch (err) {
       console.error(err);
       setError(err.message || 'An unknown error occurred.');
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Allow Enter key to trigger search
   const handleKeyDown = (e) => {
     if (e.key === 'Enter') {
       handleSearch();
     }
   };
 
-  // Open the scenario dialog and build the daily PnL for the calendar
+  // Open the scenario dialog and prepare calendar data
   const handleRowClick = (scenario) => {
     setSelectedScenario(scenario);
     const dailyPnls = aggregateDailyPnl(scenario.daily_trades);
     setCalendarData(dailyPnls);
     setOpenDialog(true);
-    setShowDailyTrades(false);
+    setSelectedTab(0);
     setSelectedDate(null);
     setIntradayData([]);
     setAnnotations([]);
@@ -117,7 +129,7 @@ const OpeningRangeBreakout = () => {
     setAnnotations([]);
   };
 
-  // Show daily PnL inside each calendar tile
+  // Calendar tile content with tooltip for PNL
   const tileContent = ({ date, view }) => {
     if (view === 'month') {
       const dateStr = getLocalDateString(date);
@@ -125,16 +137,18 @@ const OpeningRangeBreakout = () => {
       if (pnl !== undefined) {
         const color = pnl > 0 ? 'green' : pnl < 0 ? 'red' : 'inherit';
         return (
-          <div style={{ textAlign: 'center', color, fontSize: '1rem' }}>
-            {pnl.toFixed(2)}
-          </div>
+          <Tooltip title={`PNL: ${pnl.toFixed(2)}`}>
+            <div style={{ textAlign: 'center', color, fontSize: '1rem' }}>
+              {pnl.toFixed(2)}
+            </div>
+          </Tooltip>
         );
       }
     }
     return null;
   };
 
-  // When user clicks a calendar date, filter intraday data + build chart annotations
+  // Handle calendar change: update intraday chart and annotations
   const handleCalendarChange = (date) => {
     setCalendarValue(date);
     const dateStr = getLocalDateString(date);
@@ -191,77 +205,120 @@ const OpeningRangeBreakout = () => {
     }
   };
 
+  const handleTabChange = (e, newValue) => {
+    setSelectedTab(newValue);
+  };
+
   return (
-    <Box sx={{ mt: 2 }}>
-      <Typography variant="h5" gutterBottom>
-        Opening Range Breakout Analysis
-      </Typography>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-        <TextField
-          label="Enter Ticker"
-          variant="outlined"
-          value={ticker}
-          onChange={(e) => setTicker(e.target.value.toUpperCase())}
-          onKeyDown={handleKeyDown}
-          sx={{ width: 200 }}
-        />
-        <Button variant="contained" onClick={handleSearch}>
-          Search
-        </Button>
-      </Box>
-
-      {error && (
-        <Typography color="error" sx={{ mb: 2 }}>
-          {error}
+    <ThemeProvider theme={theme}>
+      <Paper elevation={3} sx={{ p: 3, m: 3 }}>
+        <Typography variant="h5" gutterBottom>
+          Opening Range Breakout Analysis
         </Typography>
-      )}
-
-      {results.length > 0 && (
-        <AggregatedResultsTable
-          results={results}
-          onRowClick={handleRowClick}
-        />
-      )}
+        <Grid container spacing={2} alignItems="center">
+          <Grid item xs={12} sm={6} md={4}>
+            <TextField
+              fullWidth
+              label="Enter Ticker"
+              variant="outlined"
+              value={ticker}
+              onChange={(e) => setTicker(e.target.value.toUpperCase())}
+              onKeyDown={handleKeyDown}
+            />
+          </Grid>
+          <Grid item xs={12} sm={6} md={2}>
+            <Button fullWidth variant="contained" onClick={handleSearch}>
+              Search
+            </Button>
+          </Grid>
+          <Grid item xs={12} sm={6} md={2}>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={darkMode}
+                  onChange={(e) => setDarkMode(e.target.checked)}
+                  color="primary"
+                />
+              }
+              label="Dark Mode"
+            />
+          </Grid>
+        </Grid>
+        {loading && (
+          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+            <CircularProgress />
+          </Box>
+        )}
+        {error && (
+          <Typography color="error" sx={{ mt: 2 }}>
+            {error}
+          </Typography>
+        )}
+        {!loading && results.length === 0 && (
+          <Typography variant="body1" sx={{ mt: 2 }}>
+            Enter a ticker and click search to view scenarios.
+          </Typography>
+        )}
+        {results.length > 0 && (
+          <AggregatedResultsTable results={results} onRowClick={handleRowClick} />
+        )}
+      </Paper>
 
       <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="xl" fullWidth>
         <DialogTitle>
           {selectedScenario?.scenario_name || 'Scenario Details'}
         </DialogTitle>
         <DialogContent>
-          <CalendarComponent
-            value={calendarValue}
-            onChange={handleCalendarChange}
-            tileContent={tileContent}
-          />
-          {selectedDate && (
-            <Box sx={{ mb: 2 }}>
-              <Typography variant="subtitle1" gutterBottom>
-                {`Intraday Chart for ${selectedDate}`}
-              </Typography>
-              <CandleChart
-                data={intradayData}
-                width={1100}
-                height={500}
-                annotations={annotations}
-              />
+          <Tabs value={selectedTab} onChange={handleTabChange} centered>
+            <Tab label="Calendar & Chart" />
+            <Tab label="Trade Details" />
+          </Tabs>
+          {selectedTab === 0 && (
+            <Box sx={{ p: 2 }}>
+              <Grid container spacing={2}>
+                <Grid item xs={12} md={6}>
+                  <CalendarComponent
+                    value={calendarValue}
+                    onChange={handleCalendarChange}
+                    tileContent={tileContent}
+                  />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  {selectedDate ? (
+                    <Box>
+                      <Typography variant="subtitle1" gutterBottom>
+                        {`Intraday Chart for ${selectedDate}`}
+                      </Typography>
+                      <CandleChart
+                        data={intradayData}
+                        width={550}
+                        height={400}
+                        annotations={annotations}
+                      />
+                    </Box>
+                  ) : (
+                    <Typography variant="body1">
+                      Select a date from the calendar to view the intraday chart.
+                    </Typography>
+                  )}
+                </Grid>
+              </Grid>
             </Box>
           )}
-          <FormControlLabel
-            control={
-              <Switch
-                checked={showDailyTrades}
-                onChange={() => setShowDailyTrades(!showDailyTrades)}
-                color="primary"
-              />
-            }
-            label="Show Daily Trade Details"
-          />
-          {showDailyTrades && selectedScenario && (
-            <DailyTradeDetails dailyTrades={selectedScenario.daily_trades} />
+          {selectedTab === 1 && (
+            <Box sx={{ p: 2 }}>
+              {selectedScenario ? (
+                <DailyTradeDetails dailyTrades={selectedScenario.daily_trades} />
+              ) : (
+                <Typography variant="body1">
+                  No trade details available.
+                </Typography>
+              )}
+            </Box>
           )}
         </DialogContent>
       </Dialog>
-    </Box>
+    </ThemeProvider>
   );
 };
 

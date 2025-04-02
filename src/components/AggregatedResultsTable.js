@@ -6,15 +6,13 @@ import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import InfoIcon from '@mui/icons-material/Info';
 
 const AggregatedResultsTable = ({ results, onRowClick }) => {
-  // Determine best and worst net PNL for highlighting
   const netPnLs = results.map((r) => r.net_pnl);
   const bestPnl = Math.max(...netPnLs);
   const worstPnl = Math.min(...netPnLs);
 
-  // Helper function to render header with an icon and tooltip
   const renderHeaderWithTooltip = (headerText, tooltipText) => (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, overflow: 'visible' }}>
-      <Typography variant="body2" sx={{ fontWeight: 'bold', fontSize: 'inherit' }}>
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+      <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
         {headerText}
       </Typography>
       <Tooltip title={tooltipText}>
@@ -23,7 +21,6 @@ const AggregatedResultsTable = ({ results, onRowClick }) => {
     </Box>
   );
 
-  // Define columns with "Net PNL" as the second column.
   const columns = [
     {
       field: 'scenario_name',
@@ -34,18 +31,13 @@ const AggregatedResultsTable = ({ results, onRowClick }) => {
       renderCell: (params) => {
         const scenario = params.value || '';
         const filters = params.row.filters || '';
-
         return (
           <Box>
-            <Typography variant="body2" sx={{ fontWeight: 'bold', fontSize: 'inherit' }}>
+            <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
               {scenario}
             </Typography>
             {filters && (
-              <Typography
-                variant="body2"
-                color="text.secondary"
-                sx={{ fontWeight: 'bold', fontSize: 'inherit' }}
-              >
+              <Typography variant="body2" color="text.secondary">
                 {filters}
               </Typography>
             )}
@@ -73,7 +65,7 @@ const AggregatedResultsTable = ({ results, onRowClick }) => {
         return (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ...highlight }}>
             <Icon sx={{ color, fontSize: '1.2rem' }} />
-            <Typography variant="body2" sx={{ color, fontWeight: 'bold', fontSize: 'inherit' }}>
+            <Typography variant="body2" sx={{ color, fontWeight: 'bold' }}>
               {displayVal}
             </Typography>
           </Box>
@@ -95,14 +87,7 @@ const AggregatedResultsTable = ({ results, onRowClick }) => {
         let chipColor = 'default';
         if (val > 0.7) chipColor = 'success';
         else if (val < 0.3) chipColor = 'error';
-        return (
-          <Chip
-            label={displayVal}
-            color={chipColor}
-            size="small"
-            sx={{ fontWeight: 'bold', fontSize: 'inherit' }}
-          />
-        );
+        return <Chip label={displayVal} color={chipColor} size="small" />;
       },
     },
     {
@@ -118,7 +103,7 @@ const AggregatedResultsTable = ({ results, onRowClick }) => {
         const displayVal = params.row.profit_factor_formatted || val || '';
         return (
           <Tooltip title="Total gross profit divided by total gross loss">
-            <Typography variant="body2" sx={{ fontWeight: 'bold', fontSize: 'inherit' }}>
+            <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
               {displayVal}
             </Typography>
           </Tooltip>
@@ -134,7 +119,7 @@ const AggregatedResultsTable = ({ results, onRowClick }) => {
       renderHeader: () =>
         renderHeaderWithTooltip('Sharpe Ratio', 'Risk-adjusted return'),
       renderCell: (params) => (
-        <Typography variant="body2" sx={{ fontWeight: 'bold', fontSize: 'inherit' }}>
+        <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
           {params.row.sharpe_ratio_formatted || params.row.sharpe_ratio || ''}
         </Typography>
       ),
@@ -149,7 +134,7 @@ const AggregatedResultsTable = ({ results, onRowClick }) => {
         renderHeaderWithTooltip('Max DD', 'Maximum drawdown from peak equity'),
       renderCell: (params) => (
         <Tooltip title="Maximum drawdown from the equity peak">
-          <Typography variant="body2" sx={{ fontWeight: 'bold', fontSize: 'inherit' }}>
+          <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
             {params.row.max_drawdown_formatted || params.row.max_drawdown}
           </Typography>
         </Tooltip>
@@ -164,22 +149,19 @@ const AggregatedResultsTable = ({ results, onRowClick }) => {
       renderHeader: () =>
         renderHeaderWithTooltip('# Trades', 'Total number of trades executed'),
       renderCell: (params) => (
-        <Typography variant="body2" sx={{ fontWeight: 'bold', fontSize: 'inherit' }}>
+        <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
           {params.row.num_trades}
         </Typography>
       ),
     },
   ];
 
-  // Convert data to rows (each row must have an id)
   const rows = results.map((item, index) => ({
     id: index,
     ...item,
-    // Use local date formatting for the trade date if needed.
-    date: new Date(item.date).toLocaleDateString()
+    date: new Date(item.date).toLocaleDateString(),
   }));
 
-  // Pass row click back to parent
   const handleRowClick = useCallback(
     (params) => {
       onRowClick && onRowClick(params.row);
@@ -200,40 +182,8 @@ const AggregatedResultsTable = ({ results, onRowClick }) => {
           headerHeight={70}
           sx={{
             fontSize: '0.95rem',
-            fontFamily: '"Roboto","Helvetica","Arial",sans-serif',
-            '& .MuiDataGrid-root': {
-              border: 'none',
-            },
             '& .MuiDataGrid-columnHeaders': {
-              color: 'black',
-              minHeight: '70px !important',
-              borderBottom: '1px solid #ccc',
-              overflow: 'visible !important',
-            },
-            '& .MuiDataGrid-columnHeadersInner': {
-              overflow: 'visible !important',
-            },
-            '& .MuiDataGrid-columnHeadersInner--scrollContainer': {
-              overflow: 'visible !important',
-            },
-            '& .MuiDataGrid-columnHeader': {
               backgroundColor: 'rgba(20, 133, 203, 0.2)',
-              overflow: 'visible !important',
-            },
-            '& .MuiDataGrid-columnHeaderTitleContainer': {
-              overflow: 'visible !important',
-              padding: '0 8px',
-            },
-            '& .MuiDataGrid-columnHeaderTitleContainerContent': {
-              overflow: 'visible !important',
-            },
-            '& .MuiDataGrid-columnHeaderTitle': {
-              fontWeight: 'bold',
-              whiteSpace: 'normal',
-              lineHeight: '1.2',
-            },
-            '& .MuiDataGrid-cell': {
-              fontWeight: 'bold',
             },
           }}
         />

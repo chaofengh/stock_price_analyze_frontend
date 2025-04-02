@@ -8,7 +8,8 @@ function CalendarComponent({ value, onChange, tileContent }) {
     <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%', mt: 2, mb: 2 }}>
       <Box
         sx={{
-          width: '600px',
+          width: '100%',
+          maxWidth: '600px',
           '& .react-calendar': {
             fontSize: '1.2rem',
             border: '1px solid #ccc',
@@ -16,7 +17,6 @@ function CalendarComponent({ value, onChange, tileContent }) {
             padding: '1rem',
             backgroundColor: '#fff',
             fontFamily: '"Roboto","Helvetica","Arial",sans-serif',
-            width: '100%',
           },
           '& .react-calendar__navigation': {
             marginBottom: '0.5rem',
@@ -33,7 +33,7 @@ function CalendarComponent({ value, onChange, tileContent }) {
           },
           '& .react-calendar__month-view__weekdays': {
             fontWeight: 'bold',
-            fontSize: '1.0rem',
+            fontSize: '1rem',
             textAlign: 'center',
           },
           '& .react-calendar__tile': {

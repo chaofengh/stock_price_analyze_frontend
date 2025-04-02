@@ -7,9 +7,16 @@ function DailyTradeDetails({ dailyTrades }) {
       <Typography variant="subtitle1" gutterBottom>
         Daily Trade Details (Latest to Oldest)
       </Typography>
-      <Table>
+      <Table sx={{ minWidth: 650 }}>
         <TableHead>
-          <TableRow>
+          <TableRow
+            sx={{
+              position: 'sticky',
+              top: 0,
+              backgroundColor: 'background.paper',
+              zIndex: 1,
+            }}
+          >
             <TableCell>Date</TableCell>
             <TableCell>Direction</TableCell>
             <TableCell>Entry Price</TableCell>
@@ -23,7 +30,7 @@ function DailyTradeDetails({ dailyTrades }) {
           {[...dailyTrades]
             .sort((a, b) => new Date(b.entry_time) - new Date(a.entry_time))
             .map((trade, idx) => (
-              <TableRow key={idx}>
+              <TableRow key={idx} sx={{ '&:nth-of-type(even)': { backgroundColor: 'action.hover' } }}>
                 <TableCell>
                   {new Date(trade.entry_time).toLocaleDateString()}
                 </TableCell>
@@ -32,14 +39,10 @@ function DailyTradeDetails({ dailyTrades }) {
                 <TableCell>{trade.exit_price}</TableCell>
                 <TableCell>{trade.pnl.toFixed(2)}</TableCell>
                 <TableCell>
-                  {trade.entry_time
-                    ? new Date(trade.entry_time).toLocaleTimeString()
-                    : '-'}
+                  {trade.entry_time ? new Date(trade.entry_time).toLocaleTimeString() : '-'}
                 </TableCell>
                 <TableCell>
-                  {trade.exit_time
-                    ? new Date(trade.exit_time).toLocaleTimeString()
-                    : '-'}
+                  {trade.exit_time ? new Date(trade.exit_time).toLocaleTimeString() : '-'}
                 </TableCell>
               </TableRow>
             ))}
