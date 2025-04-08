@@ -15,7 +15,7 @@ import {
   SvgPathAnnotation,
 } from "react-financial-charts";
 
-function CandleChart({ data, width = 800, height = 400, annotations = [] }) {
+function CandleChart({ data, width = 800, height = 450, annotations = [] }) {
   if (!data || data.length === 0) {
     return <Typography>No intraday data available for this date.</Typography>;
   }

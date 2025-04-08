@@ -1,30 +1,30 @@
-// CalendarComponent.js
 import React from 'react';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
 import { Box } from '@mui/material';
 
-function CalendarComponent({ value, onChange, tileContent }) {
+function CalendarComponent({ value, onChange, tileContent, height = 450 }) {
   return (
     <Box
       sx={{
         margin: '0 auto', // Center the calendar container
         mt: 2,
         mb: 2,
-        maxWidth: '700px', // Constrain the maximum width
+        width: '100%',
+        height, // Set fixed height (default is 450px)
       }}
     >
       <Box
         sx={{
           '& .react-calendar': {
-            fontSize: '1rem', // Slightly smaller base font-size
+            fontSize: '1rem',
             border: '1px solid #ccc',
             borderRadius: '8px',
-            padding: '0.5rem', // Reduced overall padding
+            padding: '0.5rem',
             backgroundColor: '#fff',
             fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
-            width: '100%', // Full width of the container
-            height: 'auto', // Allow height to adjust based on content
+            width: '100%',
+            height: '100%', // Fill the parent container’s height
           },
           '& .react-calendar__navigation': {
             marginBottom: '1rem',
@@ -46,29 +46,34 @@ function CalendarComponent({ value, onChange, tileContent }) {
             marginBottom: '0.3rem',
           },
           '& .react-calendar__tile': {
-            padding: '0.6rem 0.3rem', // Reduced padding on tiles
-            minHeight: 'auto',         // Remove the fixed minimum height
+            padding: '0.6rem 0.3rem',
+            minHeight: 'auto',
             borderRadius: '4px',
             transition: 'all 0.2s ease',
             '&:hover': {
               backgroundColor: '#eee',
             },
-            whiteSpace: 'nowrap',      // Prevent text from wrapping unexpectedly
+            whiteSpace: 'nowrap',
           },
           '& .react-calendar__tile--now': {
             backgroundColor: 'rgba(25, 118, 210, 0.1)',
             borderRadius: '4px',
           },
           '& .react-calendar__tile--active': {
-            // Instead of changing the full background, we now use a border highlight
             backgroundColor: 'transparent',
-            color: '#1976d2', // Use the selected color for the text as well
+            color: '#1976d2',
             border: '2px solid #1976d2',
             borderRadius: '4px',
             '&:hover': {
               backgroundColor: 'transparent',
               border: '2px solid #1976d2',
             },
+          },
+          '& .react-calendar__tile:focus': {
+            backgroundColor: 'transparent',
+          },
+          '& .react-calendar__tile--active:focus': {
+            backgroundColor: 'transparent',
           },
         }}
       >

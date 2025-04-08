@@ -1,4 +1,3 @@
-// OpeningRangeBreakout.js
 import React, { useState } from 'react';
 import {
   Box,
@@ -75,8 +74,8 @@ const OpeningRangeBreakout = () => {
   const theme = createTheme({
     palette: {
       mode: darkMode ? 'dark' : 'light',
-      primary: { main: '#1976d2' },
-    },
+      primary: { main: '#1976d2' }
+    }
   });
 
   // Fetch data from the backend
@@ -152,7 +151,7 @@ const OpeningRangeBreakout = () => {
                 fontWeight,
                 background: 'transparent',
                 borderRadius: '4px',
-                margin: '0 4px',
+                margin: '0 4px'
               }}
             >
               {pnl.toFixed(2)}
@@ -179,7 +178,7 @@ const OpeningRangeBreakout = () => {
         high: record.high,
         low: record.low,
         close: record.close,
-        volume: record.volume,
+        volume: record.volume
       }));
     setIntradayData(dayData);
 
@@ -201,7 +200,7 @@ const OpeningRangeBreakout = () => {
               date: entryDataPoint.date,
               fill: 'green',
               path: () => 'M0,0 L10,10',
-              tooltip: 'Entry',
+              tooltip: 'Entry'
             });
           }
         }
@@ -215,7 +214,7 @@ const OpeningRangeBreakout = () => {
               date: exitDataPoint.date,
               fill: 'red',
               path: () => 'M0,0 L10,10',
-              tooltip: 'Exit',
+              tooltip: 'Exit'
             });
           }
         }
@@ -305,8 +304,8 @@ const OpeningRangeBreakout = () => {
           {selectedTab === 0 && (
             <Box sx={{ p: 2 }}>
               <Grid container spacing={2}>
-                {/* Calendar Section */}
-                <Grid item xs={12} md={5}>
+                {/* Calendar Section (left half) */}
+                <Grid item xs={12} md={6}>
                   <Typography variant="subtitle1" sx={{ mb: 1 }}>
                     Select a date to see daily PNL & intraday chart:
                   </Typography>
@@ -314,11 +313,12 @@ const OpeningRangeBreakout = () => {
                     value={calendarValue}
                     onChange={handleCalendarChange}
                     tileContent={tileContent}
+                    height={450}
                   />
                 </Grid>
 
-                {/* Chart Section */}
-                <Grid item xs={12} md={7}>
+                {/* Chart Section (right half) */}
+                <Grid item xs={12} md={6}>
                   {selectedDate ? (
                     <Box>
                       <Typography variant="subtitle1" gutterBottom>
@@ -328,12 +328,7 @@ const OpeningRangeBreakout = () => {
                         {intradayData && intradayData.length > 0 ? (
                           <CandleChart
                             data={intradayData}
-                            width={650}
-                            height={450}
                             annotations={annotations}
-                            xAxisLabel="Time"
-                            yAxisLabel="Price"
-                            chartTitle="Intraday Candlestick"
                           />
                         ) : (
                           <Typography variant="body2" color="text.secondary">
