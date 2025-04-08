@@ -13,13 +13,13 @@ import {
   Divider
 } from "@mui/material";
 import { ArrowUpward, ArrowDownward } from "@mui/icons-material";
-import axios from "axios";
 
 // Import new visual components
 import SparklineChart from "./SparklineChart";
 import BandBreakoutMeter from "./BandBreakoutMeter";
 
-const FINNHUB_API_KEY = process.env.REACT_APP_Finnhub_API_Key;
+import { fetchCompanyLogo } from "../../API/FetchCompanyLogo";
+
 
 const formatPrice = (price) =>
   typeof price === "number" ? price.toFixed(2) : price;
@@ -39,18 +39,6 @@ const sideStyles = {
   },
 };
 
-// Fetch company logo from Finnhub
-const fetchCompanyLogo = async (symbol) => {
-  try {
-    const response = await axios.get(
-      `https://finnhub.io/api/v1/stock/profile2?symbol=${symbol}&token=${FINNHUB_API_KEY}`
-    );
-    return response.data.logo || null;
-  } catch (error) {
-    console.error(`Error fetching logo for ${symbol}:`, error);
-    return null;
-  }
-};
 
 const AlertItem = ({ alert, touched_side, onViewDetails, isSmallScreen, index }) => {
   const { symbol, close_price,low_price,high_price, bb_upper, bb_lower, recent_closes = [] } = alert;

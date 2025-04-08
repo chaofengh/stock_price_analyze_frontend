@@ -1,17 +1,20 @@
-// Fetch company logo from Finnhub API
+// src/API/FetchCompanyLogo.js
+
 import axios from "axios";
 
-// Finnhub API Key from .env file
-const FINNHUB_API_KEY = process.env.REACT_APP_Finnhub_API_Key;
+const stock_summary_api_key = process.env.REACT_APP_summary_root_api;
 
-export async function fetchCompanyLogo (symbol){
+// We'll call your backend's route now
+export async function fetchCompanyLogo(symbol) {
   try {
-    const response = await axios.get(
-      `https://finnhub.io/api/v1/stock/profile2?symbol=${symbol}&token=${FINNHUB_API_KEY}`
-    );
-    return response.data.logo || null;
+    const response = await axios.get(`${stock_summary_api_key}/tickers/${symbol}/logo`);
+    // The route returns { symbol, logo_base64 }
+    // Convert the Base64 string to a data URL:
+    const base64 = response.data.logo_base64;
+    if (!base64) return null;
+    return `data:image/png;base64,${base64}`;
   } catch (error) {
-    console.error(`Error fetching logo for ${symbol}:`, error);
+    console.error(`Error fetching logo for ${symbol} from backend:`, error);
     return null;
   }
-};
+}
