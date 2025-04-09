@@ -17,13 +17,13 @@ import {
   Tooltip
 } from '@mui/material';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
+
 import AggregatedResultsTable from './AggregatedResultsTable';
 import DailyTradeDetails from './DailyTradeDetails';
 import CalendarComponent from './CalendarComponent';
 import CandleChart from './CandleChart';
 
-// 1) Helper to convert a date/time string to YYYY-MM-DD 
-//    (used only for grouping daily PnL).
+// 1) Helper: convert a date/time string to YYYY-MM-DD (for daily grouping).
 function getLocalDateString(dateInput) {
   const d = new Date(dateInput);
   const year = d.getFullYear();
@@ -32,8 +32,7 @@ function getLocalDateString(dateInput) {
   return `${year}-${month}-${day}`;
 }
 
-// 2) Sum daily PnL by the local day from 'entry_time' 
-//    (so the calendar can color-code each day).
+// 2) Sum daily PnL from scenario's trades by local day
 function aggregateDailyPnl(dailyTrades) {
   return dailyTrades.reduce((acc, trade) => {
     const dateKey = getLocalDateString(trade.entry_time);
@@ -44,7 +43,6 @@ function aggregateDailyPnl(dailyTrades) {
 }
 
 // 3) Find the candlestick nearest to a given trade time
-//    so the annotation can appear on the correct bar.
 function findNearestDataPoint(data, targetTime) {
   let minDiff = Infinity;
   let nearest = null;
@@ -86,8 +84,8 @@ const OpeningRangeBreakout = () => {
   const theme = createTheme({
     palette: {
       mode: darkMode ? 'dark' : 'light',
-      primary: { main: '#1976d2' }
-    }
+      primary: { main: '#1976d2' },
+    },
   });
 
   // 4) Fetch data from your backend
@@ -108,11 +106,7 @@ const OpeningRangeBreakout = () => {
       }
       const data = await response.json();
 
-      // 'data.scenarios' includes daily trades (with full entry_time/exit_time).
       setResults(data.scenarios);
-
-      // 'data.intraday_data' is the array of candlesticks for all dates.
-      // Each record includes a Date/time stamp in record.date
       setIntradayDataAll(data.intraday_data);
     } catch (err) {
       console.error(err);
@@ -133,11 +127,10 @@ const OpeningRangeBreakout = () => {
   const handleRowClick = (scenario) => {
     setSelectedScenario(scenario);
 
-    // Aggregate daily PnL for the scenario's trades (by entry_time)
+    // Aggregate daily PnL for the scenario's trades
     const dailyPnls = aggregateDailyPnl(scenario.daily_trades);
     setCalendarData(dailyPnls);
 
-    // Reset date, intraday data, etc.
     setOpenDialog(true);
     setSelectedTab(0);
     setSelectedDate(null);
@@ -147,6 +140,7 @@ const OpeningRangeBreakout = () => {
 
   const handleCloseDialog = () => {
     setOpenDialog(false);
+    setSelectedScenario(null);
     setSelectedDate(null);
     setIntradayData([]);
     setAnnotations([]);
@@ -157,12 +151,11 @@ const OpeningRangeBreakout = () => {
     if (view === 'month') {
       const dateStr = getLocalDateString(date);
       const pnl = calendarData[dateStr];
-      const isSelectedDate = selectedDate && selectedDate === dateStr;
+      const isSelected = selectedDate === dateStr;
 
       if (pnl !== undefined) {
         const color = pnl > 0 ? 'green' : pnl < 0 ? 'red' : 'inherit';
-        const fontWeight = isSelectedDate ? 'bold' : 'normal';
-
+        const fontWeight = isSelected ? 'bold' : 'normal';
         return (
           <Tooltip title={`PNL: ${pnl.toFixed(2)}`} arrow>
             <div
@@ -173,7 +166,7 @@ const OpeningRangeBreakout = () => {
                 fontWeight,
                 background: 'transparent',
                 borderRadius: '4px',
-                margin: '0 4px'
+                margin: '0 4px',
               }}
             >
               {pnl.toFixed(2)}
@@ -185,22 +178,18 @@ const OpeningRangeBreakout = () => {
     return null;
   };
 
-  // 8) When the user picks a date from the calendar:
-  //    -> filter intraday data for that day
-  //    -> find trades for that day
-  //    -> create annotations that contain the full time
+  // 8) When user picks a date from the calendar
   const handleCalendarChange = (date) => {
     setCalendarValue(date);
 
-    // We'll store "YYYY-MM-DD" in selectedDate just for labeling
     const dateStr = getLocalDateString(date);
     setSelectedDate(dateStr);
 
-    // Filter intraday data for the chosen day, preserving the time in each candle
+    // Filter intraday data for that day
     const dayData = intradayDataAll
       .filter(record => getLocalDateString(record.date) === dateStr)
       .map(record => ({
-        date: new Date(record.date), // preserve the time
+        date: new Date(record.date),
         open: record.open,
         high: record.high,
         low: record.low,
@@ -210,58 +199,46 @@ const OpeningRangeBreakout = () => {
 
     setIntradayData(dayData);
 
-    // Build up the list of buy/sell annotations for that day (if any).
+    // Build buy/sell annotations if there's a trade on that day
     if (selectedScenario) {
-      // Find a trade whose entry_time is on this selected day
-      const trade = selectedScenario.daily_trades.find(t => {
-        // Check if this trade’s entry_time is the same day
-        return getLocalDateString(t.entry_time) === dateStr;
-      });
+      const trade = selectedScenario.daily_trades.find(t =>
+        getLocalDateString(t.entry_time) === dateStr
+      );
 
       if (trade) {
         const newAnnotations = [];
 
-        // Make sure we log the full trade object so we see entry_time + time
-
-        // If there's an entry_time, find the nearest candle
         if (trade.entry_time) {
           const entryTime = new Date(trade.entry_time);
           const entryDataPoint = findNearestDataPoint(dayData, entryTime);
-
           if (entryDataPoint) {
             newAnnotations.push({
-              date: entryDataPoint.date, // full timestamp
+              date: entryDataPoint.date,
               fill: 'green',
               path: () => 'M0,0 L10,10',
               tooltip: `Entry @ ${entryTime.toLocaleTimeString()}`,
-              isBuy: true
             });
           }
         }
 
-        // If there's an exit_time, find the nearest candle
         if (trade.exit_time) {
           const exitTime = new Date(trade.exit_time);
           const exitDataPoint = findNearestDataPoint(dayData, exitTime);
-
           if (exitDataPoint) {
             newAnnotations.push({
-              date: exitDataPoint.date, // full timestamp
+              date: exitDataPoint.date,
               fill: 'red',
               path: () => 'M0,0 L10,10',
               tooltip: `Exit @ ${exitTime.toLocaleTimeString()}`,
-              isBuy: false
             });
           }
         }
 
         setAnnotations(newAnnotations);
       } else {
-        // No trade on that date
         setAnnotations([]);
       }
     } else {
-      // No scenario selected, or no trade on that date
       setAnnotations([]);
     }
   };
@@ -270,7 +247,6 @@ const OpeningRangeBreakout = () => {
   const handleTabChange = (e, newValue) => {
     setSelectedTab(newValue);
   };
-
 
   return (
     <ThemeProvider theme={theme}>
@@ -326,6 +302,7 @@ const OpeningRangeBreakout = () => {
           </Typography>
         )}
 
+        {/* Only show table if we have results */}
         {results.length > 0 && (
           <AggregatedResultsTable
             results={results}
@@ -334,7 +311,7 @@ const OpeningRangeBreakout = () => {
         )}
       </Paper>
 
-      {/* Dialog showing the calendar & chart, plus trade details */}
+      {/* Dialog for scenario details (Calendar + Chart or DailyTradeDetails) */}
       <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="xl" fullWidth>
         <DialogTitle>
           {selectedScenario?.scenario_name || 'Scenario Details'}
@@ -345,90 +322,55 @@ const OpeningRangeBreakout = () => {
             <Tab label="Trade Details" />
           </Tabs>
 
+          {/* CALENDAR & CHART TAB */}
           {selectedTab === 0 && (
             <Box sx={{ p: 2 }}>
               <Box
                 sx={{
                   display: 'flex',
-                  flexDirection: { xs: 'column', md: 'row' },
-                  gap: 2,
-                  height: 500, // Ensure both the calendar & chart match in height
+                  flexDirection: 'column',
+                  gap: 3,
                 }}
               >
                 {/* Calendar Section */}
-                <Box
-                  sx={{
-                    flex: 1,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    border: '1px solid #ccc',
-                    borderRadius: 2,
-                    overflow: 'hidden',
-                  }}
-                >
-                  <Typography
-                    variant="subtitle1"
-                    sx={{
-                      p: 2,
-                      borderBottom: '1px solid #ccc',
-                      fontWeight: 'bold',
-                    }}
-                  >
-                    Select a date to see daily PNL &amp; intraday chart:
+                <Paper elevation={2} sx={{ p: 2 }}>
+                  <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 'bold' }}>
+                    Select a Date
                   </Typography>
-                  <Box sx={{ flex: 1, p: 2 }}>
-                    <CalendarComponent
-                      value={calendarValue}
-                      onChange={handleCalendarChange}
-                      tileContent={tileContent}
-                      height="100%"
-                    />
-                  </Box>
-                </Box>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                    Choose a date below to view daily PNL and the intraday chart.
+                  </Typography>
+                  <CalendarComponent
+                    value={calendarValue}
+                    onChange={handleCalendarChange}
+                    tileContent={tileContent}
+                    height="100%"
+                  />
+                </Paper>
 
                 {/* Chart Section */}
-                <Box
-                  sx={{
-                    flex: 1,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    border: '1px solid #ccc',
-                    borderRadius: 2,
-                    overflow: 'hidden',
-                  }}
-                >
-                  <Typography
-                    variant="subtitle1"
-                    sx={{
-                      p: 2,
-                      borderBottom: '1px solid #ccc',
-                      fontWeight: 'bold',
-                    }}
-                  >
-                    {selectedDate
-                      ? `Intraday Chart for ${selectedDate}`
-                      : 'Please select a date'}
+                <Paper elevation={2} sx={{ p: 2 }}>
+                  <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 'bold' }}>
+                    Intraday Chart {selectedDate ? `– ${selectedDate}` : ''}
                   </Typography>
-                  <Box sx={{ flex: 1, p: 2 }}>
-                    {selectedDate && intradayData && intradayData.length > 0 ? (
-                      <CandleChart
-                        data={intradayData}
-                        annotations={annotations}
-                        height={400}
-                      />
-                    ) : (
-                      <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-                        {selectedDate
-                          ? 'No intraday data found for this date.'
-                          : 'No date selected.'}
-                      </Typography>
-                    )}
-                  </Box>
-                </Box>
+                  {selectedDate && intradayData?.length > 0 ? (
+                    <CandleChart
+                      data={intradayData}
+                      annotations={annotations}
+                    />
+                  ) : (
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                      {selectedDate
+                        ? 'No intraday data found for this date.'
+                        : 'No date selected.'}
+                    </Typography>
+                  )}
+                </Paper>
               </Box>
             </Box>
           )}
 
+          {/* TRADE DETAILS TAB */}
           {selectedTab === 1 && (
             <Box sx={{ p: 2 }}>
               {selectedScenario ? (

@@ -6,10 +6,12 @@ import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import InfoIcon from '@mui/icons-material/Info';
 
 const AggregatedResultsTable = ({ results, onRowClick }) => {
+  // Identify the best/worst net pnl to highlight
   const netPnLs = results.map((r) => r.net_pnl);
   const bestPnl = Math.max(...netPnLs);
   const worstPnl = Math.min(...netPnLs);
 
+  // Utility to render a header with an info tooltip
   const renderHeaderWithTooltip = (headerText, tooltipText) => (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
       <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
@@ -21,6 +23,7 @@ const AggregatedResultsTable = ({ results, onRowClick }) => {
     </Box>
   );
 
+  // Define columns
   const columns = [
     {
       field: 'scenario_name',
@@ -56,14 +59,24 @@ const AggregatedResultsTable = ({ results, onRowClick }) => {
         const displayVal = params.row.net_pnl_formatted || rawVal;
         const color = rawVal < 0 ? 'red' : 'green';
         const Icon = rawVal < 0 ? ArrowDownwardIcon : ArrowUpwardIcon;
+
+        // Highlight best/worst cells
         let highlight = {};
         if (rawVal === bestPnl) {
           highlight = { backgroundColor: 'rgba(0,255,0,0.1)' };
         } else if (rawVal === worstPnl) {
           highlight = { backgroundColor: 'rgba(255,0,0,0.1)' };
         }
+
         return (
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ...highlight }}>
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
+              ...highlight
+            }}
+          >
             <Icon sx={{ color, fontSize: '1.2rem' }} />
             <Typography variant="body2" sx={{ color, fontWeight: 'bold' }}>
               {displayVal}
@@ -156,12 +169,14 @@ const AggregatedResultsTable = ({ results, onRowClick }) => {
     },
   ];
 
+  // Create DataGrid rows
   const rows = results.map((item, index) => ({
     id: index,
     ...item,
     date: new Date(item.date).toLocaleDateString(),
   }));
 
+  // Row click handler
   const handleRowClick = useCallback(
     (params) => {
       onRowClick && onRowClick(params.row);
@@ -171,7 +186,10 @@ const AggregatedResultsTable = ({ results, onRowClick }) => {
 
   return (
     <Box sx={{ width: '100%', mt: 2 }}>
-      <Paper elevation={3} sx={{ p: 2 }}>
+      <Paper elevation={2} sx={{ p: 2 }}>
+        <Typography variant="h6" sx={{ mb: 1 }}>
+          Aggregated Results
+        </Typography>
         <DataGrid
           rows={rows}
           columns={columns}
@@ -179,11 +197,11 @@ const AggregatedResultsTable = ({ results, onRowClick }) => {
           disableSelectionOnClick
           onRowClick={handleRowClick}
           autoHeight
-          headerHeight={70}
+          headerHeight={60}
           sx={{
             fontSize: '0.95rem',
             '& .MuiDataGrid-columnHeaders': {
-              backgroundColor: 'rgba(20, 133, 203, 0.2)',
+              backgroundColor: 'rgba(25, 118, 210, 0.1)',
             },
           }}
         />

@@ -4,13 +4,10 @@ import 'react-calendar/dist/Calendar.css';
 import { Box } from '@mui/material';
 
 function CalendarComponent({ value, onChange, tileContent, height = 450 }) {
-  
   return (
     <Box
       sx={{
         margin: '0 auto',
-        mt: 2,
-        mb: 2,
         width: '100%',
         height,
       }}
@@ -67,18 +64,18 @@ function CalendarComponent({ value, onChange, tileContent, height = 450 }) {
             borderRadius: '4px',
             '&:hover': {
               backgroundColor: 'transparent',
-              border: '2px solid #1976d2',
             },
           },
           '& .react-calendar__tile:focus': {
             backgroundColor: 'transparent',
           },
-          '& .react-calendar__tile--active:focus': {
-            backgroundColor: 'transparent',
-          },
         }}
       >
-        <Calendar onChange={onChange} value={value} tileContent={tileContent} />
+        <Calendar
+          onChange={onChange}
+          value={value}
+          tileContent={tileContent}
+        />
       </Box>
     </Box>
   );
