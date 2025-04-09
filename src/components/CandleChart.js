@@ -57,7 +57,7 @@ function TradeHighlight({ entryDate, exitDate }) {
 
 function CandleChart({
   data,
-  width = 1200,
+  width = 1450,
   height = 650,
   annotations = [],
 }) {
