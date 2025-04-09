@@ -7,8 +7,6 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  Switch,
-  FormControlLabel,
   Paper,
   Tabs,
   Tab,
@@ -76,14 +74,13 @@ const OpeningRangeBreakout = () => {
   const [intradayData, setIntradayData] = useState([]);
   const [annotations, setAnnotations] = useState([]);
 
-  // Tabs and dark mode
+  // Tabs (removed dark mode state)
   const [selectedTab, setSelectedTab] = useState(0);
-  const [darkMode, setDarkMode] = useState(false);
 
-  // Create MUI theme
+  // Create MUI theme (always light mode)
   const theme = createTheme({
     palette: {
-      mode: darkMode ? 'dark' : 'light',
+      mode: 'light',
       primary: { main: '#1976d2' },
     },
   });
@@ -271,18 +268,6 @@ const OpeningRangeBreakout = () => {
             <Button fullWidth variant="contained" onClick={handleSearch}>
               Search
             </Button>
-          </Grid>
-          <Grid item xs={12} sm={6} md={2}>
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={darkMode}
-                  onChange={(e) => setDarkMode(e.target.checked)}
-                  color="primary"
-                />
-              }
-              label="Dark Mode"
-            />
           </Grid>
         </Grid>
 
