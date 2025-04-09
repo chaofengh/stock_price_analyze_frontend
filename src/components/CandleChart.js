@@ -1,188 +1,134 @@
-import React from "react";
-import { Typography } from "@mui/material";
-import {
-  ChartCanvas,
-  Chart,
-  CandlestickSeries,
-  BarSeries,
-  XAxis,
-  YAxis,
-  discontinuousTimeScaleProvider,
-  OHLCTooltip,
-  MouseCoordinateX,
-  MouseCoordinateY,
-  Annotate,
-  SvgPathAnnotation,
-  GenericChartComponent,
-  withDeviceRatio,
-} from "react-financial-charts";
+import React from 'react';
 
-/**
- * Custom component that draws a semi-transparent rectangle
- * from the entry date to the exit date behind the candlesticks.
- */
-function TradeHighlight({ entryDate, exitDate }) {
-  return (
-    <GenericChartComponent
-      clip={false}
-      svgDraw={info => {
-        const { xScale, chartConfig } = info;
-        const { height } = chartConfig;
-
-        if (!entryDate || !exitDate) return null;
-
-        const x1 = xScale(entryDate);
-        const x2 = xScale(exitDate);
-
-        if (x1 == null || x2 == null) return null;
-
-        const left = Math.min(x1, x2);
-        const right = Math.max(x1, x2);
-        const width = right - left;
-
-        // Draw a translucent green rectangle
-        return (
-          <rect
-            x={left}
-            y={0}
-            width={width}
-            height={height}
-            fill="rgba(46, 204, 113, 0.1)"
-          />
-        );
-      }}
-    />
-  );
-}
-
-function CandleChart({
-  data,
-  width = 1450,
-  height = 650,
-  annotations = [],
-}) {
-  if (!data || data.length === 0) {
-    return <Typography>No intraday data available for this date.</Typography>;
+function CandleChart({ data, annotations }) {
+  if (!data || !Array.isArray(data) || data.length === 0) {
+    return <div>No data available</div>;
   }
 
-  // Typically the first annotation is entry, second is exit.
-  const entry = annotations[0];
-  const exit = annotations[1];
+  console.log(annotations)
 
-  const xScaleProvider = discontinuousTimeScaleProvider.inputDateAccessor(
-    (d) => d.date
-  );
-  const { data: chartData, xScale, xAccessor, displayXAccessor } =
-    xScaleProvider(data);
+  // Define chart dimensions and margins
+  const width = 800;
+  const height = 400;
+  const margin = { top: 20, right: 20, bottom: 40, left: 40 };
+  const candleWidth = 10;
 
-  const margin = { left: 70, right: 70, top: 20, bottom: 30 };
-  const yExtentsCandle = (d) => [d.high, d.low];
-  const yExtentsVolume = (d) => d.volume;
+  // Determine the overall min and max price for vertical scaling
+  const prices = data.flatMap(d => [d.low, d.high]);
+  const minPrice = Math.min(...prices);
+  const maxPrice = Math.max(...prices);
+
+  // Define the vertical scale function
+  const scaleY = price =>
+    margin.top + ((maxPrice - price) / (maxPrice - minPrice)) * (height - margin.top - margin.bottom);
+
+  // Compute the time domain from the data dates (as timestamps)
+  const dateValues = data.map(d => new Date(d.date).getTime());
+  const minDate = Math.min(...dateValues);
+  const maxDate = Math.max(...dateValues);
+
+  // Define a horizontal time scale based on the date value.
+  // This maps a given date to an x coordinate within the margins.
+  const scaleX = (date) => {
+    const time = new Date(date).getTime();
+    return margin.left + ((time - minDate) / (maxDate - minDate)) * (width - margin.left - margin.right);
+  };
+
+  // Prepare a few tick marks for the x-axis: min, mid, and max dates.
+  const midDate = new Date((minDate + maxDate) / 2);
+  const tickDates = [new Date(minDate), midDate, new Date(maxDate)];
 
   return (
-    <ChartCanvas
-      height={height}
-      width={width}
-      ratio={1}
-      margin={margin}
-      data={chartData}
-      xScale={xScale}
-      xAccessor={xAccessor}
-      displayXAccessor={displayXAccessor}
-      seriesName="Candles"
-      zoomEvent={false}
-      panEvent={false}
-      style={{ backgroundColor: "#fafafa" }}
-    >
-      {/* MAIN CANDLE CHART */}
-      <Chart id={1} yExtents={yExtentsCandle} height={height * 0.7}>
-        <XAxis
-          showGridLines
-          gridLinesStrokeStyle="#eaeaea"
-          tickLabelFill="#666"
-          axisLine={{ stroke: "#999" }}
-          tickLine={{ stroke: "#999" }}
+    <svg width={width} height={height}>
+      {/* Draw a translucent annotation rectangle if annotations are provided */}
+      {annotations && annotations.length >= 2 && (
+        <rect
+          x={scaleX(annotations[0].date)}
+          y={margin.top}
+          width={scaleX(annotations[1].date) - scaleX(annotations[0].date)}
+          height={height - margin.top - margin.bottom}
+          fill="rgba(100, 149, 237, 0.2)"  // light, transparent color
         />
-        <YAxis
-          showGridLines
-          gridLinesStrokeStyle="#eaeaea"
-          tickLabelFill="#666"
-          axisLine={{ stroke: "#999" }}
-          tickLine={{ stroke: "#999" }}
-        />
+      )}
 
-        {/* Light green highlight between entry and exit */}
-        {entry && exit && (
-          <TradeHighlight entryDate={entry.date} exitDate={exit.date} />
-        )}
+      {/* Draw the candlesticks */}
+      {data.map((d, i) => {
+        // Use the date from each data item to compute its position (centered on the x-axis)
+        const centerX = scaleX(d.date);
+        // Subtract half the candle width for proper centering of the rectangle
+        const x = centerX - candleWidth / 2;
 
-        <MouseCoordinateY
-          rectWidth={margin.right}
-          displayFormat={(val) => val.toFixed(2)}
-        />
+        // Compute vertical positions using the price scale
+        const yHigh = scaleY(d.high);
+        const yLow = scaleY(d.low);
+        const yOpen = scaleY(d.open);
+        const yClose = scaleY(d.close);
+        const bodyTop = Math.min(yOpen, yClose);
+        const bodyBottom = Math.max(yOpen, yClose);
+        const bodyHeight = Math.max(bodyBottom - bodyTop, 1);  // Ensure a minimum height if prices are equal
 
-        <CandlestickSeries
-          wickStroke={(d) => (d.close > d.open ? "#27ae60" : "#c0392b")}
-          fill={(d) => (d.close > d.open ? "#2ecc71" : "#e74c3c")}
-          stroke={(d) => (d.close > d.open ? "#27ae60" : "#c0392b")}
-        />
+        // Determine color: green if the price went up, red if it went down
+        const color = d.close >= d.open ? 'green' : 'red';
 
-        {/* Show OHLC in top-left corner */}
-        <OHLCTooltip origin={[5, 0]} textFill="#333" />
+        return (
+          <g key={i}>
+            {/* Draw the wick */}
+            <line
+              x1={centerX}
+              y1={yHigh}
+              x2={centerX}
+              y2={yLow}
+              stroke="black"
+            />
+            {/* Draw the candle body */}
+            <rect
+              x={x}
+              y={bodyTop}
+              width={candleWidth}
+              height={bodyHeight}
+              fill={color}
+            />
+          </g>
+        );
+      })}
 
-        {/* Entry/Exit Annotations */}
-        {annotations.map((ann, idx) => (
-          <Annotate
-            key={idx}
-            with={SvgPathAnnotation}
-            when={(d) => d.date.getTime() === ann.date.getTime()}
-            usingProps={{
-              y: ({ yScale, datum }) => yScale(datum.high) - 10,
-              fill: ann.fill,
-              path: ann.path,
-              tooltip: ann.tooltip,
-              tooltipBgColor: "#333",
-              tooltipTextColor: "#fff",
-              tooltipFontSize: 14,
-            }}
-          />
-        ))}
-      </Chart>
+      {/* Draw the x-axis line */}
+      <line
+        x1={margin.left}
+        y1={height - margin.bottom}
+        x2={width - margin.right}
+        y2={height - margin.bottom}
+        stroke="black"
+      />
 
-      {/* VOLUME CHART */}
-      <Chart
-        id={2}
-        origin={(w, h) => [0, height * 0.7]}
-        height={height * 0.3}
-        yExtents={yExtentsVolume}
-      >
-        <XAxis
-          showGridLines
-          gridLinesStrokeStyle="#eaeaea"
-          tickLabelFill="#666"
-          axisLine={{ stroke: "#999" }}
-          tickLine={{ stroke: "#999" }}
-        />
-        <YAxis
-          showGridLines
-          gridLinesStrokeStyle="#eaeaea"
-          tickFormat={(val) => (val / 1000).toFixed(0) + "K"}
-          tickLabelFill="#666"
-          axisLine={{ stroke: "#999" }}
-          tickLine={{ stroke: "#999" }}
-        />
-        <MouseCoordinateX displayFormat={(val) => val.toLocaleString()} />
-        <MouseCoordinateY displayFormat={(val) => val.toFixed(0)} />
-
-        <BarSeries
-          yAccessor={(d) => d.volume}
-          fill={(d) =>
-            d.close > d.open ? "rgba(46,204,113,0.7)" : "rgba(231,76,60,0.7)"
-          }
-        />
-      </Chart>
-    </ChartCanvas>
+      {/* Draw x-axis tick marks and labels */}
+      {tickDates.map((tickDate, idx) => {
+        const xPos = scaleX(tickDate);
+        // Format the tick label (for example, as MM/DD/YYYY)
+        const label = tickDate.toLocaleDateString();
+        return (
+          <g key={idx}>
+            <line
+              x1={xPos}
+              y1={height - margin.bottom}
+              x2={xPos}
+              y2={height - margin.bottom + 5}
+              stroke="black"
+            />
+            <text
+              x={xPos}
+              y={height - margin.bottom + 15}
+              textAnchor="middle"
+              fontSize="10"
+              fill="black"
+            >
+              {label}
+            </text>
+          </g>
+        );
+      })}
+    </svg>
   );
 }
 
-export default withDeviceRatio()(CandleChart);
+export default CandleChart;

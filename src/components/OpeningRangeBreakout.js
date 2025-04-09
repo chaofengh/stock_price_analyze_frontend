@@ -217,6 +217,7 @@ const OpeningRangeBreakout = () => {
               fill: 'green',
               path: () => 'M0,0 L10,10',
               tooltip: `Entry @ ${entryTime.toLocaleTimeString()}`,
+              direction: trade.direction
             });
           }
         }
@@ -230,6 +231,7 @@ const OpeningRangeBreakout = () => {
               fill: 'red',
               path: () => 'M0,0 L10,10',
               tooltip: `Exit @ ${exitTime.toLocaleTimeString()}`,
+              direction: trade.direction
             });
           }
         }
