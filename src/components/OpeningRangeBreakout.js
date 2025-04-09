@@ -22,7 +22,8 @@ import DailyTradeDetails from './DailyTradeDetails';
 import CalendarComponent from './CalendarComponent';
 import CandleChart from './CandleChart';
 
-// Convert a date/time string to YYYY-MM-DD in the user's local time
+// 1) Helper to convert a date/time string to YYYY-MM-DD 
+//    (used only for grouping daily PnL).
 function getLocalDateString(dateInput) {
   const d = new Date(dateInput);
   const year = d.getFullYear();
@@ -31,7 +32,8 @@ function getLocalDateString(dateInput) {
   return `${year}-${month}-${day}`;
 }
 
-// Sum daily PnL by local date using 'entry_time'
+// 2) Sum daily PnL by the local day from 'entry_time' 
+//    (so the calendar can color-code each day).
 function aggregateDailyPnl(dailyTrades) {
   return dailyTrades.reduce((acc, trade) => {
     const dateKey = getLocalDateString(trade.entry_time);
@@ -41,7 +43,8 @@ function aggregateDailyPnl(dailyTrades) {
   }, {});
 }
 
-// For intraday annotation, find the nearest candlestick to a given time
+// 3) Find the candlestick nearest to a given trade time
+//    so the annotation can appear on the correct bar.
 function findNearestDataPoint(data, targetTime) {
   let minDiff = Infinity;
   let nearest = null;
@@ -60,17 +63,26 @@ const OpeningRangeBreakout = () => {
   const [results, setResults] = useState([]);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  // Dialog and scenario states
   const [openDialog, setOpenDialog] = useState(false);
   const [selectedScenario, setSelectedScenario] = useState(null);
+
+  // Calendar & chart states
   const [calendarValue, setCalendarValue] = useState(new Date());
   const [calendarData, setCalendarData] = useState({});
   const [selectedDate, setSelectedDate] = useState(null);
+
+  // Intraday data
   const [intradayDataAll, setIntradayDataAll] = useState([]);
   const [intradayData, setIntradayData] = useState([]);
   const [annotations, setAnnotations] = useState([]);
+
+  // Tabs and dark mode
   const [selectedTab, setSelectedTab] = useState(0);
   const [darkMode, setDarkMode] = useState(false);
 
+  // Create MUI theme
   const theme = createTheme({
     palette: {
       mode: darkMode ? 'dark' : 'light',
@@ -78,7 +90,7 @@ const OpeningRangeBreakout = () => {
     }
   });
 
-  // Fetch data from the backend
+  // 4) Fetch data from your backend
   const handleSearch = async () => {
     if (!ticker) return;
     setError(null);
@@ -95,7 +107,12 @@ const OpeningRangeBreakout = () => {
         throw new Error(`Error fetching data: ${response.statusText}`);
       }
       const data = await response.json();
+
+      // 'data.scenarios' includes daily trades (with full entry_time/exit_time).
       setResults(data.scenarios);
+
+      // 'data.intraday_data' is the array of candlesticks for all dates.
+      // Each record includes a Date/time stamp in record.date
       setIntradayDataAll(data.intraday_data);
     } catch (err) {
       console.error(err);
@@ -105,17 +122,22 @@ const OpeningRangeBreakout = () => {
     }
   };
 
+  // 5) Allow hitting 'Enter' in the ticker TextField
   const handleKeyDown = (e) => {
     if (e.key === 'Enter') {
       handleSearch();
     }
   };
 
-  // Open the scenario dialog and prepare calendar data
+  // 6) Clicking on a row -> open scenario details in a dialog
   const handleRowClick = (scenario) => {
     setSelectedScenario(scenario);
+
+    // Aggregate daily PnL for the scenario's trades (by entry_time)
     const dailyPnls = aggregateDailyPnl(scenario.daily_trades);
     setCalendarData(dailyPnls);
+
+    // Reset date, intraday data, etc.
     setOpenDialog(true);
     setSelectedTab(0);
     setSelectedDate(null);
@@ -130,7 +152,7 @@ const OpeningRangeBreakout = () => {
     setAnnotations([]);
   };
 
-  // Calendar tile content with a simpler numeric PnL display
+  // 7) Calendar tile content: show numeric PnL
   const tileContent = ({ date, view }) => {
     if (view === 'month') {
       const dateStr = getLocalDateString(date);
@@ -163,74 +185,92 @@ const OpeningRangeBreakout = () => {
     return null;
   };
 
-  // Handle calendar change: update intraday chart and annotations
+  // 8) When the user picks a date from the calendar:
+  //    -> filter intraday data for that day
+  //    -> find trades for that day
+  //    -> create annotations that contain the full time
   const handleCalendarChange = (date) => {
     setCalendarValue(date);
+
+    // We'll store "YYYY-MM-DD" in selectedDate just for labeling
     const dateStr = getLocalDateString(date);
     setSelectedDate(dateStr);
 
-    // Filter intraday data for the chosen date
+    // Filter intraday data for the chosen day, preserving the time in each candle
     const dayData = intradayDataAll
       .filter(record => getLocalDateString(record.date) === dateStr)
       .map(record => ({
-        date: new Date(record.date),
+        date: new Date(record.date), // preserve the time
         open: record.open,
         high: record.high,
         low: record.low,
         close: record.close,
-        volume: record.volume
+        volume: record.volume,
       }));
+
     setIntradayData(dayData);
 
-    // Build annotations if there's a trade on that date
+    // Build up the list of buy/sell annotations for that day (if any).
     if (selectedScenario) {
-      const trade = selectedScenario.daily_trades.find(
-        t => getLocalDateString(t.entry_time) === dateStr
-      );
+      // Find a trade whose entry_time is on this selected day
+      const trade = selectedScenario.daily_trades.find(t => {
+        // Check if this trade’s entry_time is the same day
+        return getLocalDateString(t.entry_time) === dateStr;
+      });
 
       if (trade) {
         const newAnnotations = [];
 
-        // Entry annotation
+        // Make sure we log the full trade object so we see entry_time + time
+
+        // If there's an entry_time, find the nearest candle
         if (trade.entry_time) {
           const entryTime = new Date(trade.entry_time);
           const entryDataPoint = findNearestDataPoint(dayData, entryTime);
+
           if (entryDataPoint) {
             newAnnotations.push({
-              date: entryDataPoint.date,
+              date: entryDataPoint.date, // full timestamp
               fill: 'green',
               path: () => 'M0,0 L10,10',
-              tooltip: 'Entry'
+              tooltip: `Entry @ ${entryTime.toLocaleTimeString()}`,
+              isBuy: true
             });
           }
         }
 
-        // Exit annotation
+        // If there's an exit_time, find the nearest candle
         if (trade.exit_time) {
           const exitTime = new Date(trade.exit_time);
           const exitDataPoint = findNearestDataPoint(dayData, exitTime);
+
           if (exitDataPoint) {
             newAnnotations.push({
-              date: exitDataPoint.date,
+              date: exitDataPoint.date, // full timestamp
               fill: 'red',
               path: () => 'M0,0 L10,10',
-              tooltip: 'Exit'
+              tooltip: `Exit @ ${exitTime.toLocaleTimeString()}`,
+              isBuy: false
             });
           }
         }
 
         setAnnotations(newAnnotations);
       } else {
+        // No trade on that date
         setAnnotations([]);
       }
     } else {
+      // No scenario selected, or no trade on that date
       setAnnotations([]);
     }
   };
 
+  // 9) Tab switching
   const handleTabChange = (e, newValue) => {
     setSelectedTab(newValue);
   };
+
 
   return (
     <ThemeProvider theme={theme}>
@@ -287,10 +327,14 @@ const OpeningRangeBreakout = () => {
         )}
 
         {results.length > 0 && (
-          <AggregatedResultsTable results={results} onRowClick={handleRowClick} />
+          <AggregatedResultsTable
+            results={results}
+            onRowClick={handleRowClick}
+          />
         )}
       </Paper>
 
+      {/* Dialog showing the calendar & chart, plus trade details */}
       <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="xl" fullWidth>
         <DialogTitle>
           {selectedScenario?.scenario_name || 'Scenario Details'}
@@ -303,47 +347,85 @@ const OpeningRangeBreakout = () => {
 
           {selectedTab === 0 && (
             <Box sx={{ p: 2 }}>
-              <Grid container spacing={2}>
-                {/* Calendar Section (left half) */}
-                <Grid item xs={12} md={6}>
-                  <Typography variant="subtitle1" sx={{ mb: 1 }}>
-                    Select a date to see daily PNL & intraday chart:
+              <Box
+                sx={{
+                  display: 'flex',
+                  flexDirection: { xs: 'column', md: 'row' },
+                  gap: 2,
+                  height: 500, // Ensure both the calendar & chart match in height
+                }}
+              >
+                {/* Calendar Section */}
+                <Box
+                  sx={{
+                    flex: 1,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    border: '1px solid #ccc',
+                    borderRadius: 2,
+                    overflow: 'hidden',
+                  }}
+                >
+                  <Typography
+                    variant="subtitle1"
+                    sx={{
+                      p: 2,
+                      borderBottom: '1px solid #ccc',
+                      fontWeight: 'bold',
+                    }}
+                  >
+                    Select a date to see daily PNL &amp; intraday chart:
                   </Typography>
-                  <CalendarComponent
-                    value={calendarValue}
-                    onChange={handleCalendarChange}
-                    tileContent={tileContent}
-                    height={450}
-                  />
-                </Grid>
+                  <Box sx={{ flex: 1, p: 2 }}>
+                    <CalendarComponent
+                      value={calendarValue}
+                      onChange={handleCalendarChange}
+                      tileContent={tileContent}
+                      height="100%"
+                    />
+                  </Box>
+                </Box>
 
-                {/* Chart Section (right half) */}
-                <Grid item xs={12} md={6}>
-                  {selectedDate ? (
-                    <Box>
-                      <Typography variant="subtitle1" gutterBottom>
-                        Intraday Chart for {selectedDate}
+                {/* Chart Section */}
+                <Box
+                  sx={{
+                    flex: 1,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    border: '1px solid #ccc',
+                    borderRadius: 2,
+                    overflow: 'hidden',
+                  }}
+                >
+                  <Typography
+                    variant="subtitle1"
+                    sx={{
+                      p: 2,
+                      borderBottom: '1px solid #ccc',
+                      fontWeight: 'bold',
+                    }}
+                  >
+                    {selectedDate
+                      ? `Intraday Chart for ${selectedDate}`
+                      : 'Please select a date'}
+                  </Typography>
+                  <Box sx={{ flex: 1, p: 2 }}>
+                    {selectedDate && intradayData && intradayData.length > 0 ? (
+                      <CandleChart
+                        data={intradayData}
+                        annotations={annotations}
+                        height={400}
+                      />
+                    ) : (
+                      <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                        {selectedDate
+                          ? 'No intraday data found for this date.'
+                          : 'No date selected.'}
                       </Typography>
-                      <Box sx={{ border: '1px solid #ccc', p: 2, borderRadius: 2 }}>
-                        {intradayData && intradayData.length > 0 ? (
-                          <CandleChart
-                            data={intradayData}
-                            annotations={annotations}
-                          />
-                        ) : (
-                          <Typography variant="body2" color="text.secondary">
-                            No intraday data found for this date.
-                          </Typography>
-                        )}
-                      </Box>
-                    </Box>
-                  ) : (
-                    <Typography variant="body2" sx={{ mt: 2 }}>
-                      Please select a date from the calendar.
-                    </Typography>
-                  )}
-                </Grid>
-              </Grid>
+                    )}
+                  </Box>
+                </Box>
+              </Box>
             </Box>
           )}
 
@@ -352,7 +434,9 @@ const OpeningRangeBreakout = () => {
               {selectedScenario ? (
                 <DailyTradeDetails dailyTrades={selectedScenario.daily_trades} />
               ) : (
-                <Typography variant="body1">No trade details available.</Typography>
+                <Typography variant="body1">
+                  No trade details available.
+                </Typography>
               )}
             </Box>
           )}

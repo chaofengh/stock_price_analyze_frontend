@@ -4,14 +4,15 @@ import 'react-calendar/dist/Calendar.css';
 import { Box } from '@mui/material';
 
 function CalendarComponent({ value, onChange, tileContent, height = 450 }) {
+  
   return (
     <Box
       sx={{
-        margin: '0 auto', // Center the calendar container
+        margin: '0 auto',
         mt: 2,
         mb: 2,
         width: '100%',
-        height, // Set fixed height (default is 450px)
+        height,
       }}
     >
       <Box
@@ -24,7 +25,7 @@ function CalendarComponent({ value, onChange, tileContent, height = 450 }) {
             backgroundColor: '#fff',
             fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
             width: '100%',
-            height: '100%', // Fill the parent container’s height
+            height: '100%',
           },
           '& .react-calendar__navigation': {
             marginBottom: '1rem',
