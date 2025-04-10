@@ -1,6 +1,16 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState, useMemo } from 'react';
 import { DataGrid, GridToolbar } from '@mui/x-data-grid';
-import { Box, Paper, Tooltip, Typography, Chip } from '@mui/material';
+import {
+  Box,
+  Paper,
+  Tooltip,
+  Typography,
+  Chip,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel
+} from '@mui/material';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import InfoIcon from '@mui/icons-material/Info';
@@ -10,6 +20,53 @@ const AggregatedResultsTable = ({ results, onRowClick }) => {
   const netPnLs = results.map((r) => r.net_pnl);
   const bestPnl = Math.max(...netPnLs);
   const worstPnl = Math.min(...netPnLs);
+
+  // ---- FILTER STATE ----
+  const [stopLossFilter, setStopLossFilter] = useState('all');
+  const [limitDirFilter, setLimitDirFilter] = useState('all');
+  const [maxReFilter, setMaxReFilter] = useState('all');
+
+  // Unique sets extracted from results
+  // This helps build our filter menus dynamically if you want
+  const uniqueStopLosses = useMemo(() => {
+    const vals = Array.from(new Set(results.map(r => r.stop_loss)));
+    return vals; // e.g. [null, 0.005, 0.0075, 0.01]
+  }, [results]);
+
+  const uniqueLimitDirVals = useMemo(() => {
+    const vals = Array.from(new Set(results.map(r => r.limit_same_direction)));
+    return vals; // e.g. [true, false]
+  }, [results]);
+
+  const uniqueMaxReVals = useMemo(() => {
+    const vals = Array.from(new Set(results.map(r => r.max_entries)));
+    return vals; // e.g. [2, 5, 10]
+  }, [results]);
+
+  // Perform filtering
+  const filteredResults = useMemo(() => {
+    return results.filter(item => {
+      // stop_loss filter
+      if (stopLossFilter !== 'all') {
+        // Use string compare or numeric compare
+        // If the item.stop_loss is null, we can represent it as 'None'
+        const itemSL = (item.stop_loss === null) ? 'None' : String(item.stop_loss);
+        if (itemSL !== stopLossFilter) return false;
+      }
+      // limit_same_direction filter
+      if (limitDirFilter !== 'all') {
+        // item.limit_same_direction is boolean
+        const itemVal = String(item.limit_same_direction);
+        if (itemVal !== limitDirFilter) return false;
+      }
+      // max_reentries filter
+      if (maxReFilter !== 'all') {
+        const itemVal = String(item.max_entries);
+        if (itemVal !== maxReFilter) return false;
+      }
+      return true;
+    });
+  }, [results, stopLossFilter, limitDirFilter, maxReFilter]);
 
   // Utility to render a header with an info tooltip
   const renderHeaderWithTooltip = (headerText, tooltipText) => (
@@ -23,7 +80,6 @@ const AggregatedResultsTable = ({ results, onRowClick }) => {
     </Box>
   );
 
-  // Define columns
   const columns = [
     {
       field: 'scenario_name',
@@ -60,7 +116,6 @@ const AggregatedResultsTable = ({ results, onRowClick }) => {
         const color = rawVal < 0 ? 'red' : 'green';
         const Icon = rawVal < 0 ? ArrowDownwardIcon : ArrowUpwardIcon;
 
-        // Highlight best/worst cells
         let highlight = {};
         if (rawVal === bestPnl) {
           highlight = { backgroundColor: 'rgba(0,255,0,0.1)' };
@@ -115,7 +170,7 @@ const AggregatedResultsTable = ({ results, onRowClick }) => {
         const val = params.row.profit_factor;
         const displayVal = params.row.profit_factor_formatted || val || '';
         return (
-          <Tooltip title="Total gross profit divided by total gross loss">
+          <Tooltip title="Total gross profit / total gross loss">
             <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
               {displayVal}
             </Typography>
@@ -169,11 +224,10 @@ const AggregatedResultsTable = ({ results, onRowClick }) => {
     },
   ];
 
-  // Create DataGrid rows
-  const rows = results.map((item, index) => ({
+  const rows = filteredResults.map((item, index) => ({
     id: index,
     ...item,
-    date: new Date(item.date).toLocaleDateString(),
+    date: item.date ? new Date(item.date).toLocaleDateString() : '',
   }));
 
   // Row click handler
@@ -186,6 +240,72 @@ const AggregatedResultsTable = ({ results, onRowClick }) => {
 
   return (
     <Box sx={{ width: '100%', mt: 2 }}>
+      <Paper elevation={2} sx={{ p: 2, mb: 2 }}>
+        <Typography variant="h6" sx={{ mb: 1 }}>
+          Filter Scenarios
+        </Typography>
+        {/* Example MUI selects for filtering */}
+        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+          <FormControl variant="outlined" size="small" sx={{ minWidth: 150 }}>
+            <InputLabel>Stop Loss</InputLabel>
+            <Select
+              label="Stop Loss"
+              value={stopLossFilter}
+              onChange={(e) => setStopLossFilter(e.target.value)}
+            >
+              <MenuItem value="all">All</MenuItem>
+              {/* Render known stop-loss values */}
+              {uniqueStopLosses.map((val) => {
+                const label = val === null ? 'None' : String(val);
+                return (
+                  <MenuItem key={label} value={label}>
+                    {label}
+                  </MenuItem>
+                );
+              })}
+            </Select>
+          </FormControl>
+
+          <FormControl variant="outlined" size="small" sx={{ minWidth: 200 }}>
+            <InputLabel>Opposite After Loss?</InputLabel>
+            <Select
+              label="Opposite After Loss?"
+              value={limitDirFilter}
+              onChange={(e) => setLimitDirFilter(e.target.value)}
+            >
+              <MenuItem value="all">All</MenuItem>
+              {uniqueLimitDirVals.map((val) => {
+                const label = String(val);
+                return (
+                  <MenuItem key={label} value={label}>
+                    {label}
+                  </MenuItem>
+                );
+              })}
+            </Select>
+          </FormControl>
+
+          <FormControl variant="outlined" size="small" sx={{ minWidth: 150 }}>
+            <InputLabel>Max Entries</InputLabel>
+            <Select
+              label="Max Entries"
+              value={maxReFilter}
+              onChange={(e) => setMaxReFilter(e.target.value)}
+            >
+              <MenuItem value="all">All</MenuItem>
+              {uniqueMaxReVals.map((val) => {
+                const label = String(val);
+                return (
+                  <MenuItem key={label} value={label}>
+                    {label}
+                  </MenuItem>
+                );
+              })}
+            </Select>
+          </FormControl>
+        </Box>
+      </Paper>
+
       <Paper elevation={2} sx={{ p: 2 }}>
         <Typography variant="h6" sx={{ mb: 1 }}>
           Aggregated Results

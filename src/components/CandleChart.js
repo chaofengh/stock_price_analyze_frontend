@@ -1,14 +1,11 @@
 import React, { useRef, useState, useEffect } from 'react';
 
 function CandleChart({ data, annotations }) {
-  // Responsive width: measure parent's width using a ref.
   const containerRef = useRef(null);
-  const [containerWidth, setContainerWidth] = useState(800); // fallback value
+  const [containerWidth, setContainerWidth] = useState(800); // fallback
   const height = 400;
-  const margin = { top: 20, right: 20, bottom: 40, left: 50 }; // increased left margin for y-axis labels
+  const margin = { top: 20, right: 20, bottom: 40, left: 50 };
   const candleWidth = 10;
-
-  console.log('CandleChart data:', data);
 
   useEffect(() => {
     if (containerRef.current) {
@@ -16,7 +13,11 @@ function CandleChart({ data, annotations }) {
     }
   }, []);
 
-  // Vertical (price) scale: compute min and max prices.
+  if (!data || data.length === 0) {
+    return <div ref={containerRef} style={{ width: '100%', height: '400px' }}>No data</div>;
+  }
+
+  // Price scale
   const prices = data.flatMap(d => [d.low, d.high]);
   const minPrice = Math.min(...prices);
   const maxPrice = Math.max(...prices);
@@ -25,27 +26,29 @@ function CandleChart({ data, annotations }) {
     ((maxPrice - price) / (maxPrice - minPrice)) *
       (height - margin.top - margin.bottom);
 
-  // Horizontal (time) scale based on each data point's date.
-  const dateValues = data.map(d => new Date(d.date).getTime());
+  // Time scale
+  const dateValues = data.map(d => d.date.getTime());
   const minDate = Math.min(...dateValues);
   const maxDate = Math.max(...dateValues);
   const scaleX = date => {
-    const time = new Date(date).getTime();
-    return margin.left +
+    const time = date.getTime();
+    if (maxDate === minDate) return margin.left; // fallback if single point
+    return (
+      margin.left +
       ((time - minDate) / (maxDate - minDate)) *
-      (containerWidth - margin.left - margin.right);
+        (containerWidth - margin.left - margin.right)
+    );
   };
 
-  // Create x-axis ticks every 30 minutes.
-  const tickInterval = 30 * 60 * 1000; // 30 minutes in milliseconds
-  // Floor minDate to the nearest half-hour.
+  // X-axis ticks every 30 minutes
+  const tickInterval = 30 * 60 * 1000; // 30 minutes in ms
   const startTick = Math.floor(minDate / tickInterval) * tickInterval;
   const tickDates = [];
   for (let t = startTick; t <= maxDate; t += tickInterval) {
     tickDates.push(new Date(t));
   }
 
-  // Prepare y-axis tick values. In this example we choose 5 ticks.
+  // Y-axis ticks (e.g. 5)
   const yTickCount = 5;
   const yTicks = [];
   for (let i = 0; i < yTickCount; i++) {
@@ -53,43 +56,70 @@ function CandleChart({ data, annotations }) {
     yTicks.push(tickValue);
   }
 
-  // Render annotation rectangle with trade direction if at least two annotations are present.
-  let annotationRect = null;
-  if (annotations && annotations.length >= 2) {
-    const tradeDirection = annotations[0].direction;
-    // Use a translucent green for "long" and translucent red for "short"
-    const annotationFill =
-      tradeDirection === 'long' ? 'rgba(0,128,0,0.2)' : 'rgba(255,0,0,0.2)';
-    const annotationX = scaleX(annotations[0].date);
-    const annotationWidth = scaleX(annotations[1].date) - scaleX(annotations[0].date);
-    annotationRect = (
-      <g>
+  // Helper to draw annotation rectangles
+  // from entryDate -> exitDate
+  const renderTradeRectangle = (anno, i) => {
+    const { entryDate, exitDate, fill, label, direction } = anno;
+    const x1 = scaleX(entryDate);
+    const x2 = scaleX(exitDate);
+    const rectX = Math.min(x1, x2);
+    const rectWidth = Math.abs(x2 - x1);
+
+    return (
+      <g key={`tradeRect-${i}`}>
         <rect
-          x={annotationX}
+          x={rectX}
           y={margin.top}
-          width={annotationWidth}
+          width={rectWidth}
           height={height - margin.top - margin.bottom}
-          fill={annotationFill}
+          fill={fill}
         />
+        {/* Label near the top center */}
         <text
-          x={annotationX + annotationWidth / 2}
-          y={margin.top + 20}
+          x={rectX + rectWidth / 2}
+          y={margin.top + 15}
           textAnchor="middle"
-          fontSize="14"
-          fill={tradeDirection === 'long' ? 'green' : 'red'}
+          fontSize="12"
+          fill={direction === 'long' ? 'green' : 'red'}
         >
-          {tradeDirection.toUpperCase()}
+          {label}
         </text>
       </g>
     );
-  }
+  };
+
+  // Helper to render a small marker/circle for entry/exit
+  const renderMarker = (anno, i) => {
+    const { date, tooltip, direction } = anno;
+    const x = scaleX(date);
+    const y = scaleY(
+      direction === 'long' ? maxPrice : minPrice
+    ); 
+    // put the marker near top if long, near bottom if short
+    // or you could also put it at the candle's close if you prefer
+
+    return (
+      <g key={`marker-${i}`}>
+        <circle cx={x} cy={y} r={5} fill={direction === 'long' ? 'green' : 'red'} />
+        <title>{tooltip}</title>
+      </g>
+    );
+  };
+
+  // We'll break the annotations array into multiple elements
+  const renderedAnnotations = annotations.map((anno, i) => {
+    if (anno.type === 'trade-rectangle') {
+      return renderTradeRectangle(anno, i);
+    } else if (anno.type === 'entry-marker' || anno.type === 'exit-marker') {
+      return renderMarker(anno, i);
+    }
+    // fallback
+    return null;
+  });
 
   return (
     <div ref={containerRef}>
       <svg width={containerWidth} height={height}>
-        {/* Annotation Rectangle */}
-        {annotationRect}
-
         {/* Draw the candlesticks */}
         {data.map((d, i) => {
           const centerX = scaleX(d.date);
@@ -105,15 +135,27 @@ function CandleChart({ data, annotations }) {
 
           return (
             <g key={i}>
-              {/* Draw the wick */}
-              <line x1={centerX} y1={yHigh} x2={centerX} y2={yLow} stroke="black" />
-              {/* Draw the candle body */}
-              <rect x={x} y={bodyTop} width={candleWidth} height={bodyHeight} fill={color} />
+              {/* Wick */}
+              <line
+                x1={centerX}
+                y1={yHigh}
+                x2={centerX}
+                y2={yLow}
+                stroke="black"
+              />
+              {/* Candle body */}
+              <rect
+                x={x}
+                y={bodyTop}
+                width={candleWidth}
+                height={bodyHeight}
+                fill={color}
+              />
             </g>
           );
         })}
 
-        {/* Draw the x-axis */}
+        {/* X-axis */}
         <line
           x1={margin.left}
           y1={height - margin.bottom}
@@ -121,11 +163,9 @@ function CandleChart({ data, annotations }) {
           y2={height - margin.bottom}
           stroke="black"
         />
-
-        {/* Draw x-axis tick marks and time labels */}
+        {/* X-axis ticks/labels */}
         {tickDates.map((tickDate, idx) => {
           const xPos = scaleX(tickDate);
-          // Format the label to show time (HH:MM AM/PM)
           const label = tickDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
           return (
             <g key={idx}>
@@ -149,7 +189,7 @@ function CandleChart({ data, annotations }) {
           );
         })}
 
-        {/* Draw the y-axis */}
+        {/* Y-axis */}
         <line
           x1={margin.left}
           y1={margin.top}
@@ -157,7 +197,7 @@ function CandleChart({ data, annotations }) {
           y2={height - margin.bottom}
           stroke="black"
         />
-        {/* Draw y-axis tick marks and labels */}
+        {/* Y-axis ticks/labels */}
         {yTicks.map((tickValue, idx) => {
           const yPos = scaleY(tickValue);
           return (
@@ -181,6 +221,9 @@ function CandleChart({ data, annotations }) {
             </g>
           );
         })}
+
+        {/* Annotations (trade rectangles + markers) */}
+        {renderedAnnotations}
       </svg>
     </div>
   );

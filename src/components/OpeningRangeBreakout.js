@@ -74,7 +74,7 @@ const OpeningRangeBreakout = () => {
   const [intradayData, setIntradayData] = useState([]);
   const [annotations, setAnnotations] = useState([]);
 
-  // Tabs (removed dark mode state)
+  // Tabs
   const [selectedTab, setSelectedTab] = useState(0);
 
   // Create MUI theme (always light mode)
@@ -96,6 +96,7 @@ const OpeningRangeBreakout = () => {
     setIntradayDataAll([]);
 
     try {
+      // Example endpoint
       const endpoint = `${process.env.REACT_APP_summary_root_api}/opening_range_breakout?ticker=${ticker}`;
       const response = await fetch(endpoint);
       if (!response.ok) {
@@ -196,47 +197,60 @@ const OpeningRangeBreakout = () => {
 
     setIntradayData(dayData);
 
-    // Build buy/sell annotations if there's a trade on that day
+    // Build annotations if there's any trade on that day
     if (selectedScenario) {
-      const trade = selectedScenario.daily_trades.find(t =>
+      const tradesThatDay = selectedScenario.daily_trades.filter(t =>
         getLocalDateString(t.entry_time) === dateStr
       );
 
-      if (trade) {
-        const newAnnotations = [];
+      // We'll create an annotation for each trade's entry & exit
+      const newAnnotations = [];
 
-        if (trade.entry_time) {
-          const entryTime = new Date(trade.entry_time);
-          const entryDataPoint = findNearestDataPoint(dayData, entryTime);
-          if (entryDataPoint) {
-            newAnnotations.push({
-              date: entryDataPoint.date,
-              fill: 'green',
-              path: () => 'M0,0 L10,10',
-              tooltip: `Entry @ ${entryTime.toLocaleTimeString()}`,
-              direction: trade.direction
-            });
-          }
+      tradesThatDay.forEach((trade, idx) => {
+        if (!trade.entry_time || !trade.exit_time) {
+          return;
         }
+        const entryTime = new Date(trade.entry_time);
+        const exitTime = new Date(trade.exit_time);
 
-        if (trade.exit_time) {
-          const exitTime = new Date(trade.exit_time);
-          const exitDataPoint = findNearestDataPoint(dayData, exitTime);
-          if (exitDataPoint) {
-            newAnnotations.push({
-              date: exitDataPoint.date,
-              fill: 'red',
-              path: () => 'M0,0 L10,10',
-              tooltip: `Exit @ ${exitTime.toLocaleTimeString()}`,
-              direction: trade.direction
-            });
-          }
+        // Find closest candlestick times for entry and exit
+        const entryDataPoint = findNearestDataPoint(dayData, entryTime);
+        const exitDataPoint = findNearestDataPoint(dayData, exitTime);
+
+        if (entryDataPoint && exitDataPoint) {
+          // Annotate a translucent rectangle from entry -> exit
+          // Color depends on direction (long=greenish, short=reddish).
+          const fillColor = trade.direction === 'long'
+            ? 'rgba(0, 128, 0, 0.2)'
+            : 'rgba(255, 0, 0, 0.2)';
+
+          newAnnotations.push({
+            type: 'trade-rectangle',   // Custom type
+            entryDate: entryDataPoint.date,
+            exitDate: exitDataPoint.date,
+            direction: trade.direction,
+            fill: fillColor,
+            label: `Trade #${idx + 1} (${trade.direction.toUpperCase()})`
+          });
+
+          // Also add an arrow or marker for entry
+          newAnnotations.push({
+            type: 'entry-marker',
+            date: entryDataPoint.date,
+            tooltip: `Entry @ ${entryTime.toLocaleTimeString()}`,
+            direction: trade.direction
+          });
+
+          // And a marker for exit
+          newAnnotations.push({
+            type: 'exit-marker',
+            date: exitDataPoint.date,
+            tooltip: `Exit @ ${exitTime.toLocaleTimeString()} (PNL: ${trade.pnl.toFixed(2)})`,
+            direction: trade.direction
+          });
         }
-
-        setAnnotations(newAnnotations);
-      } else {
-        setAnnotations([]);
-      }
+      });
+      setAnnotations(newAnnotations);
     } else {
       setAnnotations([]);
     }
