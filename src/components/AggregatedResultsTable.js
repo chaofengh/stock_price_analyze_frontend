@@ -16,7 +16,7 @@ import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import InfoIcon from '@mui/icons-material/Info';
 
 const AggregatedResultsTable = ({ results, onRowClick }) => {
-  // Identify the best/worst net pnl to highlight
+  // Identify best/worst net pnl to highlight
   const netPnLs = results.map((r) => r.net_pnl);
   const bestPnl = Math.max(...netPnLs);
   const worstPnl = Math.min(...netPnLs);
@@ -25,9 +25,11 @@ const AggregatedResultsTable = ({ results, onRowClick }) => {
   const [stopLossFilter, setStopLossFilter] = useState('all');
   const [limitDirFilter, setLimitDirFilter] = useState('all');
   const [maxReFilter, setMaxReFilter] = useState('all');
+  const [orMinutesFilter, setOrMinutesFilter] = useState('all');
+  const [volumeFilter, setVolumeFilter] = useState('all');
+  const [timeExitFilter, setTimeExitFilter] = useState('all');
 
-  // Unique sets extracted from results
-  // This helps build our filter menus dynamically if you want
+  // Extract unique values from results for each parameter
   const uniqueStopLosses = useMemo(() => {
     const vals = Array.from(new Set(results.map(r => r.stop_loss)));
     return vals; // e.g. [null, 0.005, 0.0075, 0.01]
@@ -43,19 +45,31 @@ const AggregatedResultsTable = ({ results, onRowClick }) => {
     return vals; // e.g. [2, 5, 10]
   }, [results]);
 
-  // Perform filtering
+  const uniqueOrMinutes = useMemo(() => {
+    const vals = Array.from(new Set(results.map(r => r.open_range_minutes)));
+    return vals; // e.g. [30, 45]
+  }, [results]);
+
+  const uniqueVolumeOptions = useMemo(() => {
+    const vals = Array.from(new Set(results.map(r => r.use_volume_filter)));
+    return vals; // e.g. [true, false]
+  }, [results]);
+
+  const uniqueTimeExitOptions = useMemo(() => {
+    const vals = Array.from(new Set(results.map(r => r.time_exit_minutes)));
+    return vals; // e.g. [60, 120]
+  }, [results]);
+
+  // Perform filtering over all parameters
   const filteredResults = useMemo(() => {
     return results.filter(item => {
       // stop_loss filter
       if (stopLossFilter !== 'all') {
-        // Use string compare or numeric compare
-        // If the item.stop_loss is null, we can represent it as 'None'
         const itemSL = (item.stop_loss === null) ? 'None' : String(item.stop_loss);
         if (itemSL !== stopLossFilter) return false;
       }
       // limit_same_direction filter
       if (limitDirFilter !== 'all') {
-        // item.limit_same_direction is boolean
         const itemVal = String(item.limit_same_direction);
         if (itemVal !== limitDirFilter) return false;
       }
@@ -64,11 +78,26 @@ const AggregatedResultsTable = ({ results, onRowClick }) => {
         const itemVal = String(item.max_entries);
         if (itemVal !== maxReFilter) return false;
       }
+      // open_range_minutes filter
+      if (orMinutesFilter !== 'all') {
+        const itemVal = String(item.open_range_minutes);
+        if (itemVal !== orMinutesFilter) return false;
+      }
+      // volume filter
+      if (volumeFilter !== 'all') {
+        const itemVal = String(item.use_volume_filter);
+        if (itemVal !== volumeFilter) return false;
+      }
+      // time_exit_minutes filter
+      if (timeExitFilter !== 'all') {
+        const itemVal = String(item.time_exit_minutes);
+        if (itemVal !== timeExitFilter) return false;
+      }
       return true;
     });
-  }, [results, stopLossFilter, limitDirFilter, maxReFilter]);
+  }, [results, stopLossFilter, limitDirFilter, maxReFilter, orMinutesFilter, volumeFilter, timeExitFilter]);
 
-  // Utility to render a header with an info tooltip
+  // Utility: render column header with a tooltip
   const renderHeaderWithTooltip = (headerText, tooltipText) => (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
       <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
@@ -115,14 +144,9 @@ const AggregatedResultsTable = ({ results, onRowClick }) => {
         const displayVal = params.row.net_pnl_formatted || rawVal;
         const color = rawVal < 0 ? 'red' : 'green';
         const Icon = rawVal < 0 ? ArrowDownwardIcon : ArrowUpwardIcon;
-
         let highlight = {};
-        if (rawVal === bestPnl) {
-          highlight = { backgroundColor: 'rgba(0,255,0,0.1)' };
-        } else if (rawVal === worstPnl) {
-          highlight = { backgroundColor: 'rgba(255,0,0,0.1)' };
-        }
-
+        if (rawVal === bestPnl) highlight = { backgroundColor: 'rgba(0,255,0,0.1)' };
+        else if (rawVal === worstPnl) highlight = { backgroundColor: 'rgba(255,0,0,0.1)' };
         return (
           <Box
             sx={{
@@ -170,7 +194,7 @@ const AggregatedResultsTable = ({ results, onRowClick }) => {
         const val = params.row.profit_factor;
         const displayVal = params.row.profit_factor_formatted || val || '';
         return (
-          <Tooltip title="Total gross profit / total gross loss">
+          <Tooltip title="Total gross profit divided by total gross loss">
             <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
               {displayVal}
             </Typography>
@@ -224,13 +248,13 @@ const AggregatedResultsTable = ({ results, onRowClick }) => {
     },
   ];
 
+  // Map filtered results to rows for the DataGrid
   const rows = filteredResults.map((item, index) => ({
     id: index,
     ...item,
     date: item.date ? new Date(item.date).toLocaleDateString() : '',
   }));
 
-  // Row click handler
   const handleRowClick = useCallback(
     (params) => {
       onRowClick && onRowClick(params.row);
@@ -240,12 +264,13 @@ const AggregatedResultsTable = ({ results, onRowClick }) => {
 
   return (
     <Box sx={{ width: '100%', mt: 2 }}>
+      {/* FILTER UI */}
       <Paper elevation={2} sx={{ p: 2, mb: 2 }}>
         <Typography variant="h6" sx={{ mb: 1 }}>
           Filter Scenarios
         </Typography>
-        {/* Example MUI selects for filtering */}
         <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+          {/* Stop Loss Filter */}
           <FormControl variant="outlined" size="small" sx={{ minWidth: 150 }}>
             <InputLabel>Stop Loss</InputLabel>
             <Select
@@ -254,7 +279,6 @@ const AggregatedResultsTable = ({ results, onRowClick }) => {
               onChange={(e) => setStopLossFilter(e.target.value)}
             >
               <MenuItem value="all">All</MenuItem>
-              {/* Render known stop-loss values */}
               {uniqueStopLosses.map((val) => {
                 const label = val === null ? 'None' : String(val);
                 return (
@@ -266,6 +290,7 @@ const AggregatedResultsTable = ({ results, onRowClick }) => {
             </Select>
           </FormControl>
 
+          {/* Limit Same Direction Filter */}
           <FormControl variant="outlined" size="small" sx={{ minWidth: 200 }}>
             <InputLabel>Opposite After Loss?</InputLabel>
             <Select
@@ -285,6 +310,7 @@ const AggregatedResultsTable = ({ results, onRowClick }) => {
             </Select>
           </FormControl>
 
+          {/* Max Re-Entries Filter */}
           <FormControl variant="outlined" size="small" sx={{ minWidth: 150 }}>
             <InputLabel>Max Entries</InputLabel>
             <Select
@@ -294,6 +320,66 @@ const AggregatedResultsTable = ({ results, onRowClick }) => {
             >
               <MenuItem value="all">All</MenuItem>
               {uniqueMaxReVals.map((val) => {
+                const label = String(val);
+                return (
+                  <MenuItem key={label} value={label}>
+                    {label}
+                  </MenuItem>
+                );
+              })}
+            </Select>
+          </FormControl>
+
+          {/* OR Minutes Filter */}
+          <FormControl variant="outlined" size="small" sx={{ minWidth: 150 }}>
+            <InputLabel>OR Minutes</InputLabel>
+            <Select
+              label="OR Minutes"
+              value={orMinutesFilter}
+              onChange={(e) => setOrMinutesFilter(e.target.value)}
+            >
+              <MenuItem value="all">All</MenuItem>
+              {uniqueOrMinutes.map((val) => {
+                const label = String(val);
+                return (
+                  <MenuItem key={label} value={label}>
+                    {label}
+                  </MenuItem>
+                );
+              })}
+            </Select>
+          </FormControl>
+
+          {/* Volume Filter */}
+          <FormControl variant="outlined" size="small" sx={{ minWidth: 150 }}>
+            <InputLabel>Volume Filter</InputLabel>
+            <Select
+              label="Volume Filter"
+              value={volumeFilter}
+              onChange={(e) => setVolumeFilter(e.target.value)}
+            >
+              <MenuItem value="all">All</MenuItem>
+              {uniqueVolumeOptions.map((val) => {
+                const label = String(val);
+                return (
+                  <MenuItem key={label} value={label}>
+                    {label}
+                  </MenuItem>
+                );
+              })}
+            </Select>
+          </FormControl>
+
+          {/* Time Exit Filter */}
+          <FormControl variant="outlined" size="small" sx={{ minWidth: 150 }}>
+            <InputLabel>Time Exit (min)</InputLabel>
+            <Select
+              label="Time Exit (min)"
+              value={timeExitFilter}
+              onChange={(e) => setTimeExitFilter(e.target.value)}
+            >
+              <MenuItem value="all">All</MenuItem>
+              {uniqueTimeExitOptions.map((val) => {
                 const label = String(val);
                 return (
                   <MenuItem key={label} value={label}>
