@@ -1,9 +1,11 @@
-// FinancialWidget.js => renamed or keep same. 
 import React from 'react';
 import { Paper, Typography, Box, Button } from '@mui/material';
 import { Link } from 'react-router-dom';
 
 const FinancialWidget = ({ income_statement }) => {
+  // For the example, let's read the symbol directly from income_statement
+  const symbol = income_statement?.symbol || 'UNKNOWN';
+
   return (
     <Paper elevation={3} sx={{ p: 3, height: '100%' }}>
       <Typography variant="h6" gutterBottom>
@@ -14,15 +16,14 @@ const FinancialWidget = ({ income_statement }) => {
           Coming Soon: Latest headlines, expert opinions, and financial news updates.
         </Typography>
 
-        {/* Button to navigate to the new analysis page */}
+        {/* Button to navigate to /analysis/META (for example). */}
         <Button
           variant="contained"
           color="primary"
           component={Link}
-          to="/analysis"
-          state={{ income_statement: income_statement }}
-          // Depending on your React Router version,
-          // you might pass data differently or store in Redux
+          to={`/analysis/${symbol}`}
+          // If you still want to pass the income statement via route state:
+          state={{ income_statement }}
         >
           View Detailed Financial Analysis
         </Button>

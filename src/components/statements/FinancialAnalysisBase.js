@@ -59,10 +59,11 @@ function FinancialAnalysisBase({
   const [viewType, setViewType] = useState('quarterly');
 
   useEffect(() => {
-    if (symbol) {
+    if (symbol && !statementData) {
+      // If we have a symbol and no data, fetch it
       dispatch(fetchDataThunk(symbol));
     }
-  }, [symbol, dispatch, fetchDataThunk]);
+  }, [symbol, dispatch, fetchDataThunk,statementData]);
 
   const activeMetric = metrics[activeMetricIndex];
 

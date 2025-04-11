@@ -138,7 +138,7 @@ function App() {
           >
             <Routes>
               <Route path="/" element={<StockDashboard />} />
-              <Route path="/analysis" element={<FinancialAnalysisPage />} />
+              <Route path="/analysis/:symbol" element={<FinancialAnalysisPage />} />
               <Route path="/orb" element={<OpeningRangeBreakout />} />
             </Routes>
 
