@@ -6,6 +6,7 @@ import {
   MenuItem,
   ListItemIcon
 } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
 
 // MUI icons
 import MoreVertIcon from '@mui/icons-material/MoreVert';
@@ -15,6 +16,7 @@ import ArticleIcon from '@mui/icons-material/Article';
 
 function MoreOptionsMenu({ onSelectView }) {
   const [anchorEl, setAnchorEl] = useState(null);
+  const navigate = useNavigate();
 
   const handleMenuOpen = (event) => {
     setAnchorEl(event.currentTarget);
@@ -72,6 +74,12 @@ function MoreOptionsMenu({ onSelectView }) {
             <ArticleIcon />
           </ListItemIcon>
           News
+        </MenuItem>
+        <MenuItem onClick={()=>navigate('/orb')}>
+          <ListItemIcon>
+            <ArticleIcon />
+          </ListItemIcon>
+          Open Range Breakout Search
         </MenuItem>
       </Menu>
     </>

@@ -52,14 +52,17 @@ const SymbolSearch = ({ onSelectSymbol, placeholder = 'Search for a Stock' }) =>
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!searchTerm) return;
+    // Process the search term and clear out the state
     onSelectSymbol(searchTerm.toUpperCase());
-    setShowSuggestions(false);
-    setSearchTerm(''); // Clear the text field after submission
+    setSearchTerm('');          // Clear the text field after submission
+    setSearchResults([]);       // Clear suggestion list
+    setShowSuggestions(false);  // Hide suggestion list
   };
 
   const handleSelectSuggestion = (selectedSymbol) => {
     onSelectSymbol(selectedSymbol.toUpperCase());
-    setSearchTerm(''); // Clear the text field
+    setSearchTerm('');          // Clear the text field
+    setSearchResults([]);       // Clear suggestion list
     setShowSuggestions(false);
   };
 
