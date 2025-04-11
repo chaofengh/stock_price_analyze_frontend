@@ -269,9 +269,9 @@ const AggregatedResultsTable = ({ results, onRowClick }) => {
         <Typography variant="h6" sx={{ mb: 1 }}>
           Filter Scenarios
         </Typography>
-        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+        <Box sx={{ display: 'grid', gap: 2,gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))' }}>
           {/* Stop Loss Filter */}
-          <FormControl variant="outlined" size="small" sx={{ minWidth: 150 }}>
+          <FormControl variant="outlined" size="small" sx={{ width: '100%' }}>
             <InputLabel>Stop Loss</InputLabel>
             <Select
               label="Stop Loss"
@@ -311,7 +311,7 @@ const AggregatedResultsTable = ({ results, onRowClick }) => {
           </FormControl>
 
           {/* Max Re-Entries Filter */}
-          <FormControl variant="outlined" size="small" sx={{ minWidth: 150 }}>
+          <FormControl variant="outlined" size="small" sx={{ width: '100%' }}>
             <InputLabel>Max Entries</InputLabel>
             <Select
               label="Max Entries"
@@ -331,7 +331,7 @@ const AggregatedResultsTable = ({ results, onRowClick }) => {
           </FormControl>
 
           {/* OR Minutes Filter */}
-          <FormControl variant="outlined" size="small" sx={{ minWidth: 150 }}>
+          <FormControl variant="outlined" size="small" sx={{ width: '100%' }}>
             <InputLabel>OR Minutes</InputLabel>
             <Select
               label="OR Minutes"
@@ -351,7 +351,7 @@ const AggregatedResultsTable = ({ results, onRowClick }) => {
           </FormControl>
 
           {/* Volume Filter */}
-          <FormControl variant="outlined" size="small" sx={{ minWidth: 150 }}>
+          <FormControl variant="outlined" size="small" sx={{ width: '100%' }}>
             <InputLabel>Volume Filter</InputLabel>
             <Select
               label="Volume Filter"
@@ -371,7 +371,7 @@ const AggregatedResultsTable = ({ results, onRowClick }) => {
           </FormControl>
 
           {/* Time Exit Filter */}
-          <FormControl variant="outlined" size="small" sx={{ minWidth: 150 }}>
+          <FormControl variant="outlined" size="small" sx={{ width: '100%' }}>
             <InputLabel>Time Exit (min)</InputLabel>
             <Select
               label="Time Exit (min)"
