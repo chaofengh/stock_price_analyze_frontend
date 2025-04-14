@@ -1,3 +1,5 @@
+// components/Backtest.js
+
 import React, { useState } from 'react';
 import {
   Box,
@@ -12,7 +14,11 @@ import {
   Tab,
   Grid,
   CircularProgress,
-  Tooltip
+  Tooltip,
+  MenuItem,
+  FormControl,
+  Select,
+  InputLabel
 } from '@mui/material';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 
@@ -21,7 +27,7 @@ import DailyTradeDetails from './DailyTradeDetails';
 import CalendarComponent from './CalendarComponent';
 import CandleChart from './CandleChart';
 
-// 1) Helper: convert a date/time string to YYYY-MM-DD (for daily grouping).
+// Helper: convert date/time string to YYYY-MM-DD
 function getLocalDateString(dateInput) {
   const d = new Date(dateInput);
   const year = d.getFullYear();
@@ -30,7 +36,7 @@ function getLocalDateString(dateInput) {
   return `${year}-${month}-${day}`;
 }
 
-// 2) Sum daily PnL from scenario's trades by local day
+// Sum daily PnL from scenario trades by local day
 function aggregateDailyPnl(dailyTrades) {
   return dailyTrades.reduce((acc, trade) => {
     const dateKey = getLocalDateString(trade.entry_time);
@@ -40,7 +46,7 @@ function aggregateDailyPnl(dailyTrades) {
   }, {});
 }
 
-// 3) Find the candlestick nearest to a given trade time
+// Find nearest candlestick to the trade time
 function findNearestDataPoint(data, targetTime) {
   let minDiff = Infinity;
   let nearest = null;
@@ -54,22 +60,23 @@ function findNearestDataPoint(data, targetTime) {
   return nearest;
 }
 
-const OpeningRangeBreakout = () => {
+const Backtest = () => {
   const [ticker, setTicker] = useState('');
+  const [strategy, setStrategy] = useState('opening_range_breakout');
   const [results, setResults] = useState([]);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  // Dialog and scenario states
+  // Dialog / scenario details
   const [openDialog, setOpenDialog] = useState(false);
   const [selectedScenario, setSelectedScenario] = useState(null);
 
-  // Calendar & chart states
+  // Calendar & chart
   const [calendarValue, setCalendarValue] = useState(new Date());
   const [calendarData, setCalendarData] = useState({});
   const [selectedDate, setSelectedDate] = useState(null);
 
-  // Intraday data
+  // Intraday chart data & annotations
   const [intradayDataAll, setIntradayDataAll] = useState([]);
   const [intradayData, setIntradayData] = useState([]);
   const [annotations, setAnnotations] = useState([]);
@@ -77,15 +84,13 @@ const OpeningRangeBreakout = () => {
   // Tabs
   const [selectedTab, setSelectedTab] = useState(0);
 
-  // Create MUI theme (always light mode)
   const theme = createTheme({
     palette: {
       mode: 'light',
-      primary: { main: '#1976d2' },
-    },
+      primary: { main: '#1976d2' }
+    }
   });
 
-  // 4) Fetch data from your backend
   const handleSearch = async () => {
     if (!ticker) return;
     setError(null);
@@ -96,8 +101,9 @@ const OpeningRangeBreakout = () => {
     setIntradayDataAll([]);
 
     try {
-      // Example endpoint
-      const endpoint = `${process.env.REACT_APP_summary_root_api}/opening_range_breakout?ticker=${ticker}`;
+      // Updated endpoint => /api/backtest
+      // Include strategy as a query param
+      const endpoint = `${process.env.REACT_APP_summary_root_api}/backtest?ticker=${ticker}&strategy=${strategy}`;
       const response = await fetch(endpoint);
       if (!response.ok) {
         throw new Error(`Error fetching data: ${response.statusText}`);
@@ -114,18 +120,14 @@ const OpeningRangeBreakout = () => {
     }
   };
 
-  // 5) Allow hitting 'Enter' in the ticker TextField
   const handleKeyDown = (e) => {
     if (e.key === 'Enter') {
       handleSearch();
     }
   };
 
-  // 6) Clicking on a row -> open scenario details in a dialog
   const handleRowClick = (scenario) => {
     setSelectedScenario(scenario);
-
-    // Aggregate daily PnL for the scenario's trades
     const dailyPnls = aggregateDailyPnl(scenario.daily_trades);
     setCalendarData(dailyPnls);
 
@@ -144,7 +146,6 @@ const OpeningRangeBreakout = () => {
     setAnnotations([]);
   };
 
-  // 7) Calendar tile content: show numeric PnL
   const tileContent = ({ date, view }) => {
     if (view === 'month') {
       const dateStr = getLocalDateString(date);
@@ -164,7 +165,7 @@ const OpeningRangeBreakout = () => {
                 fontWeight,
                 background: 'transparent',
                 borderRadius: '4px',
-                margin: '0 4px',
+                margin: '0 4px'
               }}
             >
               {pnl.toFixed(2)}
@@ -176,56 +177,45 @@ const OpeningRangeBreakout = () => {
     return null;
   };
 
-  // 8) When user picks a date from the calendar
   const handleCalendarChange = (date) => {
     setCalendarValue(date);
-
     const dateStr = getLocalDateString(date);
     setSelectedDate(dateStr);
 
-    // Filter intraday data for that day
+    // Filter intraday data for the selected date
     const dayData = intradayDataAll
-      .filter(record => getLocalDateString(record.date) === dateStr)
-      .map(record => ({
-        date: new Date(record.date),
-        open: record.open,
-        high: record.high,
-        low: record.low,
-        close: record.close,
-        volume: record.volume,
+      .filter(rec => getLocalDateString(rec.date) === dateStr)
+      .map(rec => ({
+        date: new Date(rec.date),
+        open: rec.open,
+        high: rec.high,
+        low: rec.low,
+        close: rec.close,
+        volume: rec.volume
       }));
 
     setIntradayData(dayData);
 
-    // Build annotations if there's any trade on that day
     if (selectedScenario) {
       const tradesThatDay = selectedScenario.daily_trades.filter(t =>
         getLocalDateString(t.entry_time) === dateStr
       );
-
-      // We'll create an annotation for each trade's entry & exit
       const newAnnotations = [];
-
       tradesThatDay.forEach((trade, idx) => {
-        if (!trade.entry_time || !trade.exit_time) {
-          return;
-        }
+        if (!trade.entry_time || !trade.exit_time) return;
         const entryTime = new Date(trade.entry_time);
         const exitTime = new Date(trade.exit_time);
-
-        // Find closest candlestick times for entry and exit
         const entryDataPoint = findNearestDataPoint(dayData, entryTime);
         const exitDataPoint = findNearestDataPoint(dayData, exitTime);
 
         if (entryDataPoint && exitDataPoint) {
-          // Annotate a translucent rectangle from entry -> exit
-          // Color depends on direction (long=greenish, short=reddish).
-          const fillColor = trade.direction === 'long'
-            ? 'rgba(0, 128, 0, 0.2)'
-            : 'rgba(255, 0, 0, 0.2)';
+          const fillColor =
+            trade.direction === 'long'
+              ? 'rgba(0, 128, 0, 0.2)'
+              : 'rgba(255, 0, 0, 0.2)';
 
           newAnnotations.push({
-            type: 'trade-rectangle',   // Custom type
+            type: 'trade-rectangle',
             entryDate: entryDataPoint.date,
             exitDate: exitDataPoint.date,
             direction: trade.direction,
@@ -233,7 +223,6 @@ const OpeningRangeBreakout = () => {
             label: `Trade #${idx + 1} (${trade.direction.toUpperCase()})`
           });
 
-          // Also add an arrow or marker for entry
           newAnnotations.push({
             type: 'entry-marker',
             date: entryDataPoint.date,
@@ -241,7 +230,6 @@ const OpeningRangeBreakout = () => {
             direction: trade.direction
           });
 
-          // And a marker for exit
           newAnnotations.push({
             type: 'exit-marker',
             date: exitDataPoint.date,
@@ -256,7 +244,6 @@ const OpeningRangeBreakout = () => {
     }
   };
 
-  // 9) Tab switching
   const handleTabChange = (e, newValue) => {
     setSelectedTab(newValue);
   };
@@ -265,10 +252,10 @@ const OpeningRangeBreakout = () => {
     <ThemeProvider theme={theme}>
       <Paper elevation={3} sx={{ p: 3, m: 3 }}>
         <Typography variant="h5" gutterBottom>
-          Opening Range Breakout Analysis
+          Strategy Backtest
         </Typography>
         <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} sm={6} md={4}>
+          <Grid item xs={12} sm={6} md={3}>
             <TextField
               fullWidth
               label="Enter Ticker"
@@ -277,6 +264,22 @@ const OpeningRangeBreakout = () => {
               onChange={(e) => setTicker(e.target.value.toUpperCase())}
               onKeyDown={handleKeyDown}
             />
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <FormControl fullWidth>
+              <InputLabel>Strategy</InputLabel>
+              <Select
+                value={strategy}
+                label="Strategy"
+                onChange={(e) => setStrategy(e.target.value)}
+              >
+                <MenuItem value="opening_range_breakout">Opening Range Breakout</MenuItem>
+                <MenuItem value="reverse_opening_range_breakout">Reverse ORB</MenuItem>
+                {/* Extend with more strategies here */}
+                {/* <MenuItem value="ma_crossover">Moving Average Crossover</MenuItem> */}
+                {/* <MenuItem value="previous_day_breakout">Previous Day Breakout</MenuItem> */}
+              </Select>
+            </FormControl>
           </Grid>
           <Grid item xs={12} sm={6} md={2}>
             <Button fullWidth variant="contained" onClick={handleSearch}>
@@ -297,22 +300,17 @@ const OpeningRangeBreakout = () => {
           </Typography>
         )}
 
-        {!loading && results.length === 0 && (
+        {!loading && results.length === 0 && !error && (
           <Typography variant="body1" sx={{ mt: 2 }}>
-            Enter a ticker and click search to view scenarios.
+            Enter a ticker and choose a strategy to backtest.
           </Typography>
         )}
 
-        {/* Only show table if we have results */}
         {results.length > 0 && (
-          <AggregatedResultsTable
-            results={results}
-            onRowClick={handleRowClick}
-          />
+          <AggregatedResultsTable results={results} onRowClick={handleRowClick} />
         )}
       </Paper>
 
-      {/* Dialog for scenario details (Calendar + Chart or DailyTradeDetails) */}
       <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="xl" fullWidth>
         <DialogTitle>
           {selectedScenario?.scenario_name || 'Scenario Details'}
@@ -323,23 +321,15 @@ const OpeningRangeBreakout = () => {
             <Tab label="Trade Details" />
           </Tabs>
 
-          {/* CALENDAR & CHART TAB */}
           {selectedTab === 0 && (
             <Box sx={{ p: 2 }}>
-              <Box
-                sx={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 3,
-                }}
-              >
-                {/* Calendar Section */}
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                 <Paper elevation={2} sx={{ p: 2 }}>
                   <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 'bold' }}>
                     Select a Date
                   </Typography>
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                    Choose a date below to view daily PNL and the intraday chart.
+                    Pick a date below to view daily PNL and the intraday chart.
                   </Typography>
                   <CalendarComponent
                     value={calendarValue}
@@ -349,21 +339,15 @@ const OpeningRangeBreakout = () => {
                   />
                 </Paper>
 
-                {/* Chart Section */}
                 <Paper elevation={2} sx={{ p: 2 }}>
                   <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 'bold' }}>
                     Intraday Chart {selectedDate ? `– ${selectedDate}` : ''}
                   </Typography>
-                  {selectedDate && intradayData?.length > 0 ? (
-                    <CandleChart
-                      data={intradayData}
-                      annotations={annotations}
-                    />
+                  {selectedDate && intradayData.length > 0 ? (
+                    <CandleChart data={intradayData} annotations={annotations} />
                   ) : (
                     <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-                      {selectedDate
-                        ? 'No intraday data found for this date.'
-                        : 'No date selected.'}
+                      {selectedDate ? 'No intraday data found for this date.' : 'No date selected.'}
                     </Typography>
                   )}
                 </Paper>
@@ -371,15 +355,12 @@ const OpeningRangeBreakout = () => {
             </Box>
           )}
 
-          {/* TRADE DETAILS TAB */}
           {selectedTab === 1 && (
             <Box sx={{ p: 2 }}>
               {selectedScenario ? (
                 <DailyTradeDetails dailyTrades={selectedScenario.daily_trades} />
               ) : (
-                <Typography variant="body1">
-                  No trade details available.
-                </Typography>
+                <Typography variant="body1">No trade details available.</Typography>
               )}
             </Box>
           )}
@@ -389,4 +370,4 @@ const OpeningRangeBreakout = () => {
   );
 };
 
-export default OpeningRangeBreakout;
+export default Backtest;

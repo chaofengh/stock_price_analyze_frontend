@@ -1,5 +1,3 @@
-// AlertItem.jsx
-
 import React, { useEffect, useState } from "react";
 import {
   Box,
@@ -13,13 +11,9 @@ import {
   Divider
 } from "@mui/material";
 import { ArrowUpward, ArrowDownward } from "@mui/icons-material";
-
-// Import new visual components
 import SparklineChart from "./SparklineChart";
 import BandBreakoutMeter from "./BandBreakoutMeter";
-
 import { fetchCompanyLogo } from "../../API/FetchCompanyLogo";
-
 
 const formatPrice = (price) =>
   typeof price === "number" ? price.toFixed(2) : price;
@@ -39,11 +33,9 @@ const sideStyles = {
   },
 };
 
-
 const AlertItem = ({ alert, touched_side, onViewDetails, isSmallScreen, index }) => {
-  const { symbol, close_price,low_price,high_price, bb_upper, bb_lower, recent_closes = [] } = alert;
+  const { symbol, close_price, low_price, high_price, bb_upper, bb_lower, recent_closes = [] } = alert;
   const styleSet = sideStyles[touched_side] || sideStyles.Upper;
-
   const [logo, setLogo] = useState(null);
 
   useEffect(() => {
@@ -53,15 +45,21 @@ const AlertItem = ({ alert, touched_side, onViewDetails, isSmallScreen, index })
   return (
     <Grow in timeout={500}>
       <Card
-        elevation={3}
+        elevation={4}
         sx={{
-          mb: 10,
+          mb: 2,
           borderRadius: 2,
-          backgroundColor: index % 2 === 0 ? "#fafafa" : "#ffffff",
+          background: index % 2 === 0
+            ? 'linear-gradient(90deg, #ffffff, #f9f9f9)'
+            : 'linear-gradient(90deg, #f9f9f9, #ffffff)',
+          transition: 'transform 0.2s',
+          '&:hover': {
+            transform: 'scale(1.02)',
+          },
         }}
       >
         <CardContent>
-          {/* TOP ROW: Logo + Symbol + Overbought/Oversold Chip */}
+          {/* TOP ROW: Logo, Symbol, Price and Alert Chip */}
           <Box
             display="flex"
             flexDirection="row"
@@ -69,7 +67,6 @@ const AlertItem = ({ alert, touched_side, onViewDetails, isSmallScreen, index })
             justifyContent="space-between"
             sx={{ mb: 2 }}
           >
-            {/* Left side: Logo + Symbol */}
             <Box display="flex" alignItems="center" gap={2}>
               {logo ? (
                 <Avatar src={logo} alt={symbol} sx={{ width: 40, height: 40 }} />
@@ -83,17 +80,17 @@ const AlertItem = ({ alert, touched_side, onViewDetails, isSmallScreen, index })
               </Typography>
               <Typography
                 variant="h6"
-                style={{
+                sx={{
                   color: "#333",
-                  padding: "0.2rem 0.5rem",
-                  borderRadius: "4px"
+                  px: 1,
+                  py: 0.5,
+                  borderRadius: 1,
+                  backgroundColor: "#e0f7fa",
                 }}
               >
-            ${formatPrice(close_price)}
+                ${formatPrice(close_price)}
               </Typography>
             </Box>
-
-            {/* Right side: Overbought / Oversold Chip */}
             <Chip
               label={styleSet.label}
               size="small"
@@ -104,12 +101,11 @@ const AlertItem = ({ alert, touched_side, onViewDetails, isSmallScreen, index })
                 fontWeight: 500,
               }}
             />
-            
           </Box>
 
           <Divider sx={{ mb: 2 }} />
 
-          {/* MIDDLE ROW: BandBreakoutMeter + Sparkline side by side */}
+          {/* MIDDLE ROW: BandBreakoutMeter and Sparkline Chart */}
           <Box
             display="flex"
             flexDirection={isSmallScreen ? "column" : "row"}
@@ -128,7 +124,6 @@ const AlertItem = ({ alert, touched_side, onViewDetails, isSmallScreen, index })
                 low_price={low_price}
               />
             </Box>
-
             <Box sx={{ flex: 1 }}>
               <SparklineChart data={recent_closes} touched_side={touched_side} />
             </Box>
@@ -136,7 +131,7 @@ const AlertItem = ({ alert, touched_side, onViewDetails, isSmallScreen, index })
 
           <Divider sx={{ mb: 2 }} />
 
-          {/* BOTTOM ROW: Key Prices + View Details Button */}
+          {/* BOTTOM ROW: BB Prices and View Details button */}
           <Box
             display="flex"
             flexDirection={isSmallScreen ? "column" : "row"}
@@ -144,43 +139,43 @@ const AlertItem = ({ alert, touched_side, onViewDetails, isSmallScreen, index })
             alignItems="center"
             gap={2}
           >
-            <Box display="flex" gap={3} flexWrap="wrap">
+            <Box display="flex" gap={2} flexWrap="wrap">
               <Typography
                 variant="body2"
-                style={{
-                  backgroundColor: "#f8d7da",
-                  color: "#dc3545",
-                  padding: "0.2rem 0.5rem",
-                  borderRadius: "4px"
+                sx={{
+                  backgroundColor: "#fff3cd",
+                  color: "#856404",
+                  px: 1,
+                  py: 0.5,
+                  borderRadius: 1,
                 }}
               >
-                <strong>BB Lower Price:</strong> {formatPrice(bb_lower)}
+                <strong>BB Lower:</strong> ${formatPrice(bb_lower)}
               </Typography>
-
               <Typography
                 variant="body2"
-                style={{
+                sx={{
                   backgroundColor: "#d4edda",
-                  color: "#28a745",
-                  padding: "0.2rem 0.5rem",
-                  borderRadius: "4px"
+                  color: "#155724",
+                  px: 1,
+                  py: 0.5,
+                  borderRadius: 1,
                 }}
               >
-                <strong>BB Upper Price:</strong> {formatPrice(bb_upper)}
+                <strong>BB Upper:</strong> ${formatPrice(bb_upper)}
               </Typography>
             </Box>
-
             <Button
               variant="contained"
               size="small"
-              // 1) Add slight elevation via boxShadow
               sx={{
+                textTransform: 'none',
                 boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
-                ":hover": {
+                transition: 'box-shadow 0.2s',
+                ':hover': {
                   boxShadow: "0 4px 8px rgba(0,0,0,0.25)",
                 },
               }}
-              // 2) On click, call parent's onViewDetails function
               onClick={() => onViewDetails(symbol)}
             >
               View Details

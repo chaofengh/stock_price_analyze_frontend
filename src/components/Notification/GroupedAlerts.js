@@ -1,5 +1,3 @@
-// GroupedAlerts.jsx
-
 import React, { useState } from 'react';
 import { Typography, Box, IconButton, Collapse } from '@mui/material';
 import { ExpandMore, ExpandLess } from '@mui/icons-material';
@@ -27,13 +25,14 @@ const GroupedAlerts = ({
         alignItems="center"
         justifyContent="space-between"
         sx={{
-          backgroundColor: '#f7f7f7',
-          borderRadius: 1,
-          p: 1,
-          cursor: 'pointer'
+          background: 'linear-gradient(90deg, #e3f2fd, #ffffff)',
+          borderRadius: 2,
+          p: 1.5,
+          cursor: 'pointer',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
         }}
       >
-        <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
+        <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
           {title}
         </Typography>
         <IconButton size="small" onClick={handleToggle}>
@@ -48,8 +47,9 @@ const GroupedAlerts = ({
               key={`${alert.symbol}-${idx}`}
               alert={alert}
               touched_side={touched_side}
-              onViewDetails={onViewDetails} // Pass down
+              onViewDetails={onViewDetails}
               isSmallScreen={isSmallScreen}
+              index={idx}
             />
           ))}
         </Box>

@@ -20,7 +20,11 @@ import AlertsSnackbar from './components/Notification/AlertsSnackbar';
 import OptionPriceRatio from './components/MoreOption/OptionPriceRatio';
 import TickerList from './components/MoreOption/TickerList';
 import FinancialAnalysisPage from './components/statements/FinancialAnalysisPage';
-import OpeningRangeBreakout from './components/OpeningRangeBreakout';
+
+// Renamed:
+import Backtest from './components/Backtest'; 
+// This replaces the old `OpeningRangeBreakout` component
+
 import News from './components/MoreOption/News';
 import { GlobalStyles } from '@mui/material';
 
@@ -29,9 +33,8 @@ const theme = createTheme({
     mode: 'light',
     primary: { main: '#00246B' },
     secondary: { main: '#CADCFC' },
-    // This sets the background color for the entire page
     background: {
-      default: '#e0e0e0', // Light gray
+      default: '#e0e0e0',
       paper: '#ffffff'
     }
   },
@@ -53,25 +56,19 @@ function App() {
   const ratioRef = useRef(null);
   const newsRef = useRef(null);
 
-  // Listen for clicks anywhere on document
   useEffect(() => {
     function handleClickOutside(event) {
-      // If TickerList is open and the click is outside its ref => close it
       if (
         selectedView === 'WatchList' &&
         tickerListRef.current &&
         !tickerListRef.current.contains(event.target)
       ) {
-        // Check if the DataGrid column menu popover is open and contains the click
         const dataGridMenuEl = document.querySelector('.MuiDataGrid-menu');
         if (dataGridMenuEl && dataGridMenuEl.contains(event.target)) {
-          // If the click is inside the column menu, do not close TickerList
           return;
         }
         setSelectedView(null);
       }
-
-      // If OptionPriceRatio is open and click is outside => close it
       if (
         selectedView === 'OptionPriceRatio' &&
         ratioRef.current &&
@@ -79,8 +76,6 @@ function App() {
       ) {
         setSelectedView(null);
       }
-
-      // If News is open and the click is outside => close it
       if (
         selectedView === 'News' &&
         newsRef.current &&
@@ -89,7 +84,6 @@ function App() {
         setSelectedView(null);
       }
     }
-
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [selectedView]);
@@ -97,10 +91,6 @@ function App() {
   return (
     <Router>
       <ThemeProvider theme={theme}>
-        {/* 
-          Global styles to ensure page is full height and remove default margins.
-          This helps the gray background fill the entire screen.
-        */}
         <GlobalStyles
           styles={{
             'html, body, #root': {
@@ -113,7 +103,6 @@ function App() {
         <CssBaseline />
         <AlertsProvider>
           <AlertsSnackbar />
-
           <AppBar position="static" elevation={4}>
             <Toolbar sx={{ minHeight: 64 }}>
               <Typography variant="h6" sx={{ flexGrow: 1 }}>
@@ -139,10 +128,10 @@ function App() {
             <Routes>
               <Route path="/" element={<StockDashboard />} />
               <Route path="/analysis/:symbol" element={<FinancialAnalysisPage />} />
-              <Route path="/orb" element={<OpeningRangeBreakout />} />
+              {/* Renamed path from /orb to /backtest */}
+              <Route path="/backtest" element={<Backtest />} />
             </Routes>
 
-            {/* WatchList */}
             {selectedView === 'WatchList' && (
               <Box
                 ref={tickerListRef}
@@ -159,8 +148,6 @@ function App() {
                 <TickerList />
               </Box>
             )}
-
-            {/* OptionPriceRatio */}
             {selectedView === 'OptionPriceRatio' && (
               <Box
                 ref={ratioRef}
@@ -177,8 +164,6 @@ function App() {
                 <OptionPriceRatio />
               </Box>
             )}
-
-            {/* News */}
             {selectedView === 'News' && (
               <Box
                 ref={newsRef}

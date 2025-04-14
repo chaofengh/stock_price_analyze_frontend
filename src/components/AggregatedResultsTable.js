@@ -15,13 +15,47 @@ import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import InfoIcon from '@mui/icons-material/Info';
 
+// Helper to determine the chip's background color based on its label.
+// For the OR chip (e.g., "OR=30m"), we calculate a blue shade that varies by value.
+const getChipColor = (chipLabel) => {
+  if (chipLabel.startsWith("OR=")) {
+    // Extract the numeric value (expecting format like "OR=45m").
+    const valueStr = chipLabel.slice(3).replace("m", "");
+    const value = parseInt(valueStr, 10);
+    // Expect OR values roughly between 30 and 60.
+    const min = 30, max = 60;
+    const clamped = Math.max(min, Math.min(value, max));
+    // Linear mapping: 30 -> 80% lightness (lighter blue), 60 -> 60% lightness (darker blue)
+    const percentage = (clamped - min) / (max - min);
+    const lightness = 80 - (percentage * 20);
+    return `hsl(220, 70%, ${lightness}%)`;
+  }
+  if (chipLabel.startsWith("StopLoss=")) {
+    // Use a purple hue. For a "None" value, use gray.
+    return chipLabel.includes("None") ? "#BDBDBD" : "#8E24AA";
+  }
+  if (chipLabel.startsWith("TimeExit=")) {
+    return "#FFB74D"; // amber
+  }
+  if (chipLabel.startsWith("MaxEntries=")) {
+    return "#81C784"; // green
+  }
+  if (chipLabel.startsWith("LimitSameDir=")) {
+    return "#4DD0E1"; // teal
+  }
+  if (chipLabel.startsWith("VolumeFilter=")) {
+    return "#FFD54F"; // yellow
+  }
+  return null; // Default will use the chip's built-in color
+};
+
 const AggregatedResultsTable = ({ results, onRowClick }) => {
   // Identify best/worst net pnl to highlight
   const netPnLs = results.map((r) => r.net_pnl);
   const bestPnl = Math.max(...netPnLs);
   const worstPnl = Math.min(...netPnLs);
 
-  // ---- FILTER STATE ----
+  // ------------------------- FILTER STATE -------------------------
   const [stopLossFilter, setStopLossFilter] = useState('all');
   const [limitDirFilter, setLimitDirFilter] = useState('all');
   const [maxReFilter, setMaxReFilter] = useState('all');
@@ -32,7 +66,7 @@ const AggregatedResultsTable = ({ results, onRowClick }) => {
   // Extract unique values from results for each parameter
   const uniqueStopLosses = useMemo(() => {
     const vals = Array.from(new Set(results.map(r => r.stop_loss)));
-    return vals; // e.g. [null, 0.005, 0.0075, 0.01]
+    return vals; // e.g. [null, 0.005, 0.01]
   }, [results]);
 
   const uniqueLimitDirVals = useMemo(() => {
@@ -73,7 +107,7 @@ const AggregatedResultsTable = ({ results, onRowClick }) => {
         const itemVal = String(item.limit_same_direction);
         if (itemVal !== limitDirFilter) return false;
       }
-      // max_reentries filter
+      // max_entries filter
       if (maxReFilter !== 'all') {
         const itemVal = String(item.max_entries);
         if (itemVal !== maxReFilter) return false;
@@ -95,7 +129,15 @@ const AggregatedResultsTable = ({ results, onRowClick }) => {
       }
       return true;
     });
-  }, [results, stopLossFilter, limitDirFilter, maxReFilter, orMinutesFilter, volumeFilter, timeExitFilter]);
+  }, [
+    results,
+    stopLossFilter,
+    limitDirFilter,
+    maxReFilter,
+    orMinutesFilter,
+    volumeFilter,
+    timeExitFilter
+  ]);
 
   // Utility: render column header with a tooltip
   const renderHeaderWithTooltip = (headerText, tooltipText) => (
@@ -109,29 +151,79 @@ const AggregatedResultsTable = ({ results, onRowClick }) => {
     </Box>
   );
 
+  // Helper to render scenario name and its parameters as chips,
+  // applying a custom color for each chip based on its value.
+  const renderScenarioCell = (row) => {
+    const scenarioName = row.scenario_name || '';
+
+    // Build parameter strings as chips.
+    const chips = [];
+    if (row.open_range_minutes !== undefined) {
+      chips.push(`OR=${row.open_range_minutes}m`);
+    }
+    if (row.stop_loss !== null) {
+      chips.push(`StopLoss=${row.stop_loss}`);
+    } else {
+      chips.push('StopLoss=None');
+    }
+    if (row.time_exit_minutes !== undefined) {
+      chips.push(`TimeExit=${row.time_exit_minutes}m`);
+    }
+    if (row.max_entries !== undefined) {
+      chips.push(`MaxEntries=${row.max_entries}`);
+    }
+    if (row.limit_same_direction !== undefined) {
+      chips.push(`LimitSameDir=${row.limit_same_direction}`);
+    }
+    if (row.use_volume_filter !== undefined) {
+      chips.push(`VolumeFilter=${row.use_volume_filter}`);
+    }
+
+    return (
+      <Box>
+        <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 0.5 }}>
+          {scenarioName}
+        </Typography>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+          {chips.map((chipLabel, idx) => {
+            const bgColor = getChipColor(chipLabel);
+            // Determine text color based on background lightness for readability.
+            // Here, if the chip is an OR chip, we check the lightness from the hsl string.
+            let textColor = 'white';
+            if (chipLabel.startsWith("OR=")) {
+              // Simple check: if the hsl lightness is above 70%, use black instead.
+              const lightnessMatch = bgColor.match(/(\d+)%\)$/);
+              if (lightnessMatch && Number(lightnessMatch[1]) > 70) {
+                textColor = 'black';
+              }
+            }
+            return (
+              <Chip
+                key={idx}
+                label={chipLabel}
+                size="small"
+                sx={{
+                  backgroundColor: bgColor,
+                  color: bgColor ? textColor : 'inherit'
+                }}
+              />
+            );
+          })}
+        </Box>
+      </Box>
+    );
+  };
+
   const columns = [
     {
       field: 'scenario_name',
       headerName: 'Scenario',
-      flex: 1,
+      flex: 2,
       renderHeader: () =>
-        renderHeaderWithTooltip('Scenario', 'Scenario name and applied filters'),
+        renderHeaderWithTooltip('Scenario', 'Scenario name and parameters'),
       renderCell: (params) => {
-        const scenario = params.value || '';
-        const filters = params.row.filters || '';
-        return (
-          <Box>
-            <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-              {scenario}
-            </Typography>
-            {filters && (
-              <Typography variant="body2" color="text.secondary">
-                {filters}
-              </Typography>
-            )}
-          </Box>
-        );
-      },
+        return renderScenarioCell(params.row);
+      }
     },
     {
       field: 'net_pnl',
@@ -145,8 +237,11 @@ const AggregatedResultsTable = ({ results, onRowClick }) => {
         const color = rawVal < 0 ? 'red' : 'green';
         const Icon = rawVal < 0 ? ArrowDownwardIcon : ArrowUpwardIcon;
         let highlight = {};
-        if (rawVal === bestPnl) highlight = { backgroundColor: 'rgba(0,255,0,0.1)' };
-        else if (rawVal === worstPnl) highlight = { backgroundColor: 'rgba(255,0,0,0.1)' };
+        if (rawVal === bestPnl)
+          highlight = { backgroundColor: 'rgba(0,255,0,0.1)' };
+        else if (rawVal === worstPnl)
+          highlight = { backgroundColor: 'rgba(255,0,0,0.1)' };
+
         return (
           <Box
             sx={{
@@ -162,7 +257,7 @@ const AggregatedResultsTable = ({ results, onRowClick }) => {
             </Typography>
           </Box>
         );
-      },
+      }
     },
     {
       field: 'win_rate',
@@ -175,12 +270,13 @@ const AggregatedResultsTable = ({ results, onRowClick }) => {
       renderCell: (params) => {
         const val = params.row.win_rate;
         const displayVal =
-          params.row.win_rate_formatted || ((val || 0) * 100).toFixed(1) + '%';
+          params.row.win_rate_formatted ||
+          ((val || 0) * 100).toFixed(1) + '%';
         let chipColor = 'default';
         if (val > 0.7) chipColor = 'success';
         else if (val < 0.3) chipColor = 'error';
         return <Chip label={displayVal} color={chipColor} size="small" />;
-      },
+      }
     },
     {
       field: 'profit_factor',
@@ -200,7 +296,7 @@ const AggregatedResultsTable = ({ results, onRowClick }) => {
             </Typography>
           </Tooltip>
         );
-      },
+      }
     },
     {
       field: 'sharpe_ratio',
@@ -214,7 +310,7 @@ const AggregatedResultsTable = ({ results, onRowClick }) => {
         <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
           {params.row.sharpe_ratio_formatted || params.row.sharpe_ratio || ''}
         </Typography>
-      ),
+      )
     },
     {
       field: 'max_drawdown',
@@ -230,7 +326,7 @@ const AggregatedResultsTable = ({ results, onRowClick }) => {
             {params.row.max_drawdown_formatted || params.row.max_drawdown}
           </Typography>
         </Tooltip>
-      ),
+      )
     },
     {
       field: 'num_trades',
@@ -244,15 +340,15 @@ const AggregatedResultsTable = ({ results, onRowClick }) => {
         <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
           {params.row.num_trades}
         </Typography>
-      ),
-    },
+      )
+    }
   ];
 
   // Map filtered results to rows for the DataGrid
   const rows = filteredResults.map((item, index) => ({
     id: index,
     ...item,
-    date: item.date ? new Date(item.date).toLocaleDateString() : '',
+    date: item.date ? new Date(item.date).toLocaleDateString() : ''
   }));
 
   const handleRowClick = useCallback(
@@ -269,7 +365,13 @@ const AggregatedResultsTable = ({ results, onRowClick }) => {
         <Typography variant="h6" sx={{ mb: 1 }}>
           Filter Scenarios
         </Typography>
-        <Box sx={{ display: 'grid', gap: 2,gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))' }}>
+        <Box
+          sx={{
+            display: 'grid',
+            gap: 2,
+            gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))'
+          }}
+        >
           {/* Stop Loss Filter */}
           <FormControl variant="outlined" size="small" sx={{ width: '100%' }}>
             <InputLabel>Stop Loss</InputLabel>
@@ -291,10 +393,10 @@ const AggregatedResultsTable = ({ results, onRowClick }) => {
           </FormControl>
 
           {/* Limit Same Direction Filter */}
-          <FormControl variant="outlined" size="small" sx={{ minWidth: 200 }}>
-            <InputLabel>Opposite After Loss?</InputLabel>
+          <FormControl variant="outlined" size="small" sx={{ width: '100%' }}>
+            <InputLabel>LimitSameDir?</InputLabel>
             <Select
-              label="Opposite After Loss?"
+              label="LimitSameDir?"
               value={limitDirFilter}
               onChange={(e) => setLimitDirFilter(e.target.value)}
             >
@@ -392,6 +494,7 @@ const AggregatedResultsTable = ({ results, onRowClick }) => {
         </Box>
       </Paper>
 
+      {/* DATA GRID */}
       <Paper elevation={2} sx={{ p: 2 }}>
         <Typography variant="h6" sx={{ mb: 1 }}>
           Aggregated Results
@@ -406,8 +509,21 @@ const AggregatedResultsTable = ({ results, onRowClick }) => {
           headerHeight={60}
           sx={{
             fontSize: '0.95rem',
+            cursor: 'pointer',
             '& .MuiDataGrid-columnHeaders': {
               backgroundColor: 'rgba(25, 118, 210, 0.1)',
+            },
+            // Zebra striping
+            '& .MuiDataGrid-row:nth-of-type(even)': {
+              backgroundColor: 'rgba(0, 0, 0, 0.02)',
+            },
+            // Hover highlight
+            '& .MuiDataGrid-row:hover': {
+              backgroundColor: 'rgba(25, 118, 210, 0.06)',
+            },
+            // Remove focus outline on cells
+            '& .MuiDataGrid-cell:focus, & .MuiDataGrid-cell:focus-within': {
+              outline: 'none',
             },
           }}
         />

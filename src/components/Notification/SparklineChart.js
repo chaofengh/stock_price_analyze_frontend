@@ -5,8 +5,7 @@ import { Sparklines, SparklinesLine, SparklinesReferenceLine } from "react-spark
 const SparklineChart = ({ data, touched_side }) => {
   if (!data || data.length === 0) return null;
 
-  const lineColor = touched_side === "Upper" ? "#2e7d32" : "#d32f2f" ;
-
+  const lineColor = touched_side === "Upper" ? "#2e7d32" : "#d32f2f";
   const firstVal = data[0];
   const lastVal = data[data.length - 1];
   const netChange = lastVal - firstVal;
@@ -18,7 +17,7 @@ const SparklineChart = ({ data, touched_side }) => {
         <SparklinesLine color={lineColor} style={{ strokeWidth: 2, fill: "none" }} />
         <SparklinesReferenceLine type="mean" />
       </Sparklines>
-      <Typography variant="caption" color={netChange >= 0 ? "green" : "red"}>
+      <Typography variant="caption" sx={{ color: netChange >= 0 ? "green" : "red" }}>
         {netChange >= 0 ? "+" : ""}
         {percentageChange}%
       </Typography>

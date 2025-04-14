@@ -75,11 +75,11 @@ function MoreOptionsMenu({ onSelectView }) {
           </ListItemIcon>
           News
         </MenuItem>
-        <MenuItem onClick={()=>navigate('/orb')}>
+        <MenuItem onClick={()=>navigate('/backtest')}>
           <ListItemIcon>
             <ArticleIcon />
           </ListItemIcon>
-          Open Range Breakout Search
+          BackTest
         </MenuItem>
       </Menu>
     </>
