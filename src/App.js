@@ -22,7 +22,7 @@ import TickerList from './components/MoreOption/TickerList';
 import FinancialAnalysisPage from './components/statements/FinancialAnalysisPage';
 
 // Renamed:
-import Backtest from './components/Backtest'; 
+import Backtest from './components/Backtest/Backtest'; 
 // This replaces the old `OpeningRangeBreakout` component
 
 import News from './components/MoreOption/News';

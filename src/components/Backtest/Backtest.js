@@ -1,31 +1,32 @@
-// components/Backtest.js
-
+// File: Backtest.js
 import React, { useState } from 'react';
 import {
   Box,
+  Container,
+  Paper,
+  Typography,
+  Grid,
   TextField,
   Button,
-  Typography,
+  CircularProgress,
   Dialog,
   DialogTitle,
   DialogContent,
-  Paper,
   Tabs,
   Tab,
-  Grid,
-  CircularProgress,
   Tooltip,
   MenuItem,
   FormControl,
   Select,
-  InputLabel
+  InputLabel,
+  Divider
 } from '@mui/material';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 
 import AggregatedResultsTable from './AggregatedResultsTable';
 import DailyTradeDetails from './DailyTradeDetails';
 import CalendarComponent from './CalendarComponent';
-import CandleChart from './CandleChart';
+import CandleChart from '../CandleChart';
 
 // Helper: convert date/time string to YYYY-MM-DD
 function getLocalDateString(dateInput) {
@@ -81,7 +82,7 @@ const Backtest = () => {
   const [intradayData, setIntradayData] = useState([]);
   const [annotations, setAnnotations] = useState([]);
 
-  // Tabs
+  // Tabs in the dialog
   const [selectedTab, setSelectedTab] = useState(0);
 
   const theme = createTheme({
@@ -102,7 +103,6 @@ const Backtest = () => {
 
     try {
       // Updated endpoint => /api/backtest
-      // Include strategy as a query param
       const endpoint = `${process.env.REACT_APP_summary_root_api}/backtest?ticker=${ticker}&strategy=${strategy}`;
       const response = await fetch(endpoint);
       if (!response.ok) {
@@ -211,8 +211,8 @@ const Backtest = () => {
         if (entryDataPoint && exitDataPoint) {
           const fillColor =
             trade.direction === 'long'
-              ? 'rgba(0, 128, 0, 0.2)'
-              : 'rgba(255, 0, 0, 0.2)';
+              ? 'rgba(0, 128, 0, 0.15)'
+              : 'rgba(255, 0, 0, 0.15)';
 
           newAnnotations.push({
             type: 'trade-rectangle',
@@ -250,79 +250,108 @@ const Backtest = () => {
 
   return (
     <ThemeProvider theme={theme}>
-      <Paper elevation={3} sx={{ p: 3, m: 3 }}>
-        <Typography variant="h5" gutterBottom>
-          Strategy Backtest
-        </Typography>
-        <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} sm={6} md={3}>
-            <TextField
-              fullWidth
-              label="Enter Ticker"
-              variant="outlined"
-              value={ticker}
-              onChange={(e) => setTicker(e.target.value.toUpperCase())}
-              onKeyDown={handleKeyDown}
-            />
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <FormControl fullWidth>
-              <InputLabel>Strategy</InputLabel>
-              <Select
-                value={strategy}
-                label="Strategy"
-                onChange={(e) => setStrategy(e.target.value)}
-              >
-                <MenuItem value="opening_range_breakout">Opening Range Breakout</MenuItem>
-                <MenuItem value="reverse_opening_range_breakout">Reverse ORB</MenuItem>
-                {/* Extend with more strategies here */}
-                {/* <MenuItem value="ma_crossover">Moving Average Crossover</MenuItem> */}
-                {/* <MenuItem value="previous_day_breakout">Previous Day Breakout</MenuItem> */}
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid item xs={12} sm={6} md={2}>
-            <Button fullWidth variant="contained" onClick={handleSearch}>
-              Search
-            </Button>
-          </Grid>
-        </Grid>
+      <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
+        {/* HEADER */}
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="h4" sx={{ fontWeight: 'bold', mb: 1 }}>
+            Strategy Backtest
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Explore backtest results for various strategies. Use the controls below to run a new backtest.
+          </Typography>
+        </Box>
 
+        {/* SEARCH CONTROLS */}
+        <Paper elevation={3} sx={{ p: 3, mb: 5 }}>
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={4} md={3}>
+              <TextField
+                fullWidth
+                label="Enter Ticker"
+                variant="outlined"
+                value={ticker}
+                onChange={(e) => setTicker(e.target.value.toUpperCase())}
+                onKeyDown={handleKeyDown}
+              />
+            </Grid>
+            <Grid item xs={12} sm={4} md={3}>
+              <FormControl fullWidth>
+                <InputLabel>Strategy</InputLabel>
+                <Select
+                  value={strategy}
+                  label="Strategy"
+                  onChange={(e) => setStrategy(e.target.value)}
+                >
+                  <MenuItem value="opening_range_breakout">Opening Range Breakout</MenuItem>
+                  <MenuItem value="reverse_opening_range_breakout">Reverse ORB</MenuItem>
+                  {/* Extend with more strategies here */}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} sm={4} md={2}>
+              <Button
+                fullWidth
+                variant="contained"
+                onClick={handleSearch}
+                sx={{ height: '100%' }}
+              >
+                Search
+              </Button>
+            </Grid>
+          </Grid>
+        </Paper>
+
+        {/* LOADING/ERROR/EMPTY-STATE MESSAGES */}
         {loading && (
-          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
             <CircularProgress />
           </Box>
         )}
-
         {error && (
-          <Typography color="error" sx={{ mt: 2 }}>
+          <Typography color="error" sx={{ mb: 2 }}>
             {error}
           </Typography>
         )}
-
         {!loading && results.length === 0 && !error && (
           <Typography variant="body1" sx={{ mt: 2 }}>
             Enter a ticker and choose a strategy to backtest.
           </Typography>
         )}
 
+        {/* RESULTS & FILTERS TABLE */}
         {results.length > 0 && (
-          <AggregatedResultsTable results={results} onRowClick={handleRowClick} />
+          <Paper elevation={0} sx={{ mb: 2, p:3 }}>
+            <Typography variant="h6" sx={{ mb: 1 }}>
+              Filter Scenarios
+            </Typography>
+            <Divider sx={{ mb: 2 }} />
+            {/* Aggregated Results Table (with built-in filters) */}
+            <AggregatedResultsTable results={results} onRowClick={handleRowClick} />
+          </Paper>
         )}
-      </Paper>
 
-      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="xl" fullWidth>
-        <DialogTitle>
-          {selectedScenario?.scenario_name || 'Scenario Details'}
-        </DialogTitle>
-        <DialogContent>
-          <Tabs value={selectedTab} onChange={handleTabChange} centered>
-            <Tab label="Calendar & Chart" />
-            <Tab label="Trade Details" />
-          </Tabs>
+        {/* SCENARIO DIALOG */}
+        <Dialog
+          open={openDialog}
+          onClose={handleCloseDialog}
+          maxWidth="xl"
+          fullWidth
+        >
+          <DialogTitle>
+            {selectedScenario?.scenario_name || 'Scenario Details'}
+          </DialogTitle>
+          <DialogContent>
+            <Tabs
+              value={selectedTab}
+              onChange={handleTabChange}
+              centered
+              sx={{ mb: 2 }}
+            >
+              <Tab label="Calendar & Chart" />
+              <Tab label="Trade Details" />
+            </Tabs>
 
-          {selectedTab === 0 && (
-            <Box sx={{ p: 2 }}>
+            {selectedTab === 0 && (
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                 <Paper elevation={2} sx={{ p: 2 }}>
                   <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 'bold' }}>
@@ -335,7 +364,6 @@ const Backtest = () => {
                     value={calendarValue}
                     onChange={handleCalendarChange}
                     tileContent={tileContent}
-                    height="100%"
                   />
                 </Paper>
 
@@ -352,20 +380,20 @@ const Backtest = () => {
                   )}
                 </Paper>
               </Box>
-            </Box>
-          )}
+            )}
 
-          {selectedTab === 1 && (
-            <Box sx={{ p: 2 }}>
-              {selectedScenario ? (
-                <DailyTradeDetails dailyTrades={selectedScenario.daily_trades} />
-              ) : (
-                <Typography variant="body1">No trade details available.</Typography>
-              )}
-            </Box>
-          )}
-        </DialogContent>
-      </Dialog>
+            {selectedTab === 1 && (
+              <Box>
+                {selectedScenario ? (
+                  <DailyTradeDetails dailyTrades={selectedScenario.daily_trades} />
+                ) : (
+                  <Typography variant="body1">No trade details available.</Typography>
+                )}
+              </Box>
+            )}
+          </DialogContent>
+        </Dialog>
+      </Container>
     </ThemeProvider>
   );
 };
