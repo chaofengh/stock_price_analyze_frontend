@@ -112,7 +112,7 @@ const NotificationBell = () => {
         </DialogTitle>
 
         {alertCount > 0 && (
-          <Typography variant="subtitle2" sx={{ ml: 3, mt: -1, color: 'text.secondary' }}>
+          <Typography variant="subtitle2" sx={{ ml: 3, mt: 1, color: 'text.secondary' }}>
             Updated at {timestamp}
           </Typography>
         )}
