@@ -1,82 +1,45 @@
 import React from 'react';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
-  Typography,
-  Box
-} from '@mui/material';
+import { Table, TableBody, TableCell, TableHead, TableRow, Typography } from '@mui/material';
 
-function DailyTradeDetails({ dailyTrades }) {
-  // Copy and sort trades from newest to oldest by entry_time
-  const sortedTrades = [...dailyTrades].sort(
-    (a, b) => new Date(b.entry_time) - new Date(a.entry_time)
+export default function DailyTradeDetails({ dailyTrades }) {
+  if (!dailyTrades || dailyTrades.length === 0)
+    return <Typography>No trades for this day.</Typography>;
+
+  const sorted = [...dailyTrades].sort(
+    (a, b) => new Date(a.entry_time) - new Date(b.entry_time)
   );
 
   return (
-    <Box sx={{ mt: 2 }}>
+    <>
       <Typography variant="subtitle1" gutterBottom>
-        Daily Trade Details (Latest to Oldest)
+        Trades – {new Date(sorted[0].entry_time).toLocaleDateString()}
       </Typography>
-      <Table sx={{ minWidth: 650 }}>
+
+      {/* stickyHeader keeps column labels visible while scrolling */}
+      <Table size="small" stickyHeader>
         <TableHead>
-          <TableRow
-            sx={{
-              position: 'sticky',
-              top: 0,
-              backgroundColor: 'background.paper',
-              zIndex: 1,
-            }}
-          >
-            <TableCell>Trade #</TableCell>
-            <TableCell>Date</TableCell>
+          <TableRow>
+            <TableCell>#</TableCell>
             <TableCell>Direction</TableCell>
-            <TableCell>Entry Price</TableCell>
-            <TableCell>Exit Price</TableCell>
-            <TableCell>PNL</TableCell>
-            <TableCell>Entry Time</TableCell>
-            <TableCell>Exit Time</TableCell>
+            <TableCell align="right">Entry</TableCell>
+            <TableCell align="right">Exit</TableCell>
+            <TableCell align="right">PNL</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
-          {sortedTrades.map((trade, idx) => {
-            const tradeIndex = sortedTrades.length - idx; // or just idx+1 in reverse
-            const entryDate = new Date(trade.entry_time);
-            const exitDate = trade.exit_time ? new Date(trade.exit_time) : null;
-            const pnlColor = trade.pnl >= 0 ? 'green' : 'red';
-
-            return (
-              <TableRow
-                key={idx}
-                sx={{ '&:nth-of-type(even)': { backgroundColor: 'action.hover' } }}
-              >
-                <TableCell>
-                  {`Trade ${tradeIndex}`}
-                </TableCell>
-                <TableCell>
-                  {entryDate.toLocaleDateString()}
-                </TableCell>
-                <TableCell>{trade.direction}</TableCell>
-                <TableCell>{trade.entry_price.toFixed(3)}</TableCell>
-                <TableCell>{trade.exit_price.toFixed(3)}</TableCell>
-                <TableCell sx={{ color: pnlColor, fontWeight: 'bold' }}>
-                  {trade.pnl.toFixed(2)}
-                </TableCell>
-                <TableCell>
-                  {entryDate.toLocaleTimeString()}
-                </TableCell>
-                <TableCell>
-                  {exitDate ? exitDate.toLocaleTimeString() : '-'}
-                </TableCell>
-              </TableRow>
-            );
-          })}
+          {sorted.map((t, i) => (
+            <TableRow key={i}>
+              <TableCell>{i + 1}</TableCell>
+              <TableCell>{t.direction}</TableCell>
+              <TableCell align="right">{t.entry_price.toFixed(2)}</TableCell>
+              <TableCell align="right">{t.exit_price.toFixed(2)}</TableCell>
+              <TableCell align="right" style={{ color: t.pnl >= 0 ? 'green' : 'red' }}>
+                {t.pnl.toFixed(2)}
+              </TableCell>
+            </TableRow>
+          ))}
         </TableBody>
       </Table>
-    </Box>
+    </>
   );
 }
-
-export default DailyTradeDetails;

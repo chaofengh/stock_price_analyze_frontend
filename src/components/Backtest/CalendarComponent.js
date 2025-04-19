@@ -1,84 +1,76 @@
 import React from 'react';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
-import { Box } from '@mui/material';
+import { Box, Tooltip, Typography } from '@mui/material';
 
-function CalendarComponent({ value, onChange, tileContent, height = 450 }) {
+/* ───────────────────────────────────────── helpers ───────────────────────────────────────── */
+
+const getHeatColor = (pnl, maxAbs) => {
+  if (!maxAbs) return '#eee';
+  const ratio = Math.min(Math.abs(pnl) / maxAbs, 1);   // 0‒1
+  const hue   = pnl >= 0 ? 120 : 0;                    // green → red
+  const light = 90 - ratio * 40;                       // 90 % (pale) → 50 % (vivid)
+  return `hsl(${hue}, 60%, ${light}%)`;
+};
+
+/* ───────────────────────────────────────── component ─────────────────────────────────────── */
+
+export default function CalendarComponent({
+  value,
+  onChange,
+  heatMapData = {},            // { 'yyyy-mm-dd': pnl, … }
+  height = 450
+}) {
+  const maxAbs = Math.max(1, ...Object.values(heatMapData).map(v => Math.abs(v)));
+
   return (
-    <Box
-      sx={{
-        margin: '0 auto',
-        width: '100%',
-        height,
-      }}
-    >
+    <Box sx={{ mx: 'auto', width: '100%', height }}>
       <Box
         sx={{
           '& .react-calendar': {
-            fontSize: '1rem',
-            border: '1px solid #ccc',
-            borderRadius: '8px',
-            padding: '0.5rem',
-            backgroundColor: '#fff',
-            fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
             width: '100%',
             height: '100%',
+            borderRadius: 2,
+            p: 0.5,
+            border: '1px solid #ccc',
+            fontFamily: 'inherit'
           },
-          '& .react-calendar__navigation': {
-            marginBottom: '1rem',
-            button: {
-              minWidth: 'auto',
-              background: 'transparent',
-              color: '#1976d2',
-              fontSize: '1rem',
-              fontWeight: 'bold',
-              '&:hover': {
-                backgroundColor: 'rgba(25, 118, 210, 0.1)',
-              },
-            },
-          },
-          '& .react-calendar__month-view__weekdays': {
-            fontWeight: 'bold',
-            fontSize: '0.9rem',
-            textAlign: 'center',
-            marginBottom: '0.3rem',
-          },
-          '& .react-calendar__tile': {
-            padding: '0.6rem 0.3rem',
-            minHeight: 'auto',
-            borderRadius: '4px',
-            transition: 'all 0.2s ease',
-            '&:hover': {
-              backgroundColor: '#eee',
-            },
-            whiteSpace: 'nowrap',
-          },
-          '& .react-calendar__tile--now': {
-            backgroundColor: 'rgba(25, 118, 210, 0.1)',
-            borderRadius: '4px',
-          },
-          '& .react-calendar__tile--active': {
-            backgroundColor: 'transparent',
-            color: '#1976d2',
-            border: '2px solid #1976d2',
-            borderRadius: '4px',
-            '&:hover': {
-              backgroundColor: 'transparent',
-            },
-          },
-          '& .react-calendar__tile:focus': {
-            backgroundColor: 'transparent',
-          },
+          '& .react-calendar__tile--now': { fontWeight: 'bold' }
         }}
       >
         <Calendar
-          onChange={onChange}
           value={value}
-          tileContent={tileContent}
+          onChange={onChange}
+          tileContent={({ date, view }) => {
+            if (view !== 'month') return null;
+            const key = date.toISOString().slice(0, 10);
+            const pnl = heatMapData[key];
+            const bg  = pnl !== undefined ? getHeatColor(pnl, maxAbs) : 'transparent';
+
+            return (
+              <Tooltip title={pnl !== undefined ? `PNL ${pnl.toFixed(2)}` : ''}>
+                <Box
+                  sx={{
+                    width: '100%',
+                    height: '100%',
+                    borderRadius: 1,
+                    backgroundColor: bg,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                >
+                  {pnl !== undefined && (
+                    <Typography sx={{ fontSize: '0.7rem', fontWeight: 500 }}>
+                      {pnl.toFixed(0)}
+                    </Typography>
+                  )}
+                </Box>
+              </Tooltip>
+            );
+          }}
         />
       </Box>
     </Box>
   );
 }
-
-export default CalendarComponent;
