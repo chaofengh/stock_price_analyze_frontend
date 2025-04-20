@@ -20,13 +20,15 @@ export default function AggregatedResultsTable({ results = [], onRowClick }) {
   const best  = results.length ? Math.max(...results.map(r => r.net_pnl)) : 0;
   const worst = results.length ? Math.min(...results.map(r => r.net_pnl)) : 0;
 
+  console.log('result', results);
+
   /* ----- columns ----- */
   const columns = [
     /* scenario chips ------------------------------------------------------- */
     {
       field: 'scenario',
-      headerName: 'Scenario',
-      flex: 2,
+      headerName: 'Strategy & Filters',
+      flex: 3,
       renderCell: ({ row }) => (
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
           <Chip
@@ -52,9 +54,11 @@ export default function AggregatedResultsTable({ results = [], onRowClick }) {
     /* net pnl -------------------------------------------------------------- */
     {
       field: 'net_pnl',
-      headerName: 'Net PNL',
+      headerName: 'Net P&L ($)',
       width: 130,
       type: 'number',
+      headerAlign: 'center',
+      align:'center',
       renderCell: ({ row }) => {
         const pos  = row.net_pnl >= 0;
         const Icon = pos ? ArrowUpwardIcon : ArrowDownwardIcon;
@@ -84,41 +88,52 @@ export default function AggregatedResultsTable({ results = [], onRowClick }) {
       }
     },
 
-    /* the four numeric metrics -------------------------------------------- */
+    /* Win % --------------------------------------------------------------- */
     {
       field: 'win_rate',
-      headerName: 'Win %',
-      width: 90,
-      type: 'number',
-      valueFormatter: ({ value }) =>
+      headerName: 'Win Rate (%)',
+      width: 150,
+      headerAlign: 'center',
+      align:'center',
+      renderCell: ({ value }) =>
         value != null ? `${(value * 100).toFixed(1)} %` : ''
     },
+
+    /* Profit Factor ------------------------------------------------------- */
     {
       field: 'profit_factor',
-      headerName: 'PF',
-      width: 90,
-      type: 'number',
-      valueFormatter: ({ value }) =>
-        value != null ? value.toFixed(2) : ''
-    },
-    {
-      field: 'sharpe_ratio',
-      headerName: 'Sharpe',
-      width: 100,
-      type: 'number',
-      valueFormatter: ({ value }) =>
-        value != null ? value.toFixed(2) : ''
-    },
-    {
-      field: 'max_drawdown',
-      headerName: 'Max DD',
-      width: 100,
-      type: 'number',
-      valueFormatter: ({ value }) =>
+      headerName: 'Profit Factor',
+      width: 150,
+      headerAlign: 'center',
+      align:'center',
+      renderCell: ({ value }) =>
         value != null ? value.toFixed(2) : ''
     },
 
-    { field: 'num_trades', headerName: '#T', width: 80, type: 'number' }
+    /* Sharpe -------------------------------------------------------------- */
+    {
+      field: 'sharpe_ratio',
+      headerName: 'Sharpe Ratio',
+      width: 150,
+      headerAlign: 'center',
+      align:'center',
+      renderCell: ({ value }) =>
+        value != null ? value.toFixed(2) : ''
+    },
+
+    /* Max DD -------------------------------------------------------------- */
+    {
+      field: 'max_drawdown',
+      headerName: 'Max Drawdown (%)',
+      width: 150,
+      headerAlign: 'center',
+      align:'center',
+      renderCell: ({ value }) =>
+        value != null ? value.toFixed(2) : ''
+    },
+
+    /* # trades ------------------------------------------------------------ */
+    { field: 'num_trades', headerName: 'Trades', width: 150, type: 'number', headerAlign: 'center', align:'center'}
   ];
 
   /* ----- rows & click handler ----- */

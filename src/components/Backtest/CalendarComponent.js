@@ -3,24 +3,27 @@ import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
 import { Box, Tooltip, Typography } from '@mui/material';
 
-/* ───────────────────────────────────────── helpers ───────────────────────────────────────── */
-
-const getHeatColor = (pnl, maxAbs) => {
-  if (!maxAbs) return '#eee';
-  const ratio = Math.min(Math.abs(pnl) / maxAbs, 1);   // 0‒1
-  const hue   = pnl >= 0 ? 120 : 0;                    // green → red
-  const light = 90 - ratio * 40;                       // 90 % (pale) → 50 % (vivid)
-  return `hsl(${hue}, 60%, ${light}%)`;
-};
-
-/* ───────────────────────────────────────── component ─────────────────────────────────────── */
+/**
+ * Returns both HSL color string and its lightness percentage.
+ */
+function getHeatColor(pnl, maxAbs) {
+  if (maxAbs <= 0) return { color: '#eee', light: 90 };
+  const ratio = Math.min(Math.abs(pnl) / maxAbs, 1);   // 0–1
+  const hue   = pnl >= 0 ? 120 : 0;                    // green or red
+  const light = 90 - ratio * 40;                       // 90% → 50%
+  return {
+    color: `hsl(${hue}, 60%, ${light}%)`,
+    light
+  };
+}
 
 export default function CalendarComponent({
   value,
   onChange,
-  heatMapData = {},            // { 'yyyy-mm-dd': pnl, … }
+  heatMapData = {},          // { 'yyyy-mm-dd': pnl, … }
   height = 450
 }) {
+  // ensure we never divide by zero
   const maxAbs = Math.max(1, ...Object.values(heatMapData).map(v => Math.abs(v)));
 
   return (
@@ -31,11 +34,14 @@ export default function CalendarComponent({
             width: '100%',
             height: '100%',
             borderRadius: 2,
-            p: 0.5,
+            p: 1,
             border: '1px solid #ccc',
             fontFamily: 'inherit'
           },
-          '& .react-calendar__tile--now': { fontWeight: 'bold' }
+          '& .react-calendar__tile--now': {
+            fontWeight: 700,
+            border: '1px solid #888'
+          }
         }}
       >
         <Calendar
@@ -45,26 +51,30 @@ export default function CalendarComponent({
             if (view !== 'month') return null;
             const key = date.toISOString().slice(0, 10);
             const pnl = heatMapData[key];
-            const bg  = pnl !== undefined ? getHeatColor(pnl, maxAbs) : 'transparent';
+            const { color: bg, light } = pnl != null
+              ? getHeatColor(pnl, maxAbs)
+              : { color: 'transparent', light: 90 };
+            // pick white text on darker tiles
+            const textColor = light < 60 ? '#fff' : '#000';
 
             return (
-              <Tooltip title={pnl !== undefined ? `PNL ${pnl.toFixed(2)}` : ''}>
+              <Tooltip title={pnl != null ? `PNL ${pnl.toFixed(2)}` : ''}>
                 <Box
                   sx={{
                     width: '100%',
                     height: '100%',
-                    borderRadius: 1,
-                    backgroundColor: bg,
+                    bgcolor: bg,
+                    color: textColor,
+                    fontSize: '0.9rem',
+                    fontWeight: 600,
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'center'
+                    justifyContent: 'center',
+                    border: '1px solid #ddd',
+                    boxSizing: 'border-box'
                   }}
                 >
-                  {pnl !== undefined && (
-                    <Typography sx={{ fontSize: '0.7rem', fontWeight: 500 }}>
-                      {pnl.toFixed(0)}
-                    </Typography>
-                  )}
+                  {pnl != null ? pnl.toFixed(0) : ''}
                 </Box>
               </Tooltip>
             );

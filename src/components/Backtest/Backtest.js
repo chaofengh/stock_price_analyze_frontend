@@ -80,8 +80,6 @@ export default function Backtest() {
     }
   };
 
-  console.log('results', results);
-
   const openScenario = (sc) => {
     setScenario(sc);
     setHeatMap(aggregateDailyPnl(sc.daily_trades));
