@@ -18,7 +18,7 @@ import { createTheme, ThemeProvider } from '@mui/material/styles';
 import AggregatedResultsTable from './AggregatedResultsTable';
 import DailyTradeDetails      from './DailyTradeDetails';
 import CalendarComponent      from './CalendarComponent';
-import CandleChart            from '../CandleChart';
+import CandleChart            from './CandleChart';
 
 /* ───────────────────────── helpers ───────────────────────── */
 

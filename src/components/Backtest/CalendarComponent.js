@@ -40,11 +40,12 @@ export default function CalendarComponent({
           },
           '& .react-calendar__tile--now': {
             fontWeight: 700,
-            border: '1px solid #888'
+            // border: '1px solid #888'
           }
         }}
       >
         <Calendar
+          calendarType="gregory"
           value={value}
           onChange={onChange}
           tileContent={({ date, view }) => {
@@ -70,7 +71,6 @@ export default function CalendarComponent({
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    border: '1px solid #ddd',
                     boxSizing: 'border-box'
                   }}
                 >
