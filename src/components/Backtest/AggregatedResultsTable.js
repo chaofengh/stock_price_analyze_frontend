@@ -6,11 +6,21 @@ import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 
 /* colour helpers ----------------------------------------------------------- */
 const chipBg = {
-  OR:         '#90a4ae',
-  VWAPFilter: '#ffe082',
-  VolFilter:  '#fff59d',
-  Reverse:    '#d1c4e9',
-  ORB:        '#bbdefb'
+  OR:         '#90a4ae',   // grey
+  VWAPFilter: '#ffe082',   // light amber
+  VolFilter:  '#fff59d',   // pastel yellow
+  Reverse:    '#d1c4e9',   // lavender
+  ORB:        '#bbdefb',   // light blue
+  BBands:     '#c8e6c9',   // mint green
+  'S/R':      '#ffe0b2'    // peach
+};
+
+/* strategy → label lookup -------------------------------------------------- */
+const stratLabel = {
+  backtest_orb:                 'ORB',
+  backtest_reverse_orb:         'Reverse',
+  backtest_bbands:              'BBands',
+  backtest_support_resistance:  'S/R'
 };
 
 /* component ---------------------------------------------------------------- */
@@ -20,41 +30,45 @@ export default function AggregatedResultsTable({ results = [], onRowClick }) {
   const best  = results.length ? Math.max(...results.map(r => r.net_pnl)) : 0;
   const worst = results.length ? Math.min(...results.map(r => r.net_pnl)) : 0;
 
-  console.log('result', results);
-
-  /* ----- columns ----- */
+  /* ----- columns ---------------------------------------------------------- */
   const columns = [
     /* scenario chips ------------------------------------------------------- */
     {
       field: 'scenario',
       headerName: 'Strategy & Filters',
       flex: 3,
-      renderCell: ({ row }) => (
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-          <Chip
-            label={row.strategy === 'backtest_orb' ? 'ORB' : 'Reverse'}
-            size="small"
-            sx={{
-              background: chipBg[row.strategy === 'backtest_orb' ? 'ORB' : 'Reverse'],
-              color: '#000'
-            }}
-          />
-          {row.filters.split(' + ').map((c, i) => (
+      renderCell: ({ row }) => {
+        const primary = stratLabel[row.strategy] || row.strategy;
+        return (
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
             <Chip
-              key={i}
-              label={c}
+              label={primary}
               size="small"
-              sx={{ background: chipBg[c.split('=')[0]] || '#e0e0e0' }}
+              sx={{
+                background: chipBg[primary] || '#e0e0e0',
+                color: '#000'
+              }}
             />
-          ))}
-        </Box>
-      )
+            {row.filters.split(' + ').map((c, i) => {
+              const key = c.split('=')[0];
+              return (
+                <Chip
+                  key={i}
+                  label={c}
+                  size="small"
+                  sx={{ background: chipBg[key] || '#e0e0e0' }}
+                />
+              );
+            })}
+          </Box>
+        );
+      }
     },
 
     /* net pnl -------------------------------------------------------------- */
     {
       field: 'net_pnl',
-      headerName: 'Net P&L ($)',
+      headerName: 'Net\u00A0P&L\u00A0($)',
       width: 130,
       type: 'number',
       headerAlign: 'center',
@@ -91,18 +105,18 @@ export default function AggregatedResultsTable({ results = [], onRowClick }) {
     /* Win % --------------------------------------------------------------- */
     {
       field: 'win_rate',
-      headerName: 'Win Rate (%)',
+      headerName: 'Win\u00A0Rate\u00A0(%)',
       width: 150,
       headerAlign: 'center',
       align:'center',
       renderCell: ({ value }) =>
-        value != null ? `${(value * 100).toFixed(1)} %` : ''
+        value != null ? `${(value * 100).toFixed(1)}\u00A0%` : ''
     },
 
     /* Profit Factor ------------------------------------------------------- */
     {
       field: 'profit_factor',
-      headerName: 'Profit Factor',
+      headerName: 'Profit\u00A0Factor',
       width: 150,
       headerAlign: 'center',
       align:'center',
@@ -113,7 +127,7 @@ export default function AggregatedResultsTable({ results = [], onRowClick }) {
     /* Sharpe -------------------------------------------------------------- */
     {
       field: 'sharpe_ratio',
-      headerName: 'Sharpe Ratio',
+      headerName: 'Sharpe\u00A0Ratio',
       width: 150,
       headerAlign: 'center',
       align:'center',
@@ -124,7 +138,7 @@ export default function AggregatedResultsTable({ results = [], onRowClick }) {
     /* Max DD -------------------------------------------------------------- */
     {
       field: 'max_drawdown',
-      headerName: 'Max Drawdown (%)',
+      headerName: 'Max\u00A0Drawdown\u00A0(%)',
       width: 150,
       headerAlign: 'center',
       align:'center',
@@ -133,17 +147,24 @@ export default function AggregatedResultsTable({ results = [], onRowClick }) {
     },
 
     /* # trades ------------------------------------------------------------ */
-    { field: 'num_trades', headerName: 'Trades', width: 150, type: 'number', headerAlign: 'center', align:'center'}
+    {
+      field: 'num_trades',
+      headerName: 'Trades',
+      width: 150,
+      type: 'number',
+      headerAlign: 'center',
+      align:'center'
+    }
   ];
 
-  /* ----- rows & click handler ----- */
+  /* ----- rows & click handler ------------------------------------------- */
   const rows  = results.map((r, i) => ({ id: i, ...r }));
   const onRow = useCallback(
     (params) => onRowClick && onRowClick(params.row),
     [onRowClick]
   );
 
-  /* ----- render ----- */
+  /* ----- render ---------------------------------------------------------- */
   return (
     <Paper elevation={2} sx={{ p: 2 }}>
       <DataGrid

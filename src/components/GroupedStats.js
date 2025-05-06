@@ -29,7 +29,7 @@ const GroupedStats = ({ summary }) => {
     { label: 'Avg Upper Hug Change', key: 'avg_upper_hug_change', decimals: 2 },
     { label: 'Hug Drop Duration (Days)', key: 'avg_upper_hug_drop_in_days', decimals: 1, disableTrend: true },
     { label: 'Avg Hug Length (Days)', key: 'avg_upper_hug_length_in_days', decimals: 1, disableTrend: true },
-    { label: 'Hug Touch Count', key: 'avg_upper_hug_touch_count', decimals: 0, disableTrend: true },
+    { label: 'Hug Count', key: 'avg_upper_hug_touch_count', decimals: 0, disableTrend: true },
   ];
   const supportTouchMetrics = [
     { label: 'Avg Lower Touch Bounce', key: 'avg_lower_touch_bounce', decimals: 2 },
@@ -42,7 +42,7 @@ const GroupedStats = ({ summary }) => {
     { label: 'Avg Lower Hug Change', key: 'avg_lower_hug_change', decimals: 2 },
     { label: 'Bounce Duration (Days)', key: 'avg_lower_hug_bounce_in_days', decimals: 1, disableTrend: true },
     { label: 'Avg Hug Length (Days)', key: 'avg_lower_hug_length_in_days', decimals: 1, disableTrend: true },
-    { label: 'Hug Touch Count', key: 'avg_lower_hug_touch_count', decimals: 0, disableTrend: true },
+    { label: 'Hug Count', key: 'avg_lower_hug_touch_count', decimals: 0, disableTrend: true },
   ];
 
   const handleTabChange = (event, newValue) => setTab(newValue);
