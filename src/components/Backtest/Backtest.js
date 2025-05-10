@@ -105,7 +105,9 @@ export default function Backtest() {
           high: r.high,
           low: r.low,
           close: r.close,
-          volume: r.volume
+          volume: r.volume,
+          bbUpper: r.BB_upper ?? null,
+          bbLower: r.BB_lower ?? null
         }));
       setIDay(candles);
 

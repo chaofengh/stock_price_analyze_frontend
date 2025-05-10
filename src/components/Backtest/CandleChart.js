@@ -7,6 +7,9 @@ function CandleChart({ data, annotations }) {
   const margin = { top: 20, right: 20, bottom: 40, left: 50 };
   const candleWidth = 10;
 
+  /* ------------------------------------------------------------
+     Resize once on mount so SVG fills the parent flex box
+  ------------------------------------------------------------ */
   useEffect(() => {
     if (containerRef.current) {
       setContainerWidth(containerRef.current.getBoundingClientRect().width);
@@ -14,25 +17,44 @@ function CandleChart({ data, annotations }) {
   }, []);
 
   if (!data || data.length === 0) {
-    return <div ref={containerRef} style={{ width: '100%', height: '400px' }}>No data</div>;
+    return (
+      <div
+        ref={containerRef}
+        style={{ width: '100%', height: '400px' }}
+      >
+        No data
+      </div>
+    );
   }
 
-  // Price scale
-  const prices = data.flatMap(d => [d.low, d.high]);
+  /* ------------------------------------------------------------
+     Scales
+  ------------------------------------------------------------ */
+
+  // (1) Price scale — include Bollinger bands so they fit
+  const prices = data.flatMap((d) => [
+    d.low,
+    d.high,
+    d.bbUpper ?? d.high,
+    d.bbLower ?? d.low,
+  ]);
   const minPrice = Math.min(...prices);
   const maxPrice = Math.max(...prices);
-  const scaleY = price =>
+
+
+  const scaleY = (price) =>
     margin.top +
     ((maxPrice - price) / (maxPrice - minPrice)) *
       (height - margin.top - margin.bottom);
 
-  // Time scale
-  const dateValues = data.map(d => d.date.getTime());
+  // (2) Time scale
+  const dateValues = data.map((d) => d.date.getTime());
   const minDate = Math.min(...dateValues);
   const maxDate = Math.max(...dateValues);
-  const scaleX = date => {
+
+  const scaleX = (date) => {
     const time = date.getTime();
-    if (maxDate === minDate) return margin.left; // fallback if single point
+    if (maxDate === minDate) return margin.left; // single point fallback
     return (
       margin.left +
       ((time - minDate) / (maxDate - minDate)) *
@@ -40,24 +62,42 @@ function CandleChart({ data, annotations }) {
     );
   };
 
-  // X-axis ticks every 30 minutes
-  const tickInterval = 30 * 60 * 1000; // 30 minutes in ms
+  /* ------------------------------------------------------------
+     Axis ticks
+  ------------------------------------------------------------ */
+  // X‑axis ticks every 30 min
+  const tickInterval = 30 * 60 * 1000;
   const startTick = Math.floor(minDate / tickInterval) * tickInterval;
   const tickDates = [];
   for (let t = startTick; t <= maxDate; t += tickInterval) {
     tickDates.push(new Date(t));
   }
 
-  // Y-axis ticks (e.g. 5)
+  // Y‑axis ticks (5)
   const yTickCount = 5;
   const yTicks = [];
   for (let i = 0; i < yTickCount; i++) {
-    const tickValue = minPrice + (i * (maxPrice - minPrice)) / (yTickCount - 1);
-    yTicks.push(tickValue);
+    yTicks.push(
+      minPrice + (i * (maxPrice - minPrice)) / (yTickCount - 1)
+    );
   }
 
-  // Helper to draw annotation rectangles
-  // from entryDate -> exitDate
+  /* ------------------------------------------------------------
+     Bollinger band polylines
+  ------------------------------------------------------------ */
+  const upperPoints = data
+    .filter((d) => d.bbUpper != null)
+    .map((d) => `${scaleX(d.date)},${scaleY(d.bbUpper)}`)
+    .join(' ');
+
+  const lowerPoints = data
+    .filter((d) => d.bbLower != null)
+    .map((d) => `${scaleX(d.date)},${scaleY(d.bbLower)}`)
+    .join(' ');
+
+  /* ------------------------------------------------------------
+     Annotation helpers (unchanged)
+  ------------------------------------------------------------ */
   const renderTradeRectangle = (anno, i) => {
     const { entryDate, exitDate, fill, label, direction } = anno;
     const x1 = scaleX(entryDate);
@@ -74,7 +114,6 @@ function CandleChart({ data, annotations }) {
           height={height - margin.top - margin.bottom}
           fill={fill}
         />
-        {/* Label near the top center */}
         <text
           x={rectX + rectWidth / 2}
           y={margin.top + 15}
@@ -88,39 +127,58 @@ function CandleChart({ data, annotations }) {
     );
   };
 
-  // Helper to render a small marker/circle for entry/exit
   const renderMarker = (anno, i) => {
     const { date, tooltip, direction } = anno;
     const x = scaleX(date);
-    const y = scaleY(
-      direction === 'long' ? maxPrice : minPrice
-    ); 
-    // put the marker near top if long, near bottom if short
-    // or you could also put it at the candle's close if you prefer
+    const y = scaleY(direction === 'long' ? maxPrice : minPrice);
 
     return (
       <g key={`marker-${i}`}>
-        <circle cx={x} cy={y} r={5} fill={direction === 'long' ? 'green' : 'red'} />
+        <circle
+          cx={x}
+          cy={y}
+          r={5}
+          fill={direction === 'long' ? 'green' : 'red'}
+        />
         <title>{tooltip}</title>
       </g>
     );
   };
 
-  // We'll break the annotations array into multiple elements
   const renderedAnnotations = annotations.map((anno, i) => {
-    if (anno.type === 'trade-rectangle') {
-      return renderTradeRectangle(anno, i);
-    } else if (anno.type === 'entry-marker' || anno.type === 'exit-marker') {
+    if (anno.type === 'trade-rectangle') return renderTradeRectangle(anno, i);
+    if (anno.type === 'entry-marker' || anno.type === 'exit-marker')
       return renderMarker(anno, i);
-    }
-    // fallback
     return null;
   });
 
+  /* ------------------------------------------------------------
+     Render
+  ------------------------------------------------------------ */
   return (
     <div ref={containerRef}>
       <svg width={containerWidth} height={height}>
-        {/* Draw the candlesticks */}
+        {/* Bollinger bands – dashed blue */}
+        {upperPoints && (
+          <polyline
+            points={upperPoints}
+            fill="none"
+            stroke="blue"
+            strokeWidth="1"
+            strokeDasharray="4 2"
+          />
+        )}
+        {lowerPoints && (
+          <polyline
+            points={lowerPoints}
+            fill="none"
+            stroke="blue"
+            strokeWidth="1"
+            strokeDasharray="4 2"
+          />
+        )}
+
+        {/* Candlesticks */}
         {data.map((d, i) => {
           const centerX = scaleX(d.date);
           const x = centerX - candleWidth / 2;
@@ -135,7 +193,6 @@ function CandleChart({ data, annotations }) {
 
           return (
             <g key={i}>
-              {/* Wick */}
               <line
                 x1={centerX}
                 y1={yHigh}
@@ -143,7 +200,6 @@ function CandleChart({ data, annotations }) {
                 y2={yLow}
                 stroke="black"
               />
-              {/* Candle body */}
               <rect
                 x={x}
                 y={bodyTop}
@@ -155,7 +211,7 @@ function CandleChart({ data, annotations }) {
           );
         })}
 
-        {/* X-axis */}
+        {/* X‑axis */}
         <line
           x1={margin.left}
           y1={height - margin.bottom}
@@ -163,10 +219,12 @@ function CandleChart({ data, annotations }) {
           y2={height - margin.bottom}
           stroke="black"
         />
-        {/* X-axis ticks/labels */}
         {tickDates.map((tickDate, idx) => {
           const xPos = scaleX(tickDate);
-          const label = tickDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          const label = tickDate.toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+          });
           return (
             <g key={idx}>
               <line
@@ -189,7 +247,7 @@ function CandleChart({ data, annotations }) {
           );
         })}
 
-        {/* Y-axis */}
+        {/* Y‑axis */}
         <line
           x1={margin.left}
           y1={margin.top}
@@ -197,32 +255,28 @@ function CandleChart({ data, annotations }) {
           y2={height - margin.bottom}
           stroke="black"
         />
-        {/* Y-axis ticks/labels */}
-        {yTicks.map((tickValue, idx) => {
-          const yPos = scaleY(tickValue);
-          return (
-            <g key={idx}>
-              <line
-                x1={margin.left - 5}
-                y1={yPos}
-                x2={margin.left}
-                y2={yPos}
-                stroke="black"
-              />
-              <text
-                x={margin.left - 10}
-                y={yPos + 3}
-                textAnchor="end"
-                fontSize="10"
-                fill="black"
-              >
-                {tickValue.toFixed(2)}
-              </text>
-            </g>
-          );
-        })}
+        {yTicks.map((tickValue, idx) => (
+          <g key={idx}>
+            <line
+              x1={margin.left - 5}
+              y1={scaleY(tickValue)}
+              x2={margin.left}
+              y2={scaleY(tickValue)}
+              stroke="black"
+            />
+            <text
+              x={margin.left - 10}
+              y={scaleY(tickValue) + 3}
+              textAnchor="end"
+              fontSize="10"
+              fill="black"
+            >
+              {tickValue.toFixed(2)}
+            </text>
+          </g>
+        ))}
 
-        {/* Annotations (trade rectangles + markers) */}
+        {/* Annotations */}
         {renderedAnnotations}
       </svg>
     </div>
