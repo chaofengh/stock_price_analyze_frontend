@@ -77,7 +77,10 @@ export default function DailyTradeDetails({ dailyTrades = [] }) {
                       size="small"
                       sx={{
                         backgroundColor: accent,
-                        color: theme.palette.getContrastText(accent),
+                        color: theme.palette.common.white,                // text
+                        '& .MuiChip-icon': {                              // <-- wrapper span
+                          color: theme.palette.common.white,              // icon
+                        },
                       }}
                     />
                   </TableCell>
