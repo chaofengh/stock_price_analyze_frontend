@@ -1,14 +1,12 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Box, Paper, Typography, Divider } from '@mui/material';
 import SymbolSearch from './SymbolSearch';
 import KpiTiles from './KpiTiles';
 import AnnualFinancials from './AnnualFinancials';
 
 const Sidebar = ({ summary, error, onSubmit }) => {
-  const [selectedSymbol, setSelectedSymbol] = useState('');
 
   const handleSelectSymbol = (symbol) => {
-    setSelectedSymbol(symbol);
     if (onSubmit) {
       onSubmit(symbol);
     }

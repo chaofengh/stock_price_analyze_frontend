@@ -12,7 +12,6 @@ import {
   Typography,
   Stack,
   Divider,
-  Grid,
 } from '@mui/material';
 import { useLoginMutation, useRegisterMutation } from './Redux/authApi';
 import * as Yup from 'yup';

@@ -33,7 +33,6 @@ function TickerList() {
   const user = useSelector((state) => state.auth.user);
   const userId = user ? user.id : null; // Grab the logged-in user's ID
 
-  const [tickerData, setTickerData] = useState({});
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [newTicker, setNewTicker] = useState('');
@@ -56,7 +55,6 @@ function TickerList() {
         throw new Error(`Failed to fetch data: ${response.status} ${response.statusText}`);
       }
       const data = await response.json();
-      setTickerData(data);
 
       const newRows = Object.entries(data)
         .map(([symbol, priceArray], idx) => {

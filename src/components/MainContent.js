@@ -5,16 +5,13 @@ import GroupedStats from "./GroupedStats";
 import AdvancedMetrics from "./AdvancedMetrics";
 import MarketSentiment from "./MarketSentiment";
 import FinancialWidget from "./FinancialWidget";
-import { fetchCompanyLogo } from '../API/FetchCompanyLogo'
-import { useAnimatedNumber } from "../utils/NumberAnimation";
-import RollingNumber from "../utils/RollingDigit";
 import PeopleAlsoView from "./PeopleAlsoView";
-
+import { fetchCompanyLogo } from "../API/FetchCompanyLogo";
+import NumberFlow from "@number-flow/react";                 // NEW ⬅️
 
 const MainContent = ({ summary, eventMap }) => {
-  // State to store hovered price/date from the chart
   const [hoverData, setHoverData] = useState(null);
-  const [logo, setLogo] = useState(null);
+  const [logo, setLogo]           = useState(null);
 
   useEffect(() => {
     if (summary?.symbol) {
@@ -22,18 +19,17 @@ const MainContent = ({ summary, eventMap }) => {
     }
   }, [summary?.symbol]);
 
-  // Use hovered price if available, otherwise fallback to final price
+  // Price from hover, or last close
   const rawPrice = hoverData?.price ?? summary?.final_price ?? 0;
-  const animatedPrice = useAnimatedNumber(rawPrice);
 
-  // Determine price color based on daily change
+  // Colour the price
   const priceChange = summary?.price_change_in_dollars ?? 0;
   const priceColor =
     priceChange > 0 ? "green" : priceChange < 0 ? "red" : "textPrimary";
 
-  // Get latest chart data (for Bollinger bands)
+  // Latest Bollinger data
   let latestChartData = null;
-  if (summary?.chart_data?.length > 0) {
+  if (summary?.chart_data?.length) {
     latestChartData = [...summary.chart_data].sort(
       (a, b) => new Date(b.date) - new Date(a.date)
     )[0];
@@ -43,9 +39,9 @@ const MainContent = ({ summary, eventMap }) => {
     <Box>
       {summary && (
         <Paper sx={{ p: 3, mb: 3 }}>
-          {/* Logo + Ticker Symbol + Price */}
+          {/* Logo • Symbol • Price */}
           <Box display="flex" alignItems="center" justifyContent="center" gap={2}>
-            {/* Company Logo */}
+            {/* Company logo */}
             {logo ? (
               <Avatar src={logo} alt={summary.symbol} sx={{ width: 50, height: 50 }} />
             ) : (
@@ -54,23 +50,31 @@ const MainContent = ({ summary, eventMap }) => {
               </Avatar>
             )}
 
-            {/* Symbol and Price */}
             <Typography variant="h4" fontWeight="bold">
-              {summary.symbol || "Company Name"} -{" "}
+              {summary.symbol || "Company Name"} –{" "}
             </Typography>
-            <Typography variant="h4" fontWeight='bold' color={priceColor}>
-              <RollingNumber number={animatedPrice} />
+
+            {/* Animated price */}
+            <Typography
+              variant="h4"
+              fontWeight="bold"
+              color={priceColor}
+              component="span"
+            >
+              <NumberFlow
+                value={rawPrice}
+                format={{ style: "decimal", minimumFractionDigits: 2, maximumFractionDigits: 2 }}
+                trend={0}                         // per‑digit up/down
+                spinTiming={{ duration: 350 }}    // ms for rolling
+                transformTiming={{ duration: 150 }}
+                opacityTiming={{ duration: 120 }}
+              />
             </Typography>
           </Box>
 
+          {/* Bollinger call‑outs */}
           {latestChartData && (
-            <Box
-              display="flex"
-              justifyContent="center"
-              alignItems="center"
-              gap={2}
-              mt={2}
-            >
+            <Box display="flex" justifyContent="center" alignItems="center" gap={2} mt={2}>
               <Typography variant="body1">
                 Upper Bollinger Band:{" "}
                 <span
@@ -108,14 +112,13 @@ const MainContent = ({ summary, eventMap }) => {
         <StockChart
           summary={summary}
           eventMap={eventMap}
-          // onHoverPriceChange is called by StockChart when the cursor hovers a point
-          onHoverPriceChange={(data) => setHoverData(data)}
+          onHoverPriceChange={setHoverData}
         />
       </Paper>
 
       <Paper sx={{ p: 3, mb: 3 }}>
         <GroupedStats summary={summary} />
-      </Paper >
+      </Paper>
 
       <Paper sx={{ p: 3, mb: 3 }}>
         <PeopleAlsoView summary={summary} />
@@ -129,7 +132,7 @@ const MainContent = ({ summary, eventMap }) => {
           <MarketSentiment />
         </Grid>
         <Grid item xs={12} md={4}>
-          <FinancialWidget  income_statement={summary.income_statement}/>
+          <FinancialWidget income_statement={summary.income_statement} />
         </Grid>
       </Grid>
     </Box>
