@@ -65,8 +65,8 @@ const MainContent = ({ summary, eventMap }) => {
                 value={rawPrice}
                 format={{ style: "decimal", minimumFractionDigits: 2, maximumFractionDigits: 2 }}
                 trend={0}                         // per‑digit up/down
-                spinTiming={{ duration: 350 }}    // ms for rolling
-                transformTiming={{ duration: 150 }}
+                spinTiming={{ duration: 500 }}    // ms for rolling
+                transformTiming={{ duration: 200 }}
                 opacityTiming={{ duration: 120 }}
               />
             </Typography>
