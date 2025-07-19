@@ -1,6 +1,6 @@
-import React, { useCallback, useState, useRef, useEffect, useMemo } from 'react';
-import { Box } from '@mui/material';
-import { Line } from 'react-chartjs-2';
+import React, { useCallback, useState, useRef, useEffect, useMemo } from "react";
+import { Box } from "@mui/material";
+import { Line } from "react-chartjs-2";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -10,20 +10,20 @@ import {
   Title,
   Tooltip as ChartTooltip,
   Legend,
-  Filler
-} from 'chart.js';
-import annotationPlugin from 'chartjs-plugin-annotation';
-import zoomPlugin from 'chartjs-plugin-zoom';
+  Filler,
+} from "chart.js";
+import annotationPlugin from "chartjs-plugin-annotation";
+import zoomPlugin from "chartjs-plugin-zoom";
 
-import { useTouchEventTypes, useTouchTooltipMappings } from './useTouchMappings';
-import { useHugEventTypes, useHugTooltipMappings } from './useHugMappings';
-import { useExternalTooltipHandler } from './TooltipHandler';
-import { useChartData } from './useChartData';
+import { useTouchEventTypes, useTouchTooltipMappings } from "./useTouchMappings";
+import { useHugEventTypes, useHugTooltipMappings } from "./useHugMappings";
+import { useExternalTooltipHandler } from "./TooltipHandler";
+import { useChartData } from "./useChartData";
 
-import CrosshairLinePlugin from './CrosshairLinePlugin';
-import PriceChangeInfo from './PriceChangeInfo';
-import useChartOptions from './useChartOptions';
-import { formatDate } from '../../utils/formatDate';
+import CrosshairLinePlugin from "./CrosshairLinePlugin";
+import PriceChangeInfo from "./PriceChangeInfo";
+import useChartOptions from "./useChartOptions";
+import { formatDate } from "../../utils/formatDate";
 
 ChartJS.register(
   CategoryScale,
@@ -43,24 +43,28 @@ function StockChart({ summary, eventMap, onHoverPriceChange }) {
   const chartRef = useRef(null);
   const [dragInfo, setDragInfo] = useState(null);
 
-  // Build mappings using custom hooks and our date formatter
+  // ── Data prep ───────────────────────────────────────────────────────────
   const eventTypeMappingTouch = useTouchEventTypes(summary, formatDate);
-  const tooltipMappingTouch = useTouchTooltipMappings(summary, formatDate);
-  const eventTypeMappingHug = useHugEventTypes(summary, formatDate);
-  const tooltipMappingHug = useHugTooltipMappings(summary, formatDate);
+  const tooltipMappingTouch   = useTouchTooltipMappings(summary, formatDate);
+  const eventTypeMappingHug   = useHugEventTypes(summary, formatDate);
+  const tooltipMappingHug     = useHugTooltipMappings(summary, formatDate);
 
-  // 1) Base close-price data
-  const baseChartData = useChartData(summary, eventTypeMappingTouch, eventTypeMappingHug);
+  const baseChartData = useChartData(
+    summary,
+    eventTypeMappingTouch,
+    eventTypeMappingHug
+  );
 
-  // 2) Extract Bollinger band data
-  const upperBand = useMemo(() => summary?.chart_data?.map(pt => pt.upper ?? null) || [], [summary]);
-  const lowerBand = useMemo(() => summary?.chart_data?.map(pt => pt.lower ?? null) || [], [summary]);
+  const upperBand = useMemo(
+    () => summary?.chart_data?.map((pt) => pt.upper ?? null) || [],
+    [summary]
+  );
+  const lowerBand = useMemo(
+    () => summary?.chart_data?.map((pt) => pt.lower ?? null) || [],
+    [summary]
+  );
 
-  // Final chartData state
-  const [chartData, setChartData] = useState({
-    labels: [],
-    datasets: [],
-  });
+  const [chartData, setChartData] = useState({ labels: [], datasets: [] });
 
   useEffect(() => {
     if (!baseChartData?.labels?.length) {
@@ -68,49 +72,41 @@ function StockChart({ summary, eventMap, onHoverPriceChange }) {
       return;
     }
 
-    // Access chart context (if needed)
     const chartCtx = chartRef.current?.ctx;
-    if (!chartCtx) {
-      setChartData(baseChartData);
-      return;
-    }
 
-    // Main close dataset WITHOUT gradient fill
     const mainDataset = {
       ...baseChartData.datasets[0],
-      label: 'Close',
-      borderColor: '#1976d2',
-      fill: false, // No fill under the close line
+      label: "Close",
+      borderColor: "#1976d2",
+      fill: false,
     };
 
-    // Lower Bollinger band (no fill)
     const lowerBB = {
-      type: 'line',
-      label: 'Lower BB',
+      type: "line",
+      label: "Lower BB",
       data: lowerBand,
-      borderColor: 'rgba(75,192,192,0.8)',
+      borderColor: "rgba(75,192,192,0.8)",
       borderWidth: 2,
       pointRadius: 0,
       fill: false,
-      yAxisID: 'y',
+      yAxisID: "y",
       order: 1,
     };
 
-    // Upper Bollinger band (fill down to the lower band)
     const upperBB = {
-      type: 'line',
-      label: 'Upper BB',
+      type: "line",
+      label: "Upper BB",
       data: upperBand,
-      borderColor: 'rgba(75,192,192,0.8)',
+      borderColor: "rgba(75,192,192,0.8)",
       borderWidth: 2,
       pointRadius: 0,
-      fill: '-1', // fills to the previous dataset (lowerBB)
-      backgroundColor: 'rgba(20, 133, 203, 0.2)',
-      yAxisID: 'y',
+      fill: "-1",
+      backgroundColor: "rgba(20,133,203,0.2)",
+      yAxisID: "y",
       order: 1,
       animations: {
-        x: { duration: 50, easing: 'easeOutQuad' },
-        y: { duration: 50, easing: 'easeOutQuad' },
+        x: { duration: 50, easing: "easeOutQuad" },
+        y: { duration: 50, easing: "easeOutQuad" },
       },
     };
 
@@ -120,33 +116,38 @@ function StockChart({ summary, eventMap, onHoverPriceChange }) {
     });
   }, [baseChartData, lowerBand, upperBand]);
 
-  // External tooltip handler
+  // ── Tooltip + hover logic ───────────────────────────────────────────────
   const externalTooltipHandler = useExternalTooltipHandler();
 
-  // Crosshair hover event handling
   const handleHover = useCallback(
     (event, chartElements, chart) => {
       if (!summary?.chart_data) return;
-      if (event.type === 'mouseout' || !chartElements.length) {
+
+      if (event.type === "mouseout" || !chartElements.length) {
         if (chart.$currentHoverIndex != null) {
           chart.$currentHoverIndex = null;
           onHoverPriceChange?.(null);
         }
         return;
       }
-      const newHoverIndex = chartElements[0].index;
-      if (newHoverIndex === chart.$currentHoverIndex) return;
-      chart.$currentHoverIndex = newHoverIndex;
-      const hoveredPoint = summary.chart_data[newHoverIndex];
+
+      const newIndex = chartElements[0].index;
+      if (newIndex === chart.$currentHoverIndex) return;
+
+      chart.$currentHoverIndex = newIndex;
+      const pt = summary.chart_data[newIndex];
+
       onHoverPriceChange?.({
-        date: hoveredPoint.date,
-        price: hoveredPoint.close,
+        date: pt.date,
+        price: pt.close,
+        upper: pt.upper,
+        lower: pt.lower,
       });
     },
     [summary, onHoverPriceChange]
   );
 
-  // Zoom and pan event handling
+  // ── Zoom / pan events ──────────────────────────────────────────────────
   const handleZoomComplete = useCallback(
     ({ chart }) => {
       const xScale = chart.scales.x;
@@ -178,13 +179,10 @@ function StockChart({ summary, eventMap, onHoverPriceChange }) {
   );
 
   const handleResetZoom = useCallback(() => {
-    if (chartRef.current) {
-      chartRef.current.resetZoom();
-    }
+    chartRef.current?.resetZoom();
     setDragInfo(null);
   }, []);
 
-  // Build chart options using our custom hook
   const chartOptions = useChartOptions({
     externalTooltipHandler,
     handleHover,
@@ -195,7 +193,7 @@ function StockChart({ summary, eventMap, onHoverPriceChange }) {
   });
 
   return (
-    <Box sx={{ height: 450, mb: 3, position: 'relative' }}>
+    <Box sx={{ height: 450, mb: 3, position: "relative" }}>
       <PriceChangeInfo dragInfo={dragInfo} onResetZoom={handleResetZoom} />
       <Line ref={chartRef} data={chartData} options={chartOptions} />
     </Box>

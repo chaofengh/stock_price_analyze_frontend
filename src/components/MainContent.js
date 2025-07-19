@@ -7,11 +7,11 @@ import MarketSentiment from "./MarketSentiment";
 import FinancialWidget from "./FinancialWidget";
 import PeopleAlsoView from "./PeopleAlsoView";
 import { fetchCompanyLogo } from "../API/FetchCompanyLogo";
-import NumberFlow from "@number-flow/react";                 // NEW ⬅️
+import NumberFlow from "@number-flow/react"; // NEW (already installed)
 
 const MainContent = ({ summary, eventMap }) => {
   const [hoverData, setHoverData] = useState(null);
-  const [logo, setLogo]           = useState(null);
+  const [logo, setLogo] = useState(null);
 
   useEffect(() => {
     if (summary?.symbol) {
@@ -19,29 +19,28 @@ const MainContent = ({ summary, eventMap }) => {
     }
   }, [summary?.symbol]);
 
-  // Price from hover, or last close
-  const rawPrice = hoverData?.price ?? summary?.final_price ?? 0;
+  // ── Values that follow the cursor ────────────────────────────────────────
+  const latestChartPoint =
+    summary?.chart_data?.length
+      ? [...summary.chart_data].sort(
+          (a, b) => new Date(b.date) - new Date(a.date)
+        )[0]
+      : null;
 
-  // Colour the price
+  const rawPrice  = hoverData?.price  ?? summary?.final_price ?? 0;
+  const rawUpper  = hoverData?.upper  ?? latestChartPoint?.upper ?? 0;
+  const rawLower  = hoverData?.lower  ?? latestChartPoint?.lower ?? 0;
+
   const priceChange = summary?.price_change_in_dollars ?? 0;
   const priceColor =
     priceChange > 0 ? "green" : priceChange < 0 ? "red" : "textPrimary";
-
-  // Latest Bollinger data
-  let latestChartData = null;
-  if (summary?.chart_data?.length) {
-    latestChartData = [...summary.chart_data].sort(
-      (a, b) => new Date(b.date) - new Date(a.date)
-    )[0];
-  }
 
   return (
     <Box>
       {summary && (
         <Paper sx={{ p: 3, mb: 3 }}>
-          {/* Logo • Symbol • Price */}
+          {/* ── Logo • Symbol • Price ─────────────────────────────────────── */}
           <Box display="flex" alignItems="center" justifyContent="center" gap={2}>
-            {/* Company logo */}
             {logo ? (
               <Avatar src={logo} alt={summary.symbol} sx={{ width: 50, height: 50 }} />
             ) : (
@@ -51,10 +50,9 @@ const MainContent = ({ summary, eventMap }) => {
             )}
 
             <Typography variant="h4" fontWeight="bold">
-              {summary.symbol || "Company Name"} –{" "}
+              {summary.symbol || "Company"} –{" "}
             </Typography>
 
-            {/* Animated price */}
             <Typography
               variant="h4"
               fontWeight="bold"
@@ -63,20 +61,30 @@ const MainContent = ({ summary, eventMap }) => {
             >
               <NumberFlow
                 value={rawPrice}
-                format={{ style: "decimal", minimumFractionDigits: 2, maximumFractionDigits: 2 }}
-                trend={0}                         // per‑digit up/down
-                spinTiming={{ duration: 500 }}    // ms for rolling
+                format={{
+                  style: "decimal",
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                }}
+                trend={0}
+                spinTiming={{ duration: 500 }}
                 transformTiming={{ duration: 200 }}
                 opacityTiming={{ duration: 120 }}
               />
             </Typography>
           </Box>
 
-          {/* Bollinger call‑outs */}
-          {latestChartData && (
-            <Box display="flex" justifyContent="center" alignItems="center" gap={2} mt={2}>
+          {/* ── Bollinger call‑outs ───────────────────────────────────────── */}
+          {summary?.chart_data?.length && (
+            <Box
+              display="flex"
+              justifyContent="center"
+              alignItems="center"
+              gap={2}
+              mt={2}
+            >
               <Typography variant="body1">
-                Upper Bollinger Band:{" "}
+                Upper Bollinger Band:{" "}
                 <span
                   style={{
                     fontWeight: "bold",
@@ -86,11 +94,24 @@ const MainContent = ({ summary, eventMap }) => {
                     borderRadius: "6px",
                   }}
                 >
-                  ${latestChartData.upper.toFixed(2)}
+                  $
+                  <NumberFlow
+                    value={rawUpper}
+                    format={{
+                      style: "decimal",
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    }}
+                    trend={0}
+                    spinTiming={{ duration: 500 }}
+                    transformTiming={{ duration: 200 }}
+                    opacityTiming={{ duration: 120 }}
+                  />
                 </span>
               </Typography>
+
               <Typography variant="body1">
-                Lower Bollinger Band:{" "}
+                Lower Bollinger Band:{" "}
                 <span
                   style={{
                     fontWeight: "bold",
@@ -100,7 +121,19 @@ const MainContent = ({ summary, eventMap }) => {
                     borderRadius: "6px",
                   }}
                 >
-                  ${latestChartData.lower.toFixed(2)}
+                  $
+                  <NumberFlow
+                    value={rawLower}
+                    format={{
+                      style: "decimal",
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    }}
+                    trend={0}
+                    spinTiming={{ duration: 500 }}
+                    transformTiming={{ duration: 200 }}
+                    opacityTiming={{ duration: 120 }}
+                  />
                 </span>
               </Typography>
             </Box>
@@ -108,6 +141,7 @@ const MainContent = ({ summary, eventMap }) => {
         </Paper>
       )}
 
+      {/* ── Chart + other widgets ─────────────────────────────────────────── */}
       <Paper sx={{ p: 3, mb: 3 }}>
         <StockChart
           summary={summary}

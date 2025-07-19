@@ -32,8 +32,9 @@ const useChartOptions = ({
         },
       },
       interaction: {
-        mode: 'point',
-        intersect: true,
+        // Available modes include: 'point', 'nearest', 'index', 'dataset', 'x', 'y'
+        mode: 'point', // changed from 'point'
+        intersect: false,
       },
       plugins: {
         legend: {
@@ -84,4 +85,3 @@ const useChartOptions = ({
   };
   
   export default useChartOptions;
-  
