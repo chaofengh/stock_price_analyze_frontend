@@ -84,6 +84,32 @@ const MainContent = ({ summary, eventMap }) => {
               mt={2}
             >
               <Typography variant="body1">
+                Lower Bollinger Band:{" "}
+                <span
+                  style={{
+                    fontWeight: "bold",
+                    padding: "0.3rem 0.6rem",
+                    backgroundColor: "#f8d7da",
+                    color: "#dc3545",
+                    borderRadius: "6px",
+                  }}
+                >
+                  $
+                  <NumberFlow
+                    value={rawLower}
+                    format={{
+                      style: "decimal",
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    }}
+                    trend={0}
+                    spinTiming={{ duration: 500 }}
+                    transformTiming={{ duration: 200 }}
+                    opacityTiming={{ duration: 120 }}
+                  />
+                </span>
+              </Typography>
+              <Typography variant="body1">
                 Upper Bollinger Band:{" "}
                 <span
                   style={{
@@ -110,32 +136,7 @@ const MainContent = ({ summary, eventMap }) => {
                 </span>
               </Typography>
 
-              <Typography variant="body1">
-                Lower Bollinger Band:{" "}
-                <span
-                  style={{
-                    fontWeight: "bold",
-                    padding: "0.3rem 0.6rem",
-                    backgroundColor: "#f8d7da",
-                    color: "#dc3545",
-                    borderRadius: "6px",
-                  }}
-                >
-                  $
-                  <NumberFlow
-                    value={rawLower}
-                    format={{
-                      style: "decimal",
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    }}
-                    trend={0}
-                    spinTiming={{ duration: 500 }}
-                    transformTiming={{ duration: 200 }}
-                    opacityTiming={{ duration: 120 }}
-                  />
-                </span>
-              </Typography>
+
             </Box>
           )}
         </Paper>
