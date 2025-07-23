@@ -67,7 +67,7 @@ const SymbolSearch = ({ onSelectSymbol, placeholder = 'Search for a Stock' }) =>
   };
 
   return (
-    <Box component="form" onSubmit={handleSubmit} sx={{ position: 'relative' }}>
+    <Box component="form" onSubmit={handleSubmit} sx={{ position: 'relative', width: '100%' }}>
       <TextField
         fullWidth
         variant="outlined"
