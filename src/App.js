@@ -2,13 +2,14 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   ThemeProvider,
-  createTheme,
   CssBaseline,
   Container,
   AppBar,
   Toolbar,
   Typography,
-  Box
+  Box,
+  GlobalStyles,
+  useTheme
 } from '@mui/material';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AlertsProvider } from './components/Notification/AlertContext';
@@ -23,30 +24,12 @@ import FinancialAnalysisPage from './components/statements/FinancialAnalysisPage
 
 // Renamed:
 import Backtest from './components/Backtest/Backtest'; 
-// This replaces the old `OpeningRangeBreakout` component
+// Replaces old OpeningRangeBreakout
 
 import News from './components/MoreOption/News';
-import { GlobalStyles } from '@mui/material';
 
-const theme = createTheme({
-  palette: {
-    mode: 'light',
-    primary: { main: '#00246B' },
-    secondary: { main: '#CADCFC' },
-    background: {
-      default: '#e0e0e0',
-      paper: '#ffffff'
-    }
-  },
-  typography: {
-    fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
-    h6: { fontWeight: 600 }
-  },
-  components: {
-    MuiPaper: { styleOverrides: { root: { borderRadius: 12 } } },
-    MuiCard: { styleOverrides: { root: { borderRadius: 12 } } }
-  }
-});
+// Import the centralized dark gaming theme
+import theme from './theme';
 
 function App() {
   const [selectedView, setSelectedView] = useState(null);
@@ -96,16 +79,26 @@ function App() {
             'html, body, #root': {
               height: '100%',
               margin: 0,
-              padding: 0
+              padding: 0,
+              backgroundColor: theme.palette.background.default,
+              color: theme.palette.text.primary,
             }
           }}
         />
         <CssBaseline />
         <AlertsProvider>
           <AlertsSnackbar />
-          <AppBar position="static" elevation={4}>
+
+          <AppBar
+            position="static"
+            elevation={4}
+            sx={{
+              backgroundColor: theme.palette.background.header,
+              boxShadow: '0 0 12px rgba(0,184,255,0.25)',
+            }}
+          >
             <Toolbar sx={{ minHeight: 64 }}>
-              <Typography variant="h6" sx={{ flexGrow: 1 }}>
+              <Typography variant="h6" sx={{ flexGrow: 1, fontWeight: 700 }}>
                 Lumina Stock Insights
               </Typography>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -122,13 +115,12 @@ function App() {
               mt: 4,
               mb: 4,
               position: 'relative',
-              minHeight: 600
+              minHeight: 600,
             }}
           >
             <Routes>
               <Route path="/" element={<StockDashboard />} />
               <Route path="/analysis/:symbol" element={<FinancialAnalysisPage />} />
-              {/* Renamed path from /orb to /backtest */}
               <Route path="/backtest" element={<Backtest />} />
             </Routes>
 
@@ -148,6 +140,7 @@ function App() {
                 <TickerList />
               </Box>
             )}
+
             {selectedView === 'OptionPriceRatio' && (
               <Box
                 ref={ratioRef}
@@ -164,6 +157,7 @@ function App() {
                 <OptionPriceRatio />
               </Box>
             )}
+
             {selectedView === 'News' && (
               <Box
                 ref={newsRef}
