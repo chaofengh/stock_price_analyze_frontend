@@ -138,11 +138,18 @@ const LinearPair = ({ sRaw, mRaw, sVal, mVal }) => {
 /* — single bar (Entry Opportunities) — */
 const SingleBar = ({ sRaw, sVal }) => {
   const theme = useTheme();
+
+  // Empty bar if no opportunities, full bar otherwise
+  const pct =
+    sRaw === null || sRaw === undefined || isNaN(sRaw) || Number(sRaw) === 0
+      ? 0
+      : 100;
+
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: 180 }}>
       <LinearProgress
         variant="determinate"
-        value={100}
+        value={pct}
         sx={{
           flex: 1,
           height: 10,
@@ -152,13 +159,19 @@ const SingleBar = ({ sRaw, sVal }) => {
         }}
       />
       <Typography
-        sx={{ fontWeight: 600, fontSize: '0.8rem', minWidth: 36, textAlign: 'right' }}
+        sx={{
+          fontWeight: 600,
+          fontSize: '0.8rem',
+          minWidth: 36,
+          textAlign: 'right',
+        }}
       >
         {sVal}
       </Typography>
     </Box>
   );
 };
+
 
 /* — visual router — */
 const VisualCell = ({ kind, ...rest }) => {
