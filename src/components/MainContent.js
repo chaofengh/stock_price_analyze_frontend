@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Box, Paper, Typography, Grid, Avatar } from "@mui/material";
 import StockChart from "./Chart/StockChart";
-import GroupedStats from "./GroupedStats";
 import AdvancedMetrics from "./AdvancedMetrics";
 import MarketSentiment from "./MarketSentiment";
 import FinancialWidget from "./FinancialWidget";
@@ -149,10 +148,6 @@ const MainContent = ({ summary, eventMap }) => {
           eventMap={eventMap}
           onHoverPriceChange={setHoverData}
         />
-      </Paper>
-
-      <Paper sx={{ p: 3, mb: 3 }}>
-        <GroupedStats summary={summary} />
       </Paper>
 
       <Paper sx={{ p: 3, mb: 3 }}>
