@@ -45,10 +45,9 @@ const DonutPair = ({ sRaw, mRaw }) => {
 
 /* — vertical bars (Expected Return) — */
 const VerticalPair = ({ sRaw, mRaw, sVal, mVal }) => {
-    console.log(sRaw, mRaw, sVal, mVal);
-  const theme  = useTheme();
+  const theme = useTheme();
   const maxAbs = Math.max(Math.abs(sRaw), Math.abs(mRaw)) || 1;
-  const toPct  = v => (Math.abs(v) / maxAbs) * 100;
+  const toPct = v => (Math.abs(v) / maxAbs) * 100;
 
   const bars = [
     { raw: sRaw, txt: sVal, col: theme.palette.primary.main },
@@ -56,15 +55,33 @@ const VerticalPair = ({ sRaw, mRaw, sVal, mVal }) => {
   ];
 
   return (
-    <Box sx={{ display: 'flex', gap: 3, alignItems: 'flex-end', height: 72, width: 180 }}>
+    <Box
+      sx={{
+        display: 'flex',
+        gap: 3,
+        alignItems: 'flex-end',
+        height: 72,
+        width: 180,
+      }}
+    >
       {bars.map(({ raw, txt, col }, idx) => (
-        <Box key={idx} sx={{ textAlign: 'center' }}>
+        <Box
+          key={idx}
+          sx={{
+            textAlign: 'center',
+            height: '100%',              // crucial: gives % heights a base
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'flex-end',
+          }}
+        >
           <Box
             sx={{
               width: 24,
               height: `${toPct(raw)}%`,
               backgroundColor: col,
               borderRadius: 1,
+              minHeight: 2,              // keeps a zero-value bar visible
             }}
           />
           <Typography sx={{ fontSize: '0.75rem', fontWeight: 600, mt: 0.5 }}>
@@ -79,7 +96,7 @@ const VerticalPair = ({ sRaw, mRaw, sVal, mVal }) => {
 /* — linear bars (Exit Day) — */
 const LinearPair = ({ sRaw, mRaw, sVal, mVal }) => {
   const theme = useTheme();
-  const max   = Math.max(Math.abs(sRaw), Math.abs(mRaw)) || 1;
+  const max = Math.max(Math.abs(sRaw), Math.abs(mRaw)) || 1;
   const toPct = v => (Math.abs(v) / max) * 100;
 
   const rows = [
