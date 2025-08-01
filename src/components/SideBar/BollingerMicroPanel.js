@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
   Typography,
@@ -15,7 +15,6 @@ const fmt = (num, d = 2) =>
     ? { f: '-', t: null }
     : { f: Number(num).toFixed(d), t: num > 0 ? 'up' : num < 0 ? 'down' : null };
 
-/* convert summary → rows */
 const build = (a5, a10, cfg) =>
   cfg.map(({ key, lbl, tip, d = 2, pct, vis, flip }) => {
     let rawS = a5[key];
@@ -44,38 +43,49 @@ const build = (a5, a10, cfg) =>
       mVal,
       sRaw: nS,
       mRaw: nM,
-      visual: vis, // 'donut' | 'vbar' | 'single' | 'bar'
+      visual: vis,
     };
   });
 
+const pickInitialMode = (a5, a10) => {
+  const avg = vals =>
+    vals.filter(v => v !== null && v !== undefined && !isNaN(v))
+        .reduce((s, v) => s + v, 0) /
+    (vals.filter(v => v !== null && v !== undefined && !isNaN(v)).length || 1);
+
+  const resWin = avg([a5.upper_touch_accuracy, a10.upper_touch_accuracy]);
+  const supWin = avg([a5.lower_touch_accuracy, a10.lower_touch_accuracy]);
+
+  return resWin > supWin ? 'res' : 'sup';
+};
+
 const BollingerMicroPanel = ({ summary }) => {
-  const [mode, setMode] = useState('sup');
+  /* stable refs for a5 / a10 so ESLint is happy */
+  const a5  = useMemo(() => summary?.aggregated_window_5  || {}, [summary]);
+  const a10 = useMemo(() => summary?.aggregated_window_10 || {}, [summary]);
+
+  const [mode, setMode] = useState(() => pickInitialMode(a5, a10));
+
+  useEffect(() => {
+    setMode(pickInitialMode(a5, a10));
+  }, [a5, a10]); // deps now stable, no more warning
+
+  /* guard AFTER hooks have run */
   if (!summary) return null;
 
-  const a5  = summary.aggregated_window_5  || {};
-  const a10 = summary.aggregated_window_10 || {};
-
-  /* row definitions (order & visuals) */
+  /* row definitions */
   const resCfg = [
-    { lbl: 'Win Rate',            tip: '% of drops within 5 & 10 days',
-      key: 'upper_touch_accuracy',        d: 0, pct: true, vis: 'donut' },
-    { lbl: 'Expected Return',     tip: 'Expected % return after touching upper band',
-      key: 'avg_upper_touch_drop',        vis: 'vbar', flip: true },
-    { lbl: 'Entry Opportunities', tip: 'Upper-band touch count',
-      key: 'upper_touch_count',          d: 0, vis: 'single' },
-    { lbl: 'Exit Day',            tip: 'Avg days until maximum drop',
-      key: 'avg_upper_touch_in_days',    d: 1, vis: 'bar' },
+    { lbl: 'Win Rate',            tip: '% of drops within 5 & 10 days',  key: 'upper_touch_accuracy', d: 0, pct: true, vis: 'donut' },
+    { lbl: 'Expected Return',     tip: 'Expected % return after touching upper band', key: 'avg_upper_touch_drop', vis: 'vbar', flip: true },
+    { lbl: 'Entry Opportunities', tip: 'Upper-band touch count',         key: 'upper_touch_count', d: 0, vis: 'single' },
+    { lbl: 'Exit Day',            tip: 'Avg days until maximum drop',    key: 'avg_upper_touch_in_days', d: 1, vis: 'bar' },
   ];
 
   const supCfg = [
-    { lbl: 'Win Rate',            tip: '% of bounces within 5 & 10 days',
-      key: 'lower_touch_accuracy',        d: 0, pct: true, vis: 'donut' },
-    { lbl: 'Expected Return',     tip: 'Expected % return after touching lower band',
-      key: 'avg_lower_touch_bounce',      vis: 'vbar' },
-    { lbl: 'Entry Opportunities', tip: 'Lower-band touch count',
-      key: 'lower_touch_count',          d: 0, vis: 'single' },
-    { lbl: 'Exit Day',            tip: 'Avg days until maximum bounce',
-      key: 'avg_lower_touch_bounce_in_days', d: 1, vis: 'bar' },
+    { lbl: 'Win Rate',            tip: '% of bounces within 5 & 10 days', key: 'lower_touch_accuracy', d: 0, pct: true, vis: 'donut' },
+    { lbl: 'Expected Return',     tip: 'Expected % return after touching lower band', key: 'avg_lower_touch_bounce', vis: 'vbar' },
+    { lbl: 'Entry Opportunities', tip: 'Lower-band touch count',         key: 'lower_touch_count', d: 0, vis: 'single' },
+    { lbl: 'Exit Day',            tip: 'Avg days until maximum bounce',  key: 'avg_lower_touch_bounce_in_days', d: 1, vis: 'bar' },
   ];
 
   const rows = mode === 'res' ? build(a5, a10, resCfg) : build(a5, a10, supCfg);

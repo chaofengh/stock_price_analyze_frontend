@@ -36,7 +36,7 @@ const Donut = ({ value = 0, color }) => (
 const DonutPair = ({ sRaw, mRaw }) => {
   const theme = useTheme();
   return (
-    <Box sx={{ display: 'flex', gap: 2 }}>
+    <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center' }}>
       <Donut value={sRaw} color={theme.palette.primary.main} />
       <Donut value={mRaw} color={theme.palette.secondary.main} />
     </Box>
@@ -61,7 +61,10 @@ const VerticalPair = ({ sRaw, mRaw, sVal, mVal }) => {
         gap: 3,
         alignItems: 'flex-end',
         height: 72,
-        width: 180,
+        width: '100%',
+        justifyContent: 'center', // <-- center the bars horizontally
+        maxWidth: 180, // keep original sizing constraint if needed
+        boxSizing: 'border-box',
       }}
     >
       {bars.map(({ raw, txt, col }, idx) => (
@@ -69,7 +72,7 @@ const VerticalPair = ({ sRaw, mRaw, sVal, mVal }) => {
           key={idx}
           sx={{
             textAlign: 'center',
-            height: '100%',              // crucial: gives % heights a base
+            height: '100%',
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'flex-end',
@@ -81,7 +84,8 @@ const VerticalPair = ({ sRaw, mRaw, sVal, mVal }) => {
               height: `${toPct(raw)}%`,
               backgroundColor: col,
               borderRadius: 1,
-              minHeight: 2,              // keeps a zero-value bar visible
+              minHeight: 2, // keeps a zero-value bar visible
+              marginX: 'auto',
             }}
           />
           <Typography sx={{ fontSize: '0.75rem', fontWeight: 600, mt: 0.5 }}>
@@ -92,6 +96,7 @@ const VerticalPair = ({ sRaw, mRaw, sVal, mVal }) => {
     </Box>
   );
 };
+
 
 /* — linear bars (Exit Day) — */
 const LinearPair = ({ sRaw, mRaw, sVal, mVal }) => {
