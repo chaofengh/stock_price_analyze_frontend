@@ -122,8 +122,8 @@ const BollingerMicroPanel = ({ summary }) => {
             },
           }}
         >
-          <ToggleButton value="res">Res</ToggleButton>
-          <ToggleButton value="sup">Sup</ToggleButton>
+          <ToggleButton value="res">UpperBB</ToggleButton>
+          <ToggleButton value="sup">LowerBB</ToggleButton>
         </ToggleButtonGroup>
       </Box>
 
