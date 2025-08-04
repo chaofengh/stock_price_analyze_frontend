@@ -4,7 +4,6 @@ import {
   Chip,
   List,
   ListItem,
-  ListItemText,
   Typography,
   Stack,
   Divider,

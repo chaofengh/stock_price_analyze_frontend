@@ -12,7 +12,6 @@ import NumberFlow from "@number-flow/react"; // NEW (already installed)
 const MainContent = ({ summary, eventMap }) => {
   const [hoverData, setHoverData] = useState(null);
   const [logo, setLogo] = useState(null);
-  console.log("MainContent summary:", summary);
 
   useEffect(() => {
     if (summary?.symbol) {

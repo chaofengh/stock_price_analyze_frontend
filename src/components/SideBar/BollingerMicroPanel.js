@@ -97,7 +97,7 @@ const BollingerMicroPanel = ({ summary }) => {
         <Box display="flex" alignItems="center" gap={0.5}>
           <TimelineRounded sx={{ fontSize: 18, color: 'primary.main' }} />
           <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-            Bollinger Stats
+            Strategy Stats
           </Typography>
         </Box>
 

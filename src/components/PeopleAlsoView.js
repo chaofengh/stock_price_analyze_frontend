@@ -10,10 +10,13 @@ function PeopleAlsoView({ summary }) {
 
   if (!summary) return null;
 
+  console.log(summary)
+
   const { symbol, peer_latest_data } = summary;
   if (!peer_latest_data || Object.keys(peer_latest_data).length === 0) {
     return null;
   }
+
 
   const handlePeerClick = (peerSymbol) => {
     dispatch(fetchSummary(peerSymbol));
