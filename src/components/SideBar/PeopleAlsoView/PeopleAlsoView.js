@@ -2,7 +2,7 @@
 import React from 'react';
 import { Box, Typography, Divider } from '@mui/material';
 import { useDispatch } from 'react-redux';
-import { fetchSummary } from '../Redux/summarySlice'; // adjust path
+import { fetchSummary } from '../../Redux/summarySlice'; // adjust path
 import PeerRow from './PeerRow';
 
 const PeopleAlsoView = ({ summary }) => {

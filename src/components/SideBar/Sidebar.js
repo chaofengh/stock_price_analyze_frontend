@@ -2,8 +2,8 @@ import React from 'react';
 import { Box, Paper, Typography, Divider } from '@mui/material';
 import KpiTiles from './KpiTiles';
 import AnnualFinancials from './AnnualFinancials';
-import BollingerMicroPanel from './BollingerMicroPanel';
-import PeopleAlsoView from './PeopleAlsoView';      
+import BollingerMicroPanel from './BBStat/BollingerMicroPanel';
+import PeopleAlsoView from './PeopleAlsoView/PeopleAlsoView';      
 
 const Sidebar = ({ summary, error }) => {
   return (
