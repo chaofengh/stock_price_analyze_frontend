@@ -1,6 +1,6 @@
 // Main list: imports smaller pieces
 import React from 'react';
-import { Box, Typography, Divider } from '@mui/material';
+import { Paper, Typography, Divider } from '@mui/material';
 import { useDispatch } from 'react-redux';
 import { fetchSummary } from '../../Redux/summarySlice'; // adjust path
 import PeerRow from './PeerRow';
@@ -23,7 +23,7 @@ const PeopleAlsoView = ({ summary }) => {
   if (!rows.length) return null;
 
   return (
-    <Box sx={{ mt: 5 }}>
+    <Paper sx={{ mt: 3 }}>
       <Typography variant="h6" fontWeight={700} sx={{ mb: 1 }}>
         People also view
       </Typography>
@@ -32,7 +32,7 @@ const PeopleAlsoView = ({ summary }) => {
       {rows.map((r) => (
         <PeerRow key={r.peerSymbol} {...r} onClick={handlePeerClick} />
       ))}
-    </Box>
+    </Paper>
   );
 };
 

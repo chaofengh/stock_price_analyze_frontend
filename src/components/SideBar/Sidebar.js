@@ -1,12 +1,12 @@
 import React from 'react';
-import { Box, Paper, Typography, Divider } from '@mui/material';
+import { Box, Typography, Divider } from '@mui/material';
 import AnnualFinancials from './AnnualFinancials';
 import BollingerMicroPanel from './BBStat/BollingerMicroPanel';
 import PeopleAlsoView from './PeopleAlsoView/PeopleAlsoView';      
 
 const Sidebar = ({ summary, error }) => {
   return (
-    <Paper sx={{ p: 3, mb: 3 }} elevation={1}>
+    <div sx={{ p: 3, mb: 3 }}>
       {error && (
         <Typography variant="body2" color="error" sx={{ mb: 2 }}>
           {error}
@@ -17,9 +17,6 @@ const Sidebar = ({ summary, error }) => {
         <Box>
           <BollingerMicroPanel summary={summary} />
           <PeopleAlsoView summary={summary} />
-          <Divider sx={{ my: 3 }} />
-
-
           <AnnualFinancials
             annualReports={
               summary.income_statement
@@ -30,7 +27,7 @@ const Sidebar = ({ summary, error }) => {
 
         </Box>
       )}
-    </Paper>
+    </div>
   );
 };
 

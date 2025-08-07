@@ -3,6 +3,7 @@ import {
   Box,
   Typography,
   Divider,
+  Paper,
   ToggleButton,
   ToggleButtonGroup,
 } from '@mui/material';
@@ -92,7 +93,7 @@ const BollingerMicroPanel = ({ summary }) => {
   const rows = mode === 'res' ? build(a5, a10, resCfg) : build(a5, a10, supCfg);
 
   return (
-    <Box sx={{ mb: 2 }}>
+    <Paper>
       {/* header */}
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
         <Box display="flex" alignItems="center" gap={0.5}>
@@ -138,7 +139,7 @@ const BollingerMicroPanel = ({ summary }) => {
       <Typography variant="caption" sx={{ px: 1, opacity: 0.65, display: 'block' }}>
         <strong>S</strong> – 5-Day&nbsp;&nbsp;|&nbsp;&nbsp;<strong>M</strong> – 10-Day
       </Typography>
-    </Box>
+    </Paper>
   );
 };
 
