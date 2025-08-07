@@ -1,6 +1,5 @@
 import React from 'react';
 import { Box, Paper, Typography, Divider } from '@mui/material';
-import KpiTiles from './KpiTiles';
 import AnnualFinancials from './AnnualFinancials';
 import BollingerMicroPanel from './BBStat/BollingerMicroPanel';
 import PeopleAlsoView from './PeopleAlsoView/PeopleAlsoView';      
@@ -18,8 +17,6 @@ const Sidebar = ({ summary, error }) => {
         <Box>
           <BollingerMicroPanel summary={summary} />
           <PeopleAlsoView summary={summary} />
-          <KpiTiles summary={summary} />
-
           <Divider sx={{ my: 3 }} />
 
 

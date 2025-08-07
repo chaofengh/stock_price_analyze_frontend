@@ -23,11 +23,11 @@ const PeopleAlsoView = ({ summary }) => {
   if (!rows.length) return null;
 
   return (
-    <Box sx={{ mt: 3 }}>
+    <Box sx={{ mt: 5 }}>
       <Typography variant="h6" fontWeight={700} sx={{ mb: 1 }}>
         People also view
       </Typography>
-      <Divider sx={{ mb: 2 }} />
+      <Divider sx={{ mb: 1 }} />
 
       {rows.map((r) => (
         <PeerRow key={r.peerSymbol} {...r} onClick={handlePeerClick} />

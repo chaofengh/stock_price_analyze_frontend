@@ -8,6 +8,7 @@ import {
 } from '@mui/material';
 import TimelineRounded from '@mui/icons-material/TimelineRounded';
 import StatRowVisual from './StatRowVisual';
+import { sectionCardSx } from '../Sidebar';
 
 /* — helpers — */
 const fmt = (num, d = 2) =>
@@ -133,7 +134,7 @@ const BollingerMicroPanel = ({ summary }) => {
         <StatRowVisual key={i} {...r} />
       ))}
 
-      <Divider sx={{ my: 1 }} />
+      <Divider sx={{ mb: 1 }} />
       <Typography variant="caption" sx={{ px: 1, opacity: 0.65, display: 'block' }}>
         <strong>S</strong> – 5-Day&nbsp;&nbsp;|&nbsp;&nbsp;<strong>M</strong> – 10-Day
       </Typography>

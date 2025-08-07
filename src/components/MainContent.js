@@ -5,6 +5,7 @@ import AdvancedMetrics from "./AdvancedMetrics";
 import MarketSentiment from "./MarketSentiment";
 import FinancialWidget from "./FinancialWidget";
 import TradeHistoryList from "./TradeHistoryList";
+import KpiTiles from "./KpiTiles"; 
 import { fetchCompanyLogo } from "../API/FetchCompanyLogo";
 import NumberFlow from "@number-flow/react"; // NEW (already installed)
 
@@ -148,6 +149,9 @@ const MainContent = ({ summary, eventMap }) => {
           eventMap={eventMap}
           onHoverPriceChange={setHoverData}
         />
+      </Paper>
+      <Paper sx={{ p: 3, mb: 3 }}>
+        <KpiTiles summary={summary} />
       </Paper>
       <Paper sx={{ p: 3, mb: 3 }}>
         <TradeHistoryList summary={summary} />

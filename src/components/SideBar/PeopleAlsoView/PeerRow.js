@@ -1,5 +1,6 @@
+// src/components/SideBar/PeopleAlsoView/PeerRow.js
 import React from 'react';
-import { Box, Paper, Typography, useTheme, alpha } from '@mui/material';
+import { Box, Typography, useTheme, alpha } from '@mui/material';
 import MiniAreaLine from './MiniAreaLine';
 
 /**
@@ -20,20 +21,29 @@ const PeerRow = ({ peerSymbol, latest, pct, series, onClick }) => {
   const chartData = series.slice(-50).map((v) => ({ v }));
 
   return (
-    <Paper
-      variant="outlined"
+    <Box
+      component="button"
       onClick={() => onClick(peerSymbol)}
+      // reset the default <button> look
       sx={{
+        all: 'unset',
+        boxSizing: 'border-box',
+        width: '100%',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        p: 1.5,
-        mb: 1.5,
         borderRadius: 2,
+        padding: theme.spacing(1.5),
+        mb: 1.5,
         cursor: 'pointer',
-        transition: 'background-color 0.2s',
+        transition: 'background-color 0.15s ease-in-out',
+        backgroundColor: 'transparent',
         '&:hover': {
           backgroundColor: alpha(theme.palette.primary.main, 0.08),
+        },
+        '&:focus-visible': {
+          outline: `2px solid ${theme.palette.primary.main}`,
+          outlineOffset: 2,
         },
       }}
     >
@@ -70,7 +80,7 @@ const PeerRow = ({ peerSymbol, latest, pct, series, onClick }) => {
           <Box sx={{ width: 80, height: 36 }} />
         )}
       </Box>
-    </Paper>
+    </Box>
   );
 };
 
