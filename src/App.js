@@ -114,11 +114,13 @@ function AppShell() {
           position="static"
           elevation={4}
           sx={{
+            p:0,
             backgroundColor: theme.palette.background.header,
             boxShadow: '0 0 12px rgba(0,184,255,0.25)',
           }}
         >
-          <Toolbar sx={{ minHeight: 80, gap: 3, display: 'flex' }}>
+          <Toolbar
+            sx={{ minHeight: 80, gap: 3, display: 'flex',}}>
             {/* Left: Title */}
             <Box sx={{ flex: 1, display: 'flex', alignItems: 'center' }}>
               <Typography variant="h6" sx={gradientTitleStyle}>
@@ -127,7 +129,7 @@ function AppShell() {
             </Box>
 
             {/* Center: Search bar (with search button removed via new prop) */}
-            <Box sx={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
+            <Box sx={{ flex: 1, display: 'flex', justifyContent: 'center'}}>
               <SymbolSearch
                 placeholder="Search symbol…"
                 onSelectSymbol={handleSelectSymbol}

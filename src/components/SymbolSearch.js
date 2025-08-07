@@ -1,21 +1,24 @@
+// SymbolSearch.js
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Box,
   TextField,
-  Button,
   Paper,
   List,
   ListItem,
   ListItemButton,
-  ListItemText
+  ListItemText,
+  InputAdornment
 } from '@mui/material';
+import SearchIcon from '@mui/icons-material/Search';
 
-const SymbolSearch = ({ onSelectSymbol, placeholder = 'Search for a Stock' }) => {
+const SymbolSearch = ({ onSelectSymbol, placeholder = 'Search symbol…' }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const debounceTimer = useRef(null);
 
+  /* ───────── Debounced search ───────── */
   useEffect(() => {
     if (!searchTerm) {
       setSearchResults([]);
@@ -24,48 +27,42 @@ const SymbolSearch = ({ onSelectSymbol, placeholder = 'Search for a Stock' }) =>
     }
 
     clearTimeout(debounceTimer.current);
-    debounceTimer.current = setTimeout(() => {
-      fetchMatches(searchTerm);
-    }, 200);
-
+    debounceTimer.current = setTimeout(() => fetchMatches(searchTerm), 200);
     return () => clearTimeout(debounceTimer.current);
   }, [searchTerm]);
 
   const fetchMatches = async (query) => {
     try {
       const apiKey = process.env.REACT_APP_Finnhub_API_Key;
-      const response = await fetch(`https://finnhub.io/api/v1/search?q=${query}&token=${apiKey}&exchange=US`);
-      const data = await response.json();
-
-      if (data.result) {
-        setSearchResults(data.result);
-        setShowSuggestions(true);
-      } else {
-        setSearchResults([]);
-      }
+      const res = await fetch(
+        `https://finnhub.io/api/v1/search?q=${query}&token=${apiKey}&exchange=US`
+      );
+      const data = await res.json();
+      setSearchResults(data.result || []);
+      setShowSuggestions(Boolean(data.result?.length));
     } catch (err) {
-      console.error('Error fetching from Finnhub:', err);
+      console.error('Finnhub search error:', err);
       setSearchResults([]);
+      setShowSuggestions(false);
     }
   };
 
+  /* ───────── Submit & select ───────── */
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!searchTerm) return;
-    // Process the search term and clear out the state
     onSelectSymbol(searchTerm.toUpperCase());
-    setSearchTerm('');          // Clear the text field after submission
-    setSearchResults([]);       // Clear suggestion list
-    setShowSuggestions(false);  // Hide suggestion list
-  };
-
-  const handleSelectSuggestion = (selectedSymbol) => {
-    onSelectSymbol(selectedSymbol.toUpperCase());
-    setSearchTerm('');          // Clear the text field
-    setSearchResults([]);       // Clear suggestion list
+    setSearchTerm('');
     setShowSuggestions(false);
   };
 
+  const handleSelect = (sym) => {
+    onSelectSymbol(sym.toUpperCase());
+    setSearchTerm('');
+    setShowSuggestions(false);
+  };
+
+  /* ───────── Render ───────── */
   return (
     <Box component="form" onSubmit={handleSubmit} sx={{ position: 'relative', width: '100%' }}>
       <TextField
@@ -74,14 +71,21 @@ const SymbolSearch = ({ onSelectSymbol, placeholder = 'Search for a Stock' }) =>
         placeholder={placeholder}
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
-        onFocus={() => {
-          if (searchResults.length > 0) {
-            setShowSuggestions(true);
+        onFocus={() => showSuggestions && setShowSuggestions(true)}
+        InputProps={{
+          startAdornment: (
+            <InputAdornment position="start">
+              <SearchIcon sx={{ fontSize: 20, color: 'text.secondary' }} />
+            </InputAdornment>
+          ),
+          sx: {
+            height: 40,                               // total field height
+            '& .MuiInputBase-input': { py: 0.5 }      // trim vertical padding
           }
         }}
       />
 
-      {showSuggestions && searchResults.length > 0 && (
+      {showSuggestions && (
         <Paper
           elevation={3}
           sx={{
@@ -94,13 +98,10 @@ const SymbolSearch = ({ onSelectSymbol, placeholder = 'Search for a Stock' }) =>
           }}
         >
           <List dense>
-            {searchResults.map((item, idx) => (
-              <ListItem key={idx} disablePadding>
-                <ListItemButton onClick={() => handleSelectSuggestion(item.symbol)}>
-                  <ListItemText
-                    primary={item.symbol}
-                    secondary={item.description}
-                  />
+            {searchResults.map((item) => (
+              <ListItem key={item.symbol} disablePadding>
+                <ListItemButton onClick={() => handleSelect(item.symbol)}>
+                  <ListItemText primary={item.symbol} secondary={item.description} />
                 </ListItemButton>
               </ListItem>
             ))}

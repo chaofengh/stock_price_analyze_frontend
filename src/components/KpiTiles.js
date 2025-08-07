@@ -1,7 +1,7 @@
 import React from 'react';
 import { Paper, Box, Typography, Tooltip } from '@mui/material';
 
-/* — helper to colour-code vs. peer — */
+/* colour helper vs. peer avg */
 const deltaColor = (raw, peer, lowerBetter = true) => {
   if (raw == null || peer == null) return 'text.primary';
   return lowerBetter
@@ -17,25 +17,34 @@ const deltaColor = (raw, peer, lowerBetter = true) => {
     : 'text.primary';
 };
 
-/* — single pill card — */
+/* pill component */
 const Pill = ({ label, value, peer, color, tip }) => {
   const body = (
     <Paper
-      elevation={0}                         /* ← no shadow */
+      elevation={0}               /* ← remove Material shadow */
+      square                     /* no extra corner rounding logic */
       sx={{
         p: 2,
+        boxShadow: 'none !important',   /* ← enforce zero shadow */
         borderRadius: 3,
         minHeight: 90,
         bgcolor: 'rgba(255,255,255,0.04)',
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'center',
-        alignItems: 'center',              /* ← center content */
-        textAlign: 'center',               /* ← center text */
-        gap: 0.5,
+        alignItems: 'center',
+        textAlign: 'center',
+        gap: 0.5
       }}
     >
-      <Typography variant="caption" sx={{ opacity: 0.7, textTransform: 'uppercase' }}>
+      <Typography
+        variant="caption"
+        sx={{
+          color: '#fafafa',       /* brighter white label */
+          textTransform: 'uppercase',
+          fontWeight: 600
+        }}
+      >
         {label}
       </Typography>
 
@@ -44,7 +53,7 @@ const Pill = ({ label, value, peer, color, tip }) => {
       </Typography>
 
       {peer != null && (
-        <Typography variant="caption" sx={{ opacity: 0.75 }}>
+        <Typography variant="caption" sx={{ opacity: 0.8 }}>
           Peer Avg&nbsp;{peer}
         </Typography>
       )}
@@ -60,7 +69,6 @@ const Pill = ({ label, value, peer, color, tip }) => {
   );
 };
 
-/* — main component — */
 const KpiTiles = ({ summary }) => {
   if (!summary) return null;
 
@@ -71,20 +79,21 @@ const KpiTiles = ({ summary }) => {
     Beta: 'Lower beta → less volatility.'
   };
 
-  const fmt = (n) => (n != null ? n.toFixed(2) : '-');
+  const f = (n) => (n != null ? n.toFixed(2) : '-');
 
-  /* — define tiles (Price Change removed) — */
+  /* tiles (Price Change already removed) */
   const tiles = [
+    {
+      label: 'Market Cap',
+      value:
+        summary.marketCap != null
+          ? `$${(summary.marketCap / 1e12).toFixed(2)} T`
+          : '-'
+    },
     {
       label: 'Trailing PE',
       raw: summary.trailingPE,
       peer: summary.avg_peer_trailingPE,
-      lowerBetter: true
-    },
-    {
-      label: 'Forward P/E',
-      raw: summary.forwardPE,
-      peer: summary.avg_peer_forwardPE,
       lowerBetter: true
     },
     {
@@ -94,17 +103,16 @@ const KpiTiles = ({ summary }) => {
       lowerBetter: true
     },
     {
+      label: 'Forward P/E',
+      raw: summary.forwardPE,
+      peer: summary.avg_peer_forwardPE,
+      lowerBetter: true
+    },
+    {
       label: 'Beta',
       raw: summary.beta,
       peer: summary.avg_peer_beta,
       lowerBetter: true
-    },
-    {
-      label: 'Market Cap',
-      value:
-        summary.marketCap != null
-          ? `$${(summary.marketCap / 1e12).toFixed(2)} T`
-          : '-'
     },
     {
       label: 'Dividend Yield',
@@ -127,8 +135,8 @@ const KpiTiles = ({ summary }) => {
         <Pill
           key={t.label}
           label={t.label}
-          value={t.value ?? fmt(t.raw)}
-          peer={t.peer != null ? fmt(t.peer) : null}
+          value={t.value ?? f(t.raw)}
+          peer={t.peer != null ? f(t.peer) : null}
           color={deltaColor(t.raw, t.peer, t.lowerBetter)}
           tip={tips[t.label]}
         />
