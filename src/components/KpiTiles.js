@@ -17,15 +17,40 @@ const deltaColor = (raw, peer, lowerBetter = true) => {
     : 'text.primary';
 };
 
+/* compact Market Cap formatter: $, then T/B/M/K with adaptive decimals */
+const formatMarketCap = (n) => {
+  if (n == null || !isFinite(n)) return '-';
+
+  const abs = Math.abs(n);
+  const units = [
+    { v: 1e12, s: 'T' },
+    { v: 1e9,  s: 'B' },
+    { v: 1e6,  s: 'M' },
+    { v: 1e3,  s: 'K' },
+  ];
+
+  for (const u of units) {
+    if (abs >= u.v) {
+      const val = n / u.v;
+      // fewer decimals as the number gets bigger
+      const digits = val >= 100 ? 0 : val >= 10 ? 1 : 2;
+      return `$${val.toFixed(digits)} ${u.s}`;
+    }
+  }
+
+  // < $1K → show plain dollars with separators
+  return `$${Math.round(n).toLocaleString()}`;
+};
+
 /* pill component */
 const Pill = ({ label, value, peer, color, tip }) => {
   const body = (
     <Paper
-      elevation={0}               /* ← remove Material shadow */
-      square                     /* no extra corner rounding logic */
+      elevation={0}
+      square
       sx={{
         p: 2,
-        boxShadow: 'none !important',   /* ← enforce zero shadow */
+        boxShadow: 'none !important',
         borderRadius: 3,
         minHeight: 90,
         bgcolor: 'rgba(255,255,255,0.04)',
@@ -39,11 +64,7 @@ const Pill = ({ label, value, peer, color, tip }) => {
     >
       <Typography
         variant="caption"
-        sx={{
-          color: '#fafafa',       /* brighter white label */
-          textTransform: 'uppercase',
-          fontWeight: 600
-        }}
+        sx={{ color: '#fafafa', textTransform: 'uppercase', fontWeight: 600 }}
       >
         {label}
       </Typography>
@@ -79,16 +100,13 @@ const KpiTiles = ({ summary }) => {
     Beta: 'Lower beta → less volatility.'
   };
 
-  const f = (n) => (n != null ? n.toFixed(2) : '-');
+  const f = (n) => (n != null && isFinite(n) ? n.toFixed(2) : '-');
 
   /* tiles (Price Change already removed) */
   const tiles = [
     {
       label: 'Market Cap',
-      value:
-        summary.marketCap != null
-          ? `$${(summary.marketCap / 1e12).toFixed(2)} T`
-          : '-'
+      value: formatMarketCap(summary.marketCap)
     },
     {
       label: 'Trailing PE',
@@ -117,7 +135,7 @@ const KpiTiles = ({ summary }) => {
     {
       label: 'Dividend Yield',
       value:
-        summary.dividendYield != null
+        summary.dividendYield != null && isFinite(summary.dividendYield)
           ? `${summary.dividendYield.toFixed(2)}%`
           : '-'
     }
