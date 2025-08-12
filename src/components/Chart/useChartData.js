@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 
-export function useChartData(summary, eventTypeMappingTouch, eventTypeMappingHug) {
+export function useChartData(summary, eventTypeMappingTouch, ) {
   return useMemo(() => {
     if (!summary || !summary.chart_data) {
       return { labels: [], datasets: [] };
@@ -12,15 +12,10 @@ export function useChartData(summary, eventTypeMappingTouch, eventTypeMappingHug
     // data = the closing prices
     const closingValues = summary.chart_data.map(pt => pt.close);
 
-    // Determine point color & radius based on whether it’s a hug or touch
+    // Determine point color & radius based on a touch
     const closingPointColors = summary.chart_data.map(pt => {
       const key = pt.date;
-      if (pt.isHug) {
-        // Distinguish lower_hug vs upper_hug
-        if (eventTypeMappingHug[key] === 'lower_hug') return '#00C853'; // green
-        if (eventTypeMappingHug[key] === 'upper_hug') return '#D50000'; // red
-        return '#FF9800'; // fallback color (orange)
-      } else if (pt.isTouch) {
+      if (pt.isTouch) {
         if (eventTypeMappingTouch[key] === 'lower') return '#00C853'; // green
         if (eventTypeMappingTouch[key] === 'upper') return '#D50000'; // red
         return '#FF9800';
@@ -29,7 +24,7 @@ export function useChartData(summary, eventTypeMappingTouch, eventTypeMappingHug
     });
 
     const closingPointRadii = summary.chart_data.map(pt =>
-      pt.isTouch || pt.isHug ? 6 : 4
+      pt.isTouch ? 6 : 4
     );
 
     return {
@@ -49,5 +44,5 @@ export function useChartData(summary, eventTypeMappingTouch, eventTypeMappingHug
         },
       ],
     };
-  }, [summary, eventTypeMappingTouch, eventTypeMappingHug]);
+  }, [summary, eventTypeMappingTouch]);
 }

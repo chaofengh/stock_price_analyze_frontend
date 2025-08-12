@@ -1,64 +1,65 @@
 import React from 'react';
-import { Box, Paper, Typography, IconButton, Fade } from '@mui/material';
+import { Box, Fade, IconButton, Paper, Typography } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
 
+/**
+ * Small card that appears after a drag-zoom,
+ * showing absolute / % price change over the selected range.
+ */
 const PriceChangeInfo = ({ dragInfo, onResetZoom }) => {
   if (!dragInfo) return null;
-  
+
+  const { startDate, endDate, duration, diff, pct } = dragInfo;
+  const isGain = parseFloat(diff) >= 0;
+
   return (
     <Fade in timeout={500}>
       <Paper
-        elevation={3}
+        elevation={0} // flat look
         sx={{
           position: 'absolute',
           top: 16,
           left: 16,
-          padding: 2,
-          backgroundColor: 'rgba(255,255,255,0.9)',
+          p: 2,
           borderRadius: 2,
           minWidth: 240,
-          color: 'text.primary',
           display: 'flex',
           flexDirection: 'column',
           gap: 1,
         }}
       >
-        <Box
-          sx={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-          }}
-        >
-          <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+        {/* header */}
+        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+          <Typography variant="subtitle1" fontWeight={700}>
             Price Change
           </Typography>
           <IconButton
-            onClick={onResetZoom}
             size="small"
             color="primary"
             aria-label="Reset Zoom"
+            onClick={onResetZoom}
           >
             <RefreshIcon />
           </IconButton>
         </Box>
-        <Typography variant="body2" sx={{ fontWeight: 500 }}>
-          From: {dragInfo.startDate}
+
+        {/* body */}
+        <Typography variant="body2" fontWeight={500}>
+          From: {startDate}
         </Typography>
-        <Typography variant="body2" sx={{ fontWeight: 500 }}>
-          To: {dragInfo.endDate}
+        <Typography variant="body2" fontWeight={500}>
+          To:&nbsp;&nbsp;&nbsp;&nbsp;{endDate}
         </Typography>
-        <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
-          Duration: {dragInfo.duration} day{dragInfo.duration > 1 ? 's' : ''}
+        <Typography variant="body1" fontWeight={700}>
+          Duration: {duration} day{duration > 1 ? 's' : ''}
         </Typography>
         <Typography
           variant="body1"
-          sx={{
-            fontWeight: 'bold',
-            color: parseFloat(dragInfo.diff) >= 0 ? 'green' : 'red',
-          }}
+          fontWeight={700}
+          color={isGain ? 'success.main' : 'error.main'}
         >
-          ${dragInfo.diff} ({dragInfo.pct}%)
+          {isGain ? '+' : ''}
+          ${diff} ({pct}%)
         </Typography>
       </Paper>
     </Fade>

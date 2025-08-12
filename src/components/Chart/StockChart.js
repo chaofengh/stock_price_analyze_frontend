@@ -1,3 +1,4 @@
+// StockChart.js
 import React, { useCallback, useState, useRef, useEffect, useMemo } from "react";
 import { Box } from "@mui/material";
 import { Line } from "react-chartjs-2";
@@ -16,7 +17,6 @@ import annotationPlugin from "chartjs-plugin-annotation";
 import zoomPlugin from "chartjs-plugin-zoom";
 
 import { useTouchEventTypes, useTouchTooltipMappings } from "./useTouchMappings";
-import { useHugEventTypes, useHugTooltipMappings } from "./useHugMappings";
 import { useExternalTooltipHandler } from "./TooltipHandler";
 import { useChartData } from "./useChartData";
 
@@ -45,15 +45,9 @@ function StockChart({ summary, eventMap, onHoverPriceChange }) {
 
   // ── Data prep ───────────────────────────────────────────────────────────
   const eventTypeMappingTouch = useTouchEventTypes(summary, formatDate);
-  const tooltipMappingTouch   = useTouchTooltipMappings(summary, formatDate);
-  const eventTypeMappingHug   = useHugEventTypes(summary, formatDate);
-  const tooltipMappingHug     = useHugTooltipMappings(summary, formatDate);
+  const tooltipMappingTouch = useTouchTooltipMappings(summary, formatDate);
 
-  const baseChartData = useChartData(
-    summary,
-    eventTypeMappingTouch,
-    eventTypeMappingHug
-  );
+  const baseChartData = useChartData(summary, eventTypeMappingTouch);
 
   const upperBand = useMemo(
     () => summary?.chart_data?.map((pt) => pt.upper ?? null) || [],
@@ -71,8 +65,6 @@ function StockChart({ summary, eventMap, onHoverPriceChange }) {
       setChartData({ labels: [], datasets: [] });
       return;
     }
-
-    const chartCtx = chartRef.current?.ctx;
 
     const mainDataset = {
       ...baseChartData.datasets[0],
@@ -127,6 +119,7 @@ function StockChart({ summary, eventMap, onHoverPriceChange }) {
         if (chart.$currentHoverIndex != null) {
           chart.$currentHoverIndex = null;
           onHoverPriceChange?.(null);
+          chart.draw(); // ensure crosshair/date pill disappears
         }
         return;
       }
@@ -143,6 +136,8 @@ function StockChart({ summary, eventMap, onHoverPriceChange }) {
         upper: pt.upper,
         lower: pt.lower,
       });
+
+      chart.draw(); // re-render crosshair + date pill immediately
     },
     [summary, onHoverPriceChange]
   );
@@ -188,7 +183,6 @@ function StockChart({ summary, eventMap, onHoverPriceChange }) {
     handleHover,
     handleZoomComplete,
     summary,
-    tooltipMappingHug,
     tooltipMappingTouch,
   });
 

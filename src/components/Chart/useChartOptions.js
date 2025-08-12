@@ -1,87 +1,98 @@
+// useChartOptions.js
+import { useTheme } from "@mui/material/styles";
+import { useMemo } from "react";
+
+/**
+ * Builds the Chart.js options object.
+ * - Bright axis/labels for dark canvas
+ * - Uses our external tooltip
+ * - Keeps zoom/pan + hover logic
+ */
 const useChartOptions = ({
-    externalTooltipHandler,
-    handleHover,
-    handleZoomComplete,
-    summary,
-    tooltipMappingHug,
-    tooltipMappingTouch,
-  }) => {
-    const chartOptions = {
+  externalTooltipHandler,
+  handleHover,
+  handleZoomComplete,
+  summary,
+  tooltipMappingTouch,
+}) => {
+  const theme = useTheme();
+
+  return useMemo(
+    () => ({
       responsive: true,
       maintainAspectRatio: false,
       layout: { padding: { top: 20, right: 10, left: 10 } },
+
       scales: {
         x: {
-          type: 'category',
+          type: "category",
           grid: { display: false },
           ticks: {
-            color: '#666',
+            color: theme.palette.grey[300],
             autoSkip: true,
             maxTicksLimit: 10,
           },
         },
         y: {
-          type: 'linear',
-          display: true,
-          position: 'left',
-          grid: { color: 'rgba(0,0,0,0.05)' },
+          type: "linear",
+          position: "left",
+          grid: { color: "rgba(255,255,255,0.06)" },
           ticks: {
-            color: '#666',
-            callback: (value) => `$${value}`,
+            color: theme.palette.grey[300],
+            callback: (v) => `$${v}`,
           },
         },
       },
-      interaction: {
-        // Available modes include: 'point', 'nearest', 'index', 'dataset', 'x', 'y'
-        mode: 'point', // changed from 'point'
-        intersect: false,
-      },
+
+      interaction: { mode: "point", intersect: false },
+
       plugins: {
         legend: {
           display: true,
           labels: { boxWidth: 12 },
         },
+
+        // External tooltip renderer
         tooltip: {
           enabled: false,
           external: externalTooltipHandler,
           callbacks: {
-            label: (context) => {
-              const dataIndex = context.dataIndex;
-              const chartPoint = summary.chart_data[dataIndex];
-              const pointDate = chartPoint?.date;
-              if (chartPoint.isHug && tooltipMappingHug[pointDate]) {
-                return tooltipMappingHug[pointDate];
-              }
-              if (chartPoint.isTouch && tooltipMappingTouch[pointDate]) {
-                return tooltipMappingTouch[pointDate];
-              }
-              return `Close: ${context.parsed.y?.toFixed(2)}`;
+            label: (ctx) => {
+              const i = ctx.dataIndex;
+              const pt = summary.chart_data[i];
+              const dt = pt?.date;
+              if (pt?.isTouch && tooltipMappingTouch[dt])
+                return tooltipMappingTouch[dt];
+              return `Close: ${ctx.parsed.y?.toFixed(2)}`;
             },
           },
         },
+
+        // Zoom / pan
         zoom: {
           zoom: {
-            drag: {
-              enabled: true,
-              backgroundColor: 'rgba(0,0,0,0.15)',
-            },
-            mode: 'x',
+            drag: { enabled: true, backgroundColor: "rgba(0,0,0,0.15)" },
+            mode: "x",
             onZoomComplete: handleZoomComplete,
           },
-          pan: {
-            enabled: true,
-            mode: 'x',
-          },
+          pan: { enabled: true, mode: "x" },
         },
-        annotation: {
-          annotations: {},
-        },
+
+        // (Removed the annotation date label—crosshair plugin draws the date pill)
       },
-      events: ['mousemove', 'mouseout', 'click', 'touchstart', 'touchmove'],
+
+      events: ["mousemove", "mouseout", "click", "touchstart", "touchmove"],
       onHover: handleHover,
-    };
-  
-    return chartOptions;
-  };
-  
-  export default useChartOptions;
+    }),
+    [
+      theme,
+      externalTooltipHandler,
+      handleHover,
+      handleZoomComplete,
+      summary,
+      tooltipMappingTouch,
+    ]
+  );
+};
+
+export default useChartOptions;

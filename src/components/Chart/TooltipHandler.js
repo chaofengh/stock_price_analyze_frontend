@@ -1,138 +1,107 @@
 // TooltipHandler.js
-import { useCallback } from 'react';
+// High-contrast external tooltip for Chart.js on dark canvases.
+// Styles are applied on every call (so HMR updates correctly).
+
+import { useCallback } from "react";
 
 export function useExternalTooltipHandler() {
   return useCallback((context) => {
-    let tooltipEl = document.getElementById('chartjs-tooltip');
-    if (!tooltipEl) {
-      tooltipEl = document.createElement('div');
-      tooltipEl.id = 'chartjs-tooltip';
-      tooltipEl.style.background = 'rgba(255, 255, 255, 0.95)';
-      tooltipEl.style.border = '1px solid #ddd';
-      tooltipEl.style.borderRadius = '8px';
-      tooltipEl.style.boxShadow = '0px 0px 10px rgba(0, 0, 0, 0.1)';
-      tooltipEl.style.padding = '8px';
-      tooltipEl.style.position = 'absolute';
-      tooltipEl.style.pointerEvents = 'none';
-      tooltipEl.style.transition = 'all 0.1s ease';
-      document.body.appendChild(tooltipEl);
+    const id = `chartjs-tooltip-${context.chart.id}`;
+
+    let el = document.getElementById(id);
+    if (!el) {
+      el = document.createElement("div");
+      el.id = id;
+      document.body.appendChild(el);
     }
 
-    const tooltipModel = context.tooltip;
-    if (tooltipModel.opacity === 0) {
-      tooltipEl.style.opacity = 0;
+    // Apply styles every time (prevents stale DOM during hot reloads)
+    Object.assign(el.style, {
+      background: "#fff",
+      color: "#0b0f14",
+      border: "1px solid #e5e7eb",
+      borderRadius: "10px",
+      boxShadow: "0 8px 24px rgba(0,0,0,.2)",
+      padding: "10px 12px",
+      position: "absolute",
+      pointerEvents: "none",
+      zIndex: 10000,
+      lineHeight: 1.35,
+      font:
+        "500 13.5px Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
+      maxWidth: "320px",
+      whiteSpace: "normal",
+      transform: "translate(-50%, -110%)",
+      WebkitFontSmoothing: "antialiased",
+      MozOsxFontSmoothing: "grayscale",
+      opacity: 0,
+    });
+
+    const { tooltip } = context;
+    if (!tooltip || tooltip.opacity === 0) {
+      el.style.opacity = "0";
       return;
     }
+    el.style.opacity = "1";
 
-    const canvasRect = context.chart.canvas.getBoundingClientRect();
-    tooltipEl.style.opacity = 1;
-    tooltipEl.style.left =
-      canvasRect.left + window.pageXOffset + tooltipModel.caretX + 'px';
-    tooltipEl.style.top =
-      canvasRect.top + window.pageYOffset + tooltipModel.caretY + 'px';
+    const rect = context.chart.canvas.getBoundingClientRect();
+    el.style.left = rect.left + window.pageXOffset + tooltip.caretX + "px";
+    el.style.top = rect.top + window.pageYOffset + tooltip.caretY + "px";
 
-    let innerHtml = '';
+    // Build HTML
+    const title = (tooltip.title || []).join(" ");
+    const blocks = [];
+    let current = [];
 
-    // Title
-    // if (tooltipModel.title) {
-    //   innerHtml += `
-    //     <div style="font-family: Roboto, sans-serif; font-size: 16px; font-weight: bold; color: #333; margin-bottom: 4px;">
-    //   `;
-    //   tooltipModel.title.forEach((title) => {
-    //     innerHtml += title + '<br/>';
-    //   });
-    //   innerHtml += `</div>`;
-    // }
-
-    // Body
-    if (tooltipModel.body) {
-      tooltipModel.body.forEach((bodyItem) => {
-        bodyItem.lines.forEach((line) => {
-          // ----------------------------
-          // 1) BOUNCE LOGIC
-          // ----------------------------
-          if (line.trim().startsWith('Bounce:')) {
-            // Matches "Bounce: $-0.29" or "Bounce: $ 1.09", etc.
-            line = line.replace(
-              /^(Bounce:\s*)(\$?\s*-?[\d.,]+)/,
-              (match, prefix, amount) => {
-                const numericValue = parseFloat(
-                  amount.replace(/[^0-9.-]/g, '')
-                );
-                // Negative bounce => exclamation + red background
-                if (numericValue < 0) {
-                  return `
-                    ${prefix}
-                    <span style="background-color: red; color: white; padding: 2px 4px; border-radius: 4px;">
-                      <strong>&#x26A0;</strong> ${amount}
-                    </span>
-                  `;
-                }
-                // Positive bounce => green background
-                else if (numericValue > 0) {
-                  return `
-                    ${prefix}
-                    <span style="background-color: green; color: white; padding: 2px 4px; border-radius: 4px;">
-                      ${amount}
-                    </span>
-                  `;
-                }
-                // Zero => no special styling
-                else {
-                  return `${prefix}${amount}`;
-                }
-              }
-            );
-          }
-
-          // ----------------------------
-          // 2) DROP LOGIC
-          // ----------------------------
-          else if (line.trim().startsWith('Drop:')) {
-            // Negative => normal red background, Positive => exclamation + green background
-            line = line.replace(
-              /^(Drop:\s*)(\$?\s*-?[\d.,]+)/,
-              (match, prefix, amount) => {
-                const numericValue = parseFloat(
-                  amount.replace(/[^0-9.-]/g, '')
-                );
-                if (numericValue < 0) {
-                  // Negative drop => red background
-                  return `
-                    ${prefix}
-                    <span style="background-color: red; color: white; padding: 2px 4px; border-radius: 4px;">
-                      ${amount}
-                    </span>
-                  `;
-                } else if (numericValue > 0) {
-                  // Positive drop => exclamation + green background
-                  return `
-                    ${prefix}
-                    <span style="background-color: green; color: white; padding: 2px 4px; border-radius: 4px;">
-                      <strong>&#x26A0;</strong> ${amount}
-                    </span>
-                  `;
-                } else {
-                  // Zero => no special styling
-                  return `${prefix}${amount}`;
-                }
-              }
-            );
-          }
-
-          // Bold the label portion (e.g. "Bounce:", "Drop:", "Event:", etc.)
-          line = line.replace(/^([^:]+:\s*)/, "<strong>$1</strong>");
-
-          // Build final HTML for this line
-          innerHtml += `
-            <div style="font-family: Roboto, sans-serif; font-size: 14px; color: #555; margin-bottom: 2px;">
-              ${line}
-            </div>
-          `;
-        });
+    (tooltip.body || []).forEach(({ lines }) => {
+      lines.forEach((raw) => {
+        if (/^Window \d+/.test(raw)) {
+          if (current.length) blocks.push(current);
+          current = [raw];
+        } else current.push(raw);
       });
+    });
+    if (current.length) blocks.push(current);
+
+    let html = "";
+    if (title) {
+      html += `<div style="font-weight:700;margin-bottom:6px;font-size:14px">${title}</div>`;
     }
 
-    tooltipEl.innerHTML = innerHtml;
+    blocks.forEach((block, i) => {
+      const [header, ...rest] = block;
+
+      html += `<div style="padding-bottom:6px;${
+        i < blocks.length - 1
+          ? "border-bottom:1px solid #e5e7eb;margin-bottom:6px;"
+          : ""
+      }">
+        <div style="font-weight:700;font-size:13.5px;margin-bottom:4px">${header}</div>`;
+
+      rest.forEach((line) => {
+        let ln = line.trim();
+
+        // Value "pills" for Bounce/Drop
+        if (ln.startsWith("Bounce:") || ln.startsWith("Drop:")) {
+          ln = ln.replace(/^([^:]+:\s*)(\$?\s*-?[\d.,]+)/, (_, pre, amt) => {
+            const n = parseFloat(amt.replace(/[^0-9.-]/g, ""));
+            const bg = n < 0 ? "#ef4444" : n > 0 ? "#22c55e" : "#64748b";
+            return `${pre}<span style="background:${bg};color:#fff;border-radius:6px;padding:2px 6px;font-weight:700">${amt}</span>`;
+          });
+        }
+
+        // Bold label, normal value
+        ln = ln.replace(
+          /^([^:]+:\s*)/,
+          '<span style="color:#334155;font-weight:600">$1</span>'
+        );
+
+        html += `<div style="font-size:13.5px;color:#111827;margin-bottom:2px">${ln}</div>`;
+      });
+
+      html += `</div>`;
+    });
+
+    el.innerHTML = html;
   }, []);
 }
