@@ -1,5 +1,5 @@
-// AlertItem.jsx
-import React, { useEffect, useState } from "react";
+// src/components/Notification/AlertItem.jsx
+import React, { useEffect } from "react";
 import {
   Box,
   Typography,
@@ -13,9 +13,15 @@ import {
 } from "@mui/material";
 import { useTheme, alpha } from "@mui/material/styles";
 import { ArrowUpward, ArrowDownward } from "@mui/icons-material";
+import { useDispatch, useSelector } from "react-redux";
 import SparklineChart from "./SparklineChart";
 import BandBreakoutMeter from "./BandBreakoutMeter";
-import { fetchCompanyLogo } from "../../API/FetchCompanyLogo";
+
+// ⬇️ NEW: Redux logo selectors + ensure thunk
+import {
+  ensureLogoForSymbol,
+  selectLogoUrlBySymbol,
+} from '../Redux/logosSlice';
 
 const formatPrice = (price) =>
   typeof price === "number" ? price.toFixed(2) : price;
@@ -43,6 +49,7 @@ const AlertItem = ({
   index,
 }) => {
   const theme = useTheme();
+  const dispatch = useDispatch();
   const sideStyles = getSideStyles(theme);
   const styleSet = sideStyles[touched_side] || sideStyles.Upper;
 
@@ -56,17 +63,15 @@ const AlertItem = ({
     recent_closes = [],
   } = alert || {};
 
-  const [logo, setLogo] = useState(null);
+  // ⬇️ NEW: read logo from Redux and request it if needed
+  const logoUrl = useSelector((state) => selectLogoUrlBySymbol(state, symbol));
 
   useEffect(() => {
-    let mounted = true;
-    fetchCompanyLogo(symbol)
-      .then((url) => mounted && setLogo(url))
-      .catch(() => mounted && setLogo(null));
-    return () => {
-      mounted = false;
-    };
-  }, [symbol]);
+    if (symbol) {
+      // Only fetch if missing/stale; internally dedupes concurrent calls
+      dispatch(ensureLogoForSymbol(symbol));
+    }
+  }, [dispatch, symbol]);
 
   return (
     <Grow in timeout={500}>
@@ -97,10 +102,16 @@ const AlertItem = ({
             sx={{ mb: 1.5 }}
           >
             <Box display="flex" alignItems="center" gap={1.5}>
-              {logo ? (
-                <Avatar src={logo} alt={symbol} sx={{ width: 40, height: 40 }} />
+              {logoUrl ? (
+                <Avatar src={logoUrl} alt={symbol} sx={{ width: 40, height: 40 }} />
               ) : (
-                <Avatar sx={{ width: 40, height: 40, bgcolor: alpha(theme.palette.text.primary, 0.18) }}>
+                <Avatar
+                  sx={{
+                    width: 40,
+                    height: 40,
+                    bgcolor: alpha(theme.palette.text.primary, 0.18),
+                  }}
+                >
                   {symbol?.[0] ?? "•"}
                 </Avatar>
               )}

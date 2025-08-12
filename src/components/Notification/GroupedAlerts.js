@@ -27,7 +27,6 @@ const GroupedAlerts = ({
     setOpen((prev) => !prev);
   };
 
-  // Use theme colors you added: band.overbought / band.oversold + readable header colors
   const accent =
     touched_side === 'Upper'
       ? theme.palette.band?.overbought || theme.palette.error.main
@@ -40,7 +39,7 @@ const GroupedAlerts = ({
 
   return (
     <Box sx={{ mb: 3 }}>
-      {/* Header row */}
+      {/* Header row (no left bar) */}
       <Box
         onClick={handleToggle}
         role="button"
@@ -49,12 +48,10 @@ const GroupedAlerts = ({
         alignItems="center"
         justifyContent="space-between"
         sx={{
-          position: 'relative',
           cursor: 'pointer',
           borderRadius: 2,
           border: '1px solid',
           borderColor: 'divider',
-          // subtle surface with just a hint of tint so text has contrast
           backgroundColor: alpha('#000', 0.25),
           px: 2,
           py: 1.25,
@@ -62,19 +59,6 @@ const GroupedAlerts = ({
           '&:hover': {
             borderColor: alpha(accent, 0.7),
             backgroundColor: alpha(accent, 0.08),
-          },
-          // left accent bar
-          '&::before': {
-            content: '""',
-            position: 'absolute',
-            left: 0,
-            top: 0,
-            bottom: 0,
-            width: 4,
-            borderTopLeftRadius: 8,
-            borderBottomLeftRadius: 8,
-            background: accent,
-            boxShadow: `0 0 10px ${alpha(accent, 0.45)}`,
           },
         }}
       >
@@ -85,20 +69,13 @@ const GroupedAlerts = ({
             color: headerTextColor,
             pr: 2,
             lineHeight: 1.25,
-            // keep long titles readable on narrow screens
             wordBreak: 'break-word',
           }}
         >
           {title}
         </Typography>
 
-        <Box
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1,
-          }}
-        >
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <Chip
             size="small"
             label={`${alerts.length}`}
