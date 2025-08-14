@@ -92,7 +92,7 @@ export default function CandleChart({ data = [], annotations = [] }) {
     const ticks = [];
     for (let t = start; t <= maxT; t += TICK_MS) ticks.push(t);
     return ticks;
-  }, [minT, maxT]);
+  }, [minT, maxT,data.length]);
 
   /* ——— Render ——— */
   return (

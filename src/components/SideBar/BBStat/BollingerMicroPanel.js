@@ -9,7 +9,6 @@ import {
 } from '@mui/material';
 import TimelineRounded from '@mui/icons-material/TimelineRounded';
 import StatRowVisual from './StatRowVisual';
-import { sectionCardSx } from '../Sidebar';
 
 /* — helpers — */
 const fmt = (num, d = 2) =>

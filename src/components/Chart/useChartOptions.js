@@ -6,7 +6,6 @@ const useChartOptions = ({
   externalTooltipHandler,
   handleHover,
   handleZoomComplete,
-  summary,
   tooltipMappingTouch,
 }) => {
   const theme = useTheme();
@@ -72,7 +71,6 @@ const useChartOptions = ({
       externalTooltipHandler,
       handleHover,
       handleZoomComplete,
-      summary,
       tooltipMappingTouch,
     ]
   );

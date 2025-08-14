@@ -17,6 +17,7 @@ const BandBreakoutMeter = ({
   upper,
   touched_side,
 }) => {
+  // Basic guard: ensure we have numbers to work with
   if (
     typeof close !== "number" ||
     typeof lower !== "number" ||
@@ -31,11 +32,12 @@ const BandBreakoutMeter = ({
   let label = "Band Breakout";
 
   if (touched_side === "Upper") {
-    diff = high_price - upper;
+    diff = (typeof high_price === "number" ? high_price : close) - upper;
     base = upper;
     label = "Overbought Meter";
   } else {
-    diff = lower - low_price;
+    // default to "Lower" logic when touched_side is not "Upper"
+    diff = lower - (typeof low_price === "number" ? low_price : close);
     base = lower;
     label = "Oversold Meter";
   }
@@ -58,18 +60,38 @@ const BandBreakoutMeter = ({
   // End cap (dot) position in % from left of the track
   const endPosPct = 50 + (isRight ? fillHalfPct : -fillHalfPct);
 
+  // ── ARIA: expose a 0–100 meter range so SRs announce sensible values ──
+  const ariaMin = 0;
+  const ariaMax = 100;
+  const ariaNow = Math.round(
+    Math.max(
+      ariaMin,
+      Math.min(ariaMax, 50 + (clamped / maxBreakout) * 50)
+    )
+  );
+  const ariaText = `${Math.abs(rawPct).toFixed(2)}% ${
+    touched_side === "Upper" ? "above" : "below"
+  } Bollinger Band`;
+
   return (
     <Box>
-      <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 1 }}>
+      <Typography
+        variant="subtitle2"
+        fontWeight="bold"
+        sx={(theme) => ({ mb: 1, color: theme.palette.text.primary })}
+      >
         {label}
       </Typography>
 
       {/* Track */}
       <Box
         role="meter"
-        aria-valuemin={-maxBreakout}
-        aria-valuemax={maxBreakout}
-        aria-valuenow={Number(clamped.toFixed(2))}
+        tabIndex={0}
+        aria-label={label}
+        aria-valuemin={ariaMin}
+        aria-valuemax={ariaMax}
+        aria-valuenow={ariaNow}
+        aria-valuetext={ariaText}
         sx={(theme) => ({
           position: "relative",
           height: 12,
@@ -116,7 +138,7 @@ const BandBreakoutMeter = ({
             position: "absolute",
             top: "50%",
             left: `${endPosPct}%`,
-            transform: "translate(-50%, -50%)",
+            transform: 'translate(-50%, -50%)',
             width: 14,
             height: 14,
             borderRadius: "50%",

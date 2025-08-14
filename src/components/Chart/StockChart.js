@@ -188,7 +188,6 @@ function StockChart({ summary, eventMap, onHoverPriceChange }) {
     externalTooltipHandler,
     handleHover,
     handleZoomComplete,
-    summary,
     tooltipMappingTouch, // still needed by TooltipHandler for rows
   });
 
