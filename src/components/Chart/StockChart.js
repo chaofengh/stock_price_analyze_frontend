@@ -4,14 +4,8 @@ import { Box } from "@mui/material";
 import { Line } from "react-chartjs-2";
 import {
   Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip as ChartTooltip,
-  Legend,
-  Filler,
+  CategoryScale, LinearScale, PointElement, LineElement,
+  Title, Tooltip as ChartTooltip, Legend, Filler,
 } from "chart.js";
 import annotationPlugin from "chartjs-plugin-annotation";
 import zoomPlugin from "chartjs-plugin-zoom";
@@ -26,17 +20,9 @@ import useChartOptions from "./useChartOptions";
 import { formatDate } from "../../utils/formatDate";
 
 ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  ChartTooltip,
-  Legend,
-  annotationPlugin,
-  zoomPlugin,
-  CrosshairLinePlugin,
-  Filler
+  CategoryScale, LinearScale, PointElement, LineElement,
+  Title, ChartTooltip, Legend, annotationPlugin, zoomPlugin,
+  CrosshairLinePlugin, Filler
 );
 
 function StockChart({ summary, eventMap, onHoverPriceChange }) {
@@ -45,9 +31,29 @@ function StockChart({ summary, eventMap, onHoverPriceChange }) {
 
   // ── Data prep ───────────────────────────────────────────────────────────
   const eventTypeMappingTouch = useTouchEventTypes(summary, formatDate);
-  const tooltipMappingTouch = useTouchTooltipMappings(summary, formatDate);
+  const tooltipMappingTouch   = useTouchTooltipMappings(summary, formatDate);
 
-  const baseChartData = useChartData(summary, eventTypeMappingTouch);
+  // Build P&L status per touch date from the tooltip mapping
+  const pnlStatusByDate = useMemo(() => {
+    const out = {};
+    for (const [date, items] of Object.entries(tooltipMappingTouch || {})) {
+      if (!Array.isArray(items) || !items.length) continue;
+      const profits = items.map(it => {
+        const d = Number(it.delta ?? 0);
+        return it.kind === "pullback" ? -d : d; // short: touch→trough (profit when delta<0)
+      });
+      const hasPos = profits.some(p => p > 0);
+      const hasNeg = profits.some(p => p < 0);
+      let status = null;
+      if (hasPos && !hasNeg) status = "profit";
+      else if (hasNeg && !hasPos) status = "loss";
+      else if (hasPos && hasNeg) status = "mixed";
+      if (status) out[date] = { status, profits };
+    }
+    return out;
+  }, [tooltipMappingTouch]);
+
+  const baseChartData = useChartData(summary, eventTypeMappingTouch, pnlStatusByDate);
 
   const upperBand = useMemo(
     () => summary?.chart_data?.map((pt) => pt.upper ?? null) || [],
@@ -119,7 +125,7 @@ function StockChart({ summary, eventMap, onHoverPriceChange }) {
         if (chart.$currentHoverIndex != null) {
           chart.$currentHoverIndex = null;
           onHoverPriceChange?.(null);
-          chart.draw(); // ensure crosshair/date pill disappears
+          chart.draw();
         }
         return;
       }
@@ -137,7 +143,7 @@ function StockChart({ summary, eventMap, onHoverPriceChange }) {
         lower: pt.lower,
       });
 
-      chart.draw(); // re-render crosshair + date pill immediately
+      chart.draw();
     },
     [summary, onHoverPriceChange]
   );
@@ -183,7 +189,7 @@ function StockChart({ summary, eventMap, onHoverPriceChange }) {
     handleHover,
     handleZoomComplete,
     summary,
-    tooltipMappingTouch,
+    tooltipMappingTouch, // still needed by TooltipHandler for rows
   });
 
   return (

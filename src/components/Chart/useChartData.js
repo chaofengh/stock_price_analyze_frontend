@@ -1,48 +1,92 @@
+// useChartData.js
 import { useMemo } from 'react';
 
-export function useChartData(summary, eventTypeMappingTouch, ) {
+/**
+ * Build chart data and color touch points by P&L.
+ *
+ * @param {object} summary
+ * @param {object} eventTypeMappingTouch   // optional fallback: { 'YYYY-MM-DD': 'lower'|'upper' }
+ * @param {object} pnlStatusByDate         // preferred: { 'YYYY-MM-DD': { status:'profit'|'loss'|'mixed' } }
+ */
+export function useChartData(summary, eventTypeMappingTouch = {}, pnlStatusByDate = {}) {
   return useMemo(() => {
-    if (!summary || !summary.chart_data) {
-      return { labels: [], datasets: [] };
-    }
+    const rows = summary?.chart_data || [];
+    if (!rows.length) return { labels: [], datasets: [] };
 
-    // labels = the dates, in order
-    const labels = summary.chart_data.map(pt => pt.date);
+    const labels = rows.map(pt => pt.date);
+    const data = rows.map(pt => pt.close ?? null);
 
-    // data = the closing prices
-    const closingValues = summary.chart_data.map(pt => pt.close);
+    // Colors
+    const GREEN = '#2ecc71';  // profit
+    const RED   = '#e74c3c';  // loss
+    const AMBER = '#f59e0b';  // mixed / fallback
+    const DEFAULT_POINT = 'rgba(25,118,210,0.9)'; // small dots along the line
+    const LINE_COLOR = '#1976d2';
 
-    // Determine point color & radius based on a touch
-    const closingPointColors = summary.chart_data.map(pt => {
-      const key = pt.date;
-      if (pt.isTouch) {
-        if (eventTypeMappingTouch[key] === 'lower') return '#00C853'; // green
-        if (eventTypeMappingTouch[key] === 'upper') return '#D50000'; // red
-        return '#FF9800';
+    const TOUCH_R = 5;          // bigger for touches
+    const TOUCH_HOVER_R = 7;
+    const NORMAL_R = 1.5;       // tiny dot otherwise
+    const NORMAL_HOVER_R = 3;
+
+    const pointRadius = [];
+    const pointHoverRadius = [];
+    const pointBackgroundColor = [];
+    const pointBorderColor = [];
+    const pointBorderWidth = [];
+
+    labels.forEach((date, idx) => {
+      const pt = rows[idx];
+      const pnl = pnlStatusByDate?.[date]?.status; // 'profit'|'loss'|'mixed' or undefined
+
+      if (pnl) {
+        // Color strictly by P&L (preferred)
+        const color = pnl === 'profit' ? GREEN : pnl === 'loss' ? RED : AMBER;
+        pointRadius.push(TOUCH_R);
+        pointHoverRadius.push(TOUCH_HOVER_R);
+        pointBackgroundColor.push(color);
+        pointBorderColor.push('#0b0f14');  // subtle ring for contrast on dark canvas
+        pointBorderWidth.push(1.5);
+      } else if (pt.isTouch) {
+        // Fallback: if we have no P&L status yet, use band touch type
+        const t = eventTypeMappingTouch?.[date];
+        const color = t === 'lower' ? GREEN : t === 'upper' ? RED : AMBER;
+        pointRadius.push(TOUCH_R);
+        pointHoverRadius.push(TOUCH_HOVER_R);
+        pointBackgroundColor.push(color);
+        pointBorderColor.push('#0b0f14');
+        pointBorderWidth.push(1.5);
+      } else {
+        // Non-touch day
+        pointRadius.push(NORMAL_R);
+        pointHoverRadius.push(NORMAL_HOVER_R);
+        pointBackgroundColor.push(DEFAULT_POINT);
+        pointBorderColor.push('transparent');
+        pointBorderWidth.push(0);
       }
-      return '#1a1a1a'; // default color (dark gray/black)
     });
-
-    const closingPointRadii = summary.chart_data.map(pt =>
-      pt.isTouch ? 6 : 4
-    );
 
     return {
       labels,
       datasets: [
         {
-          label: 'Price',
-          data: closingValues,
-          tension: 0.3,
+          type: 'line',
+          label: 'Close',
+          data,
+          borderColor: LINE_COLOR,
           borderWidth: 2,
-          borderColor: '#1a1a1a',
+          tension: 0.2,
           fill: false,
-          // We can supply an array or a function for point styling
-          pointBackgroundColor: closingPointColors,
-          pointRadius: closingPointRadii,
-          order: 3,
+          pointRadius,
+          pointHoverRadius,
+          pointHitRadius: 8,
+          pointBackgroundColor,
+          pointBorderColor,
+          pointBorderWidth,
+          order: 2,
         },
       ],
     };
-  }, [summary, eventTypeMappingTouch]);
+  }, [summary, eventTypeMappingTouch, pnlStatusByDate]);
 }
+
+export default useChartData;

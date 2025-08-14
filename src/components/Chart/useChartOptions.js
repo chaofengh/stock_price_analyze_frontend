@@ -2,12 +2,6 @@
 import { useTheme } from "@mui/material/styles";
 import { useMemo } from "react";
 
-/**
- * Builds the Chart.js options object.
- * - Bright axis/labels for dark canvas
- * - Uses our external tooltip
- * - Keeps zoom/pan + hover logic
- */
 const useChartOptions = ({
   externalTooltipHandler,
   handleHover,
@@ -44,6 +38,7 @@ const useChartOptions = ({
         },
       },
 
+      // IMPORTANT: show tooltip anywhere along an index (not just on a point)
       interaction: { mode: "point", intersect: false },
 
       plugins: {
@@ -52,23 +47,13 @@ const useChartOptions = ({
           labels: { boxWidth: 12 },
         },
 
-        // External tooltip renderer
         tooltip: {
           enabled: false,
           external: externalTooltipHandler,
-          callbacks: {
-            label: (ctx) => {
-              const i = ctx.dataIndex;
-              const pt = summary.chart_data[i];
-              const dt = pt?.date;
-              if (pt?.isTouch && tooltipMappingTouch[dt])
-                return tooltipMappingTouch[dt];
-              return `Close: ${ctx.parsed.y?.toFixed(2)}`;
-            },
-          },
+          // Stash mapping for TooltipHandler to read (so the hook needs no args)
+          _touchMapping: tooltipMappingTouch || {},
         },
 
-        // Zoom / pan
         zoom: {
           zoom: {
             drag: { enabled: true, backgroundColor: "rgba(0,0,0,0.15)" },
@@ -77,8 +62,6 @@ const useChartOptions = ({
           },
           pan: { enabled: true, mode: "x" },
         },
-
-        // (Removed the annotation date label—crosshair plugin draws the date pill)
       },
 
       events: ["mousemove", "mouseout", "click", "touchstart", "touchmove"],

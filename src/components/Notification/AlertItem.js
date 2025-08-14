@@ -1,4 +1,3 @@
-// src/components/Notification/AlertItem.jsx
 import React, { useEffect } from "react";
 import {
   Box,
@@ -17,11 +16,11 @@ import { useDispatch, useSelector } from "react-redux";
 import SparklineChart from "./SparklineChart";
 import BandBreakoutMeter from "./BandBreakoutMeter";
 
-// ⬇️ NEW: Redux logo selectors + ensure thunk
+// ⬇️ Redux logo selectors + ensure thunk
 import {
   ensureLogoForSymbol,
   selectLogoUrlBySymbol,
-} from '../Redux/logosSlice';
+} from "../Redux/logosSlice";
 
 const formatPrice = (price) =>
   typeof price === "number" ? price.toFixed(2) : price;
@@ -61,14 +60,15 @@ const AlertItem = ({
     bb_upper,
     bb_lower,
     recent_closes = [],
+    recent_bb_upper = [],
+    recent_bb_lower = [],
   } = alert || {};
 
-  // ⬇️ NEW: read logo from Redux and request it if needed
+  // ⬇️ read logo from Redux and request it if needed
   const logoUrl = useSelector((state) => selectLogoUrlBySymbol(state, symbol));
 
   useEffect(() => {
     if (symbol) {
-      // Only fetch if missing/stale; internally dedupes concurrent calls
       dispatch(ensureLogoForSymbol(symbol));
     }
   }, [dispatch, symbol]);
@@ -93,7 +93,7 @@ const AlertItem = ({
         }}
       >
         <CardContent sx={{ p: 2.5 }}>
-          {/* TOP ROW: Logo, Symbol, Price and Alert Chip */}
+          {/* TOP ROW */}
           <Box
             display="flex"
             flexDirection="row"
@@ -150,7 +150,7 @@ const AlertItem = ({
 
           <Divider sx={{ my: 1.5 }} />
 
-          {/* MIDDLE ROW: BandBreakoutMeter and Sparkline Chart */}
+          {/* MIDDLE ROW */}
           <Box
             display="flex"
             flexDirection={isSmallScreen ? "column" : "row"}
@@ -171,13 +171,19 @@ const AlertItem = ({
             </Box>
 
             <Box sx={{ flex: 1, minWidth: 220 }}>
-              <SparklineChart data={recent_closes} touched_side={touched_side} />
+              {/* ⬇️ pass all three series for charting */}
+              <SparklineChart
+                closes={recent_closes}
+                bbUpper={recent_bb_upper}
+                bbLower={recent_bb_lower}
+                touched_side={touched_side}
+              />
             </Box>
           </Box>
 
           <Divider sx={{ my: 1.5 }} />
 
-          {/* BOTTOM ROW: BB Prices and View Details button */}
+          {/* BOTTOM ROW */}
           <Box
             display="flex"
             flexDirection={isSmallScreen ? "column" : "row"}

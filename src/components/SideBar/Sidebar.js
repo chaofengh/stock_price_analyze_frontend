@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Typography, Divider } from '@mui/material';
+import { Box, Typography } from '@mui/material';
 import AnnualFinancials from './AnnualFinancials';
 import BollingerMicroPanel from './BBStat/BollingerMicroPanel';
 import PeopleAlsoView from './PeopleAlsoView/PeopleAlsoView';      

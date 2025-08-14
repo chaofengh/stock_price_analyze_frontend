@@ -1,5 +1,5 @@
 // useTouchMappings.js
-import { useMemo } from 'react';
+import { useMemo } from "react";
 
 export function useTouchEventTypes(summary, formatDate) {
   return useMemo(() => {
@@ -10,78 +10,71 @@ export function useTouchEventTypes(summary, formatDate) {
     };
 
     if (summary?.window_5) {
-      summary.window_5.lower_touch_bounces?.forEach(event =>
-        addEventType(event, 'lower')
-      );
-      summary.window_5.upper_touch_pullbacks?.forEach(event =>
-        addEventType(event, 'upper')
-      );
+      summary.window_5.lower_touch_bounces?.forEach(e => addEventType(e, "lower"));
+      summary.window_5.upper_touch_pullbacks?.forEach(e => addEventType(e, "upper"));
     }
     if (summary?.window_10) {
-      summary.window_10.lower_touch_bounces?.forEach(event =>
-        addEventType(event, 'lower')
-      );
-      summary.window_10.upper_touch_pullbacks?.forEach(event =>
-        addEventType(event, 'upper')
-      );
+      summary.window_10.lower_touch_bounces?.forEach(e => addEventType(e, "lower"));
+      summary.window_10.upper_touch_pullbacks?.forEach(e => addEventType(e, "upper"));
     }
-
     return mapping;
   }, [summary, formatDate]);
 }
 
+/**
+ * Returns { [ISOdate]: Array<{
+ *   windowLabel: "5" | "10",
+ *   kind: "bounce" | "pullback",
+ *   direction: "up" | "down",
+ *   startPrice: number, // touch
+ *   endPrice: number,   // peak or trough
+ *   delta: number,      // signed dollars
+ *   days: number
+ * }>}
+ */
 export function useTouchTooltipMappings(summary, formatDate) {
   return useMemo(() => {
     const mapping = {};
+    const add = (dateKey, item) => {
+      (mapping[dateKey] ||= []).push(item);
+    };
 
-    const addEventToMapping = (event, windowLabel, type) => {
-      const key = formatDate(event.touch_date);
-      let lines = [];
+    const pushLower = (ev, win) => {
+      const key = formatDate(ev.touch_date);
+      add(key, {
+        windowLabel: win,
+        kind: "bounce",
+        direction: "up",
+        startPrice: ev.touch_price,
+        endPrice: ev.peak_price,
+        delta: (ev.peak_price ?? 0) - (ev.touch_price ?? 0),
+        days: ev.trading_days,
+      });
+    };
 
-      if (type === 'lower') {
-        const diff = event.peak_price - event.touch_price;
-        lines = [
-          `Window ${windowLabel}:`,
-          `Event: Lower Bollinger Bounce`,
-          `Touch Price: $${event.touch_price.toFixed(2)}`,
-          `Peak Price: $${event.peak_price.toFixed(2)}`,
-          `Bounce: $${diff.toFixed(2)} in ${event.trading_days} day${event.trading_days > 1 ? 's' : ''}`,
-        ];
-      } else if (type === 'upper') {
-        lines = [
-          `Window ${windowLabel}:`,
-          `Event: Upper Bollinger Pullback`,
-          `Touch Price: $${event.touch_price.toFixed(2)}`,
-          `Trough Price: $${event.trough_price.toFixed(2)}`,
-          `Drop: $${event.drop_dollars.toFixed(2)} in ${event.trading_days} day${event.trading_days > 1 ? 's' : ''}`,
-        ];
-      }
-
-      // If we already have lines for this date, just concat them
-      if (mapping[key]) {
-        mapping[key] = mapping[key].concat([''], lines);
-      } else {
-        mapping[key] = lines;
-      }
+    const pushUpper = (ev, win) => {
+      const key = formatDate(ev.touch_date);
+      const delta = ev.drop_dollars ?? ((ev.trough_price ?? 0) - (ev.touch_price ?? 0));
+      add(key, {
+        windowLabel: win,
+        kind: "pullback",
+        direction: "down",
+        startPrice: ev.touch_price,
+        endPrice: ev.trough_price,
+        delta,
+        days: ev.trading_days,
+      });
     };
 
     if (summary?.window_5) {
       const w5 = summary.window_5;
-      w5.lower_touch_bounces?.forEach(event =>
-        addEventToMapping(event, '5', 'lower')
-      );
-      w5.upper_touch_pullbacks?.forEach(event =>
-        addEventToMapping(event, '5', 'upper')
-      );
+      w5.lower_touch_bounces?.forEach(e => pushLower(e, "5"));
+      w5.upper_touch_pullbacks?.forEach(e => pushUpper(e, "5"));
     }
     if (summary?.window_10) {
       const w10 = summary.window_10;
-      w10.lower_touch_bounces?.forEach(event =>
-        addEventToMapping(event, '10', 'lower')
-      );
-      w10.upper_touch_pullbacks?.forEach(event =>
-        addEventToMapping(event, '10', 'upper')
-      );
+      w10.lower_touch_bounces?.forEach(e => pushLower(e, "10"));
+      w10.upper_touch_pullbacks?.forEach(e => pushUpper(e, "10"));
     }
 
     return mapping;
