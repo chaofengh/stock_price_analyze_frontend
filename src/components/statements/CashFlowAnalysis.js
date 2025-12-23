@@ -101,7 +101,7 @@ function CashFlowAnalysis({ symbol }) {
       processAnnualReports={processAnnualReports}
       processQuarterlyReports={processQuarterlyReports}
       metrics={CASHFLOW_METRICS}
-      chartColor="rgba(75, 192, 192, 0.8)"
+      chartColor="rgba(0, 150, 136, 0.95)"
       sidebarTitle="Cash Flow Metrics"
     />
   );

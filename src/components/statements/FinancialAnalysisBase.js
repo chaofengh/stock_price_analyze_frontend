@@ -9,14 +9,13 @@ import {
   List,
   ListItemButton,
   ListItemText,
+  ButtonBase,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
-  ToggleButton,
-  ToggleButtonGroup,
 } from '@mui/material';
 import { Bar } from 'react-chartjs-2';
 import { useDispatch, useSelector } from 'react-redux';
@@ -167,6 +166,45 @@ function FinancialAnalysisBase({
         : isPartialYearMode
           ? 'Year-to-Date Comparison'
         : 'Year-over-Year Comparison';
+  const toggleOptions = useMemo(
+    () => [
+      { value: 'annual', label: isPartialYearMode ? 'Year-to-Date' : 'Annual' },
+      { value: 'quarterly', label: 'Quarterly' },
+    ],
+    [isPartialYearMode]
+  );
+  const activeToggleIndex = Math.max(
+    0,
+    toggleOptions.findIndex((option) => option.value === viewType)
+  );
+  const periodHeader =
+    viewType === 'quarterly'
+      ? 'Quarter'
+      : isPartialYearMode && ytdRangeLabel
+        ? `Year (${ytdRangeLabel})`
+        : isPartialYearMode
+          ? 'Year (YTD)'
+          : 'Year';
+  const valueHeader =
+    viewType === 'quarterly'
+      ? null
+      : isPartialYearMode && ytdRangeLabel
+        ? `Total (${ytdRangeLabel})`
+        : isPartialYearMode
+          ? 'YTD Total'
+          : 'Annual Total';
+  const priorHeader = 'Prior 4Q (Same Quarter)';
+  const trailingHeader = 'Trailing 4Q (Same Quarter)';
+  const deltaHeader = 'Change vs Prior';
+  const deltaPctHeader = '% Change vs Prior';
+  const positiveDeltaColor = withAlpha(chartColor, 0.95) || 'rgba(46, 125, 50, 0.95)';
+  const negativeDeltaColor = 'rgba(211, 47, 47, 0.95)';
+  const getDeltaColor = (value) => {
+    if (value === null || value === undefined) return 'inherit';
+    if (value > 0) return positiveDeltaColor;
+    if (value < 0) return negativeDeltaColor;
+    return 'inherit';
+  };
 
   const latestQuarterInfo = useMemo(() => {
     if (!processedQuarterly.length) return null;
@@ -220,8 +258,10 @@ function FinancialAnalysisBase({
   }
 
   // Build chart & table
-  const handleViewTypeChange = (event, newView) => {
-    if (newView !== null) setViewType(newView);
+  const handleViewTypeChange = (newView) => {
+    if (typeof newView === 'string') {
+      setViewType(newView);
+    }
   };
 
   let chartData, chartOptions, tableRows;
@@ -257,7 +297,8 @@ function FinancialAnalysisBase({
     chartOptions = {
       responsive: true,
       plugins: {
-        title: { display: true, text: chartHeading },
+        title: { display: true, text: chartHeading, align: 'center' },
+        legend: { align: 'center' },
         tooltip: {
           callbacks: {
             label: (context) =>
@@ -314,11 +355,11 @@ function FinancialAnalysisBase({
       ? quarterOrder.indexOf(highlightQuarter)
       : -1;
 
-    const olderBaseColor = 'rgba(176, 190, 197, 0.15)';
+    const olderBaseColor = 'rgba(176, 190, 197, 0.08)';
     const olderHighlightColor = 'rgba(96, 125, 139, 0.95)';
-    const newerMutedColor = withAlpha(chartColor, 0.2);
-    const newerHighlightColor = withAlpha(chartColor, 1); 
-    const highlightBorderColor = 'rgba(0, 0, 0, 0.65)';
+    const newerMutedColor = withAlpha(chartColor, 0.12);
+    const newerHighlightColor = withAlpha(chartColor, 1);
+    const highlightBorderColor = 'rgba(0, 0, 0, 0.8)';
 
     const olderBackground = quarterOrder.map((_, idx) =>
       idx === highlightIndex ? olderHighlightColor : olderBaseColor
@@ -329,7 +370,7 @@ function FinancialAnalysisBase({
     const borderColors = quarterOrder.map((_, idx) =>
       idx === highlightIndex ? highlightBorderColor : 'rgba(0, 0, 0, 0)'
     );
-    const borderWidths = quarterOrder.map((_, idx) => (idx === highlightIndex ? 2 : 0));
+    const borderWidths = quarterOrder.map((_, idx) => (idx === highlightIndex ? 3 : 0));
 
     chartData = {
       labels: quarterOrder,
@@ -362,7 +403,9 @@ function FinancialAnalysisBase({
         title: {
           display: true,
           text: `${activeMetric.label} by Quarter (Trailing vs Prior)`,
+          align: 'center',
         },
+        legend: { align: 'center' },
         tooltip: {
           callbacks: {
             label: (context) => {
@@ -415,47 +458,65 @@ function FinancialAnalysisBase({
       {/* Main Content */}
       <Box sx={{ flex: 1 }}>
         {/* Toggle for Annual/Quarterly */}
-        <ToggleButtonGroup
-          value={viewType}
-          exclusive
-          onChange={handleViewTypeChange}
+        <Box
+          role="tablist"
+          aria-label="Statement view"
           sx={{
             mb: 2,
+            position: 'relative',
+            display: 'flex',
+            alignItems: 'center',
+            width: 260,
+            maxWidth: '100%',
+            height: 32,
+            p: '2px',
             borderRadius: '999px',
-            p: 0.5,
-            backgroundColor: 'rgba(0,0,0,0.04)',
-            '& .MuiToggleButton-root': {
-              flex: 1,
-              border: 'none',
-              textTransform: 'none',
-              fontWeight: 600,
-              letterSpacing: 0.5,
-              borderRadius: '999px',
-              transition: 'color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease',
-            },
-            '& .MuiToggleButton-root:hover': {
-              backgroundColor: 'rgba(0,0,0,0.08)',
-            },
-            '& .MuiToggleButton-root.Mui-selected': {
-              color: '#fff',
-              backgroundColor: 'primary.main',
-              boxShadow: 2,
-            },
-            '& .MuiToggleButton-root.Mui-selected:hover': {
-              backgroundColor: 'primary.dark',
-            },
+            backgroundColor: 'rgba(0, 0, 0, 0.06)',
           }}
         >
-          <ToggleButton value="annual" aria-label="Show annual view">
-            {isPartialYearMode ? 'Year-to-Date' : 'Annual'}
-          </ToggleButton>
-          <ToggleButton value="quarterly" aria-label="Show quarterly view">
-            Quarterly
-          </ToggleButton>
-        </ToggleButtonGroup>
+          <Box
+            sx={{
+              position: 'absolute',
+              top: 2,
+              bottom: 2,
+              left: 2,
+              width: 'calc(50% - 4px)',
+              borderRadius: '999px',
+              backgroundColor: 'primary.main',
+              boxShadow: 1,
+              transform: `translateX(${activeToggleIndex * 100}%)`,
+              transition: 'transform 0.22s ease',
+            }}
+          />
+          {toggleOptions.map((option) => (
+            <ButtonBase
+              key={option.value}
+              role="tab"
+              aria-selected={viewType === option.value}
+              onClick={() => handleViewTypeChange(option.value)}
+              sx={{
+                flex: 1,
+                zIndex: 1,
+                height: '100%',
+                borderRadius: '999px',
+                fontSize: '0.85rem',
+                fontWeight: 600,
+                letterSpacing: 0.3,
+                color: viewType === option.value ? '#fff' : 'text.primary',
+              }}
+            >
+              {option.label}
+            </ButtonBase>
+          ))}
+        </Box>
 
         {viewType === 'quarterly' && latestQuarterInfo && (
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            align="center"
+            sx={{ mb: 1 }}
+          >
             Highlighted bars show {latestQuarterInfo.year} {latestQuarterInfo.quarter}
             {' '}versus the same quarter from the prior year.
           </Typography>
@@ -463,7 +524,7 @@ function FinancialAnalysisBase({
 
         {/* Chart Section */}
         <Paper sx={{ p: 2, mb: 2 }}>
-          <Typography variant="h5" gutterBottom>
+          <Typography variant="h5" gutterBottom align="center" sx={{ py: 5 }}>
             {chartHeading}
           </Typography>
           <Bar data={chartData} options={chartOptions} />
@@ -471,7 +532,7 @@ function FinancialAnalysisBase({
 
         {/* Table Section */}
         <Paper sx={{ p: 2 }}>
-          <Typography variant="h6" gutterBottom>
+          <Typography variant="h6" gutterBottom align="center" sx={{ py: 5 }}>
             {tableTitle}
           </Typography>
 
@@ -482,26 +543,25 @@ function FinancialAnalysisBase({
                 'td, th': {
                   fontSize: '1.2rem',
                   fontWeight: 'bold',
+                  textAlign: 'center',
                 },
               }}
             >
               <TableHead>
                 <TableRow>
-                  <TableCell>
-                    {viewType === 'quarterly' ? 'Quarter' : 'Year'}
-                  </TableCell>
+                  <TableCell>{periodHeader}</TableCell>
                   {viewType === 'quarterly' ? (
                     <>
-                      <TableCell align="right">Older</TableCell>
-                      <TableCell align="right">Latest</TableCell>
-                      <TableCell align="right">Delta</TableCell>
-                      <TableCell align="right">% Diff</TableCell>
+                      <TableCell align="center">{trailingHeader}</TableCell>
+                      <TableCell align="center">{priorHeader}</TableCell>
+                      <TableCell align="center">{deltaHeader}</TableCell>
+                      <TableCell align="center">{deltaPctHeader}</TableCell>
                     </>
                   ) : (
                     <>
-                      <TableCell align="right">Value</TableCell>
-                      <TableCell align="right">Change</TableCell>
-                      <TableCell align="right">% Change</TableCell>
+                      <TableCell align="center">{deltaHeader}</TableCell>
+                      <TableCell align="center">{valueHeader}</TableCell>
+                      <TableCell align="center">{deltaPctHeader}</TableCell>
                     </>
                   )}
                 </TableRow>
@@ -509,18 +569,22 @@ function FinancialAnalysisBase({
               <TableBody>
                 {viewType === 'quarterly'
                   ? tableRows.map((row) => (
-                      <TableRow key={row.period}>
+                      <TableRow
+                        key={row.period}
+                        sx={{
+                          backgroundColor:
+                            latestQuarterInfo?.quarter === row.period
+                              ? 'rgba(212, 235, 240, 0.08)'
+                              : 'transparent',
+                        }}
+                      >
                         <TableCell>{row.period}</TableCell>
-                        <TableCell align="right">
-                          {formatValue(row.olderVal)}
-                        </TableCell>
-                        <TableCell align="right">
-                          {formatValue(row.newerVal)}
-                        </TableCell>
-                        <TableCell align="right">
+                        <TableCell align="center">{formatValue(row.newerVal)}</TableCell>
+                        <TableCell align="center">{formatValue(row.olderVal)}</TableCell>
+                        <TableCell align="center" sx={{ color: getDeltaColor(row.diff) }}>
                           {formatValue(row.diff)}
                         </TableCell>
-                        <TableCell align="right">
+                        <TableCell align="center" sx={{ color: getDeltaColor(row.diffPct) }}>
                           {row.diffPct.toFixed(1)}%
                         </TableCell>
                       </TableRow>
@@ -530,16 +594,12 @@ function FinancialAnalysisBase({
                       return (
                         <TableRow key={period}>
                           <TableCell>{period}</TableCell>
-                          <TableCell align="right">
-                            {formatValue(value)}
-                          </TableCell>
-                          <TableCell align="right">
+                          <TableCell align="center" sx={{ color: getDeltaColor(diff) }}>
                             {diff !== null ? formatValue(diff) : '-'}
                           </TableCell>
-                          <TableCell align="right">
-                            {diffPct !== null
-                              ? diffPct.toFixed(1) + '%'
-                              : '-'}
+                          <TableCell align="center">{formatValue(value)}</TableCell>
+                          <TableCell align="center" sx={{ color: getDeltaColor(diffPct) }}>
+                            {diffPct !== null ? diffPct.toFixed(1) + '%' : '-'}
                           </TableCell>
                         </TableRow>
                       );
@@ -549,16 +609,26 @@ function FinancialAnalysisBase({
                     <TableCell>
                       <strong>Total</strong>
                     </TableCell>
-                    <TableCell align="right">
-                      <strong>{formatValue(sumOlder)}</strong>
-                    </TableCell>
-                    <TableCell align="right">
+                    <TableCell align="center">
                       <strong>{formatValue(sumNewer)}</strong>
                     </TableCell>
-                    <TableCell align="right">
+                    <TableCell align="center">
+                      <strong>{formatValue(sumOlder)}</strong>
+                    </TableCell>
+                    <TableCell
+                      align="center"
+                      sx={{ color: getDeltaColor(sumNewer - sumOlder) }}
+                    >
                       <strong>{formatValue(sumNewer - sumOlder)}</strong>
                     </TableCell>
-                    <TableCell align="right">
+                    <TableCell
+                      align="center"
+                      sx={{
+                        color: getDeltaColor(
+                          sumOlder === 0 ? null : ((sumNewer - sumOlder) / sumOlder) * 100
+                        ),
+                      }}
+                    >
                       <strong>
                         {sumOlder === 0
                           ? 'N/A'
