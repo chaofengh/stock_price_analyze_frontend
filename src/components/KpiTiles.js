@@ -3,7 +3,7 @@ import { Paper, Box, Typography, Tooltip } from '@mui/material';
 
 /* colour helper vs. peer avg */
 const deltaColor = (raw, peer, lowerBetter = true) => {
-  if (raw == null || peer == null) return 'text.primary';
+  if (raw == null || peer == null || !isFinite(raw) || !isFinite(peer)) return 'text.primary';
   return lowerBetter
     ? raw < peer
       ? '#2ecc71'
@@ -32,13 +32,11 @@ const formatMarketCap = (n) => {
   for (const u of units) {
     if (abs >= u.v) {
       const val = n / u.v;
-      // fewer decimals as the number gets bigger
       const digits = val >= 100 ? 0 : val >= 10 ? 1 : 2;
       return `$${val.toFixed(digits)} ${u.s}`;
     }
   }
 
-  // < $1K → show plain dollars with separators
   return `$${Math.round(n).toLocaleString()}`;
 };
 
@@ -96,6 +94,7 @@ const KpiTiles = ({ summary }) => {
   const tips = {
     'Trailing PE': 'Lower trailing-P/E than peers often signals undervaluation.',
     'Forward P/E': 'Lower forward-P/E can mean cheaper future earnings.',
+    PEG: 'PEG adjusts P/E for growth. Lower is generally better; < 1 often suggests growth-adjusted value.',
     PGI: 'Lower PGI suggests a more attractive valuation.',
     Beta: 'Lower beta → less volatility.'
   };
@@ -115,15 +114,22 @@ const KpiTiles = ({ summary }) => {
       lowerBetter: true
     },
     {
-      label: 'PGI',
-      raw: summary.PGI,
-      peer: summary.avg_peer_PGI,
-      lowerBetter: true
-    },
-    {
       label: 'Forward P/E',
       raw: summary.forwardPE,
       peer: summary.avg_peer_forwardPE,
+      lowerBetter: true
+    },
+    /* NEW: PEG ratio */
+    {
+      label: 'PEG',
+      raw: summary.PEG,                 // <- backend-provided
+      peer: summary.avg_peer_PEG,       // <- backend-provided
+      lowerBetter: true
+    },
+    {
+      label: 'PGI',
+      raw: summary.PGI,
+      peer: summary.avg_peer_PGI,
       lowerBetter: true
     },
     {

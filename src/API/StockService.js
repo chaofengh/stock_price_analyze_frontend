@@ -24,3 +24,11 @@ export async function fetchBalanceSheetData(symbol) {
   }
   return response.json();
 }
+
+export async function fetchIncomeStatementData(symbol) {
+  const response = await fetch(`${stock_summary_api_key}/financials/income_statement/${symbol}`);
+  if (!response.ok) {
+    throw new Error(`HTTP error! Status: ${response.status}`);
+  }
+  return response.json();
+}

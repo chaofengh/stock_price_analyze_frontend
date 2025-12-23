@@ -1,5 +1,5 @@
 // FinancialAnalysisBase.js
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Box,
   Paper,
@@ -32,6 +32,14 @@ import {
 } from 'chart.js';
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
+const withAlpha = (color, alpha) => {
+  if (!color) return color;
+  const rgbaMatch = color.match(/rgba?\((\d+(?:\.\d+)?),\s*(\d+(?:\.\d+)?),\s*(\d+(?:\.\d+)?)(?:,\s*([\d.]+))?\)/i);
+  if (!rgbaMatch) return color;
+  const [, r, g, b] = rgbaMatch;
+  return `rgba(${Number(r)}, ${Number(g)}, ${Number(b)}, ${alpha})`;
+};
+
 function FinancialAnalysisBase({
   symbol,
   // Redux-specific props
@@ -39,6 +47,7 @@ function FinancialAnalysisBase({
   selectDataFromStore,           // how to get the statement data from Redux
   selectLoadingFromStore,        // how to get the loading boolean
   selectErrorFromStore,          // how to get the error string
+  initialData = null,            // optional prefetched data (e.g. from summary)
   // Statement-specific logic
   processAnnualReports,          // function(annualReports[]) => processed array
   processQuarterlyReports,       // function(quarterlyReports[]) => processed array
@@ -53,17 +62,50 @@ function FinancialAnalysisBase({
   const statementData = useSelector(selectDataFromStore);
   const loading = useSelector(selectLoadingFromStore);
   const error = useSelector(selectErrorFromStore);
+  const normalizedInitialData = useMemo(() => {
+    if (!initialData) return null;
+    if (initialData.symbol) return initialData;
+    return { ...initialData, symbol };
+  }, [initialData, symbol]);
+  const storeMatchesSymbol =
+    !statementData?.symbol || statementData.symbol === symbol;
+  const effectiveStoreData = storeMatchesSymbol ? statementData : null;
+  const effectiveStatementData = effectiveStoreData || normalizedInitialData;
+  const isStaleData = Boolean(
+    statementData?.symbol &&
+      statementData.symbol !== symbol &&
+      !normalizedInitialData
+  );
 
   // State for which metric & view (annual/quarterly)
   const [activeMetricIndex, setActiveMetricIndex] = useState(0);
   const [viewType, setViewType] = useState('quarterly');
+  const inFlightSymbolRef = useRef(null);
 
   useEffect(() => {
-    if (symbol && !statementData) {
-      // If we have a symbol and no data, fetch it
-      dispatch(fetchDataThunk(symbol));
+    if (!symbol) {
+      inFlightSymbolRef.current = null;
+      return;
     }
-  }, [symbol, dispatch, fetchDataThunk,statementData]);
+
+    if (effectiveStatementData) {
+      inFlightSymbolRef.current = null;
+      return;
+    }
+
+    // Prevent duplicate fetches (e.g., StrictMode double effects)
+    if (inFlightSymbolRef.current === symbol) {
+      return;
+    }
+
+    inFlightSymbolRef.current = symbol;
+
+    dispatch(fetchDataThunk(symbol)).finally(() => {
+      if (inFlightSymbolRef.current === symbol) {
+        inFlightSymbolRef.current = null;
+      }
+    });
+  }, [symbol, dispatch, fetchDataThunk, effectiveStatementData]);
 
   const activeMetric = metrics[activeMetricIndex];
 
@@ -78,30 +120,74 @@ function FinancialAnalysisBase({
     activeMetric.isPercentage ? val.toFixed(1) + '%' : formatLargeNumber(val);
 
   // Pull arrays from the data
-  const annualReports = useMemo(
-    () => statementData?.annualReports || [],
-    [statementData]
-  );
+  const annualReportsSource = useMemo(() => {
+    if (!effectiveStatementData) return [];
+    if (effectiveStatementData.partialYearReports?.length) {
+      return effectiveStatementData.partialYearReports;
+    }
+    return effectiveStatementData.annualReports || [];
+  }, [effectiveStatementData]);
+
+  const isPartialYearMode = Boolean(effectiveStatementData?.partialYearReports?.length);
+
   const quarterlyReports = useMemo(
-    () => statementData?.quarterlyReports || [],
-    [statementData]
+    () => effectiveStatementData?.quarterlyReports || [],
+    [effectiveStatementData]
   );
 
   // Statement-specific processing
   const processedAnnual = useMemo(
-    () => processAnnualReports(annualReports),
-    [annualReports, processAnnualReports]
+    () => processAnnualReports(annualReportsSource),
+    [annualReportsSource, processAnnualReports]
   );
   const processedQuarterly = useMemo(
     () => processQuarterlyReports(quarterlyReports),
     [quarterlyReports, processQuarterlyReports]
   );
 
+  const ytdRangeLabel = useMemo(() => {
+    if (!processedAnnual.length) return null;
+    const entryWithRange = processedAnnual.find((item) => item.quarterRange);
+    return entryWithRange?.quarterRange || null;
+  }, [processedAnnual]);
+
+  const chartHeading =
+    viewType === 'quarterly'
+      ? activeMetric.label
+      : isPartialYearMode && ytdRangeLabel
+        ? `${activeMetric.label} (${ytdRangeLabel})`
+        : isPartialYearMode
+          ? `${activeMetric.label} (Year-to-Date)`
+          : `${activeMetric.label} (Annual)`;
+  const tableTitle =
+    viewType === 'quarterly'
+      ? 'Quarter-by-Quarter Comparison'
+      : isPartialYearMode && ytdRangeLabel
+        ? `Year-to-Date Comparison (${ytdRangeLabel})`
+        : isPartialYearMode
+          ? 'Year-to-Date Comparison'
+        : 'Year-over-Year Comparison';
+
+  const latestQuarterInfo = useMemo(() => {
+    if (!processedQuarterly.length) return null;
+    return processedQuarterly[processedQuarterly.length - 1];
+  }, [processedQuarterly]);
+
   // Handle loading/error/no-data states
   if (!symbol) {
     return (
       <Paper sx={{ p: 3, m: 3 }}>
         <Typography variant="h6">No symbol provided</Typography>
+      </Paper>
+    );
+  }
+  if (isStaleData) {
+    return (
+      <Paper sx={{ p: 3, m: 3 }}>
+        <Box sx={{ textAlign: 'center' }}>
+          <CircularProgress />
+          <Typography>Loading data...</Typography>
+        </Box>
       </Paper>
     );
   }
@@ -125,7 +211,7 @@ function FinancialAnalysisBase({
       </Paper>
     );
   }
-  if (!statementData) {
+  if (!effectiveStatementData) {
     return (
       <Paper sx={{ p: 3, m: 3 }}>
         <Typography variant="h6">No data available</Typography>
@@ -147,12 +233,14 @@ function FinancialAnalysisBase({
     if (!processedAnnual.length) {
       return (
         <Paper sx={{ p: 3, m: 3 }}>
-          <Typography variant="h6">No annual data available</Typography>
+          <Typography variant="h6">
+            {isPartialYearMode ? 'No year-to-date data available' : 'No annual data available'}
+          </Typography>
         </Paper>
       );
     }
 
-    const labels = processedAnnual.map((item) => item.year);
+    const labels = processedAnnual.map((item) => item.displayLabel || item.year);
     const datasetValues = processedAnnual.map((item) => item[activeMetric.key]);
 
     chartData = {
@@ -169,7 +257,7 @@ function FinancialAnalysisBase({
     chartOptions = {
       responsive: true,
       plugins: {
-        title: { display: true, text: `${activeMetric.label} Over Years` },
+        title: { display: true, text: chartHeading },
         tooltip: {
           callbacks: {
             label: (context) =>
@@ -190,7 +278,8 @@ function FinancialAnalysisBase({
       const prev = index > 0 ? processedAnnual[index - 1][activeMetric.key] : null;
       const diff = prev !== null ? item[activeMetric.key] - prev : null;
       const diffPct = prev && prev !== 0 ? (diff / prev) * 100 : null;
-      return { period: item.year, value: item[activeMetric.key], diff, diffPct };
+      const periodLabel = item.displayLabel || item.year;
+      return { period: periodLabel, value: item[activeMetric.key], diff, diffPct };
     });
   } else {
     // Quarterly
@@ -220,18 +309,48 @@ function FinancialAnalysisBase({
     sumOlder = olderGroup.reduce((acc, item) => acc + (item[activeMetric.key] || 0), 0);
     sumNewer = newerGroup.reduce((acc, item) => acc + (item[activeMetric.key] || 0), 0);
 
+    const highlightQuarter = latestQuarterInfo?.quarter || null;
+    const highlightIndex = highlightQuarter
+      ? quarterOrder.indexOf(highlightQuarter)
+      : -1;
+
+    const olderBaseColor = 'rgba(176, 190, 197, 0.15)';
+    const olderHighlightColor = 'rgba(96, 125, 139, 0.95)';
+    const newerMutedColor = withAlpha(chartColor, 0.2);
+    const newerHighlightColor = withAlpha(chartColor, 1); 
+    const highlightBorderColor = 'rgba(0, 0, 0, 0.65)';
+
+    const olderBackground = quarterOrder.map((_, idx) =>
+      idx === highlightIndex ? olderHighlightColor : olderBaseColor
+    );
+    const newerBackground = quarterOrder.map((_, idx) =>
+      idx === highlightIndex ? newerHighlightColor : newerMutedColor
+    );
+    const borderColors = quarterOrder.map((_, idx) =>
+      idx === highlightIndex ? highlightBorderColor : 'rgba(0, 0, 0, 0)'
+    );
+    const borderWidths = quarterOrder.map((_, idx) => (idx === highlightIndex ? 2 : 0));
+
     chartData = {
       labels: quarterOrder,
       datasets: [
         {
-          label: `4 Quarters Prior`,
+          label: `Prior 4 trailing quarters`,
           data: quarterOrder.map((q) => olderMap[q]),
-          backgroundColor: 'rgba(128, 128, 128, 0.2)',
+          backgroundColor: olderBackground,
+          borderColor: borderColors,
+          borderWidth: borderWidths,
+          borderRadius: 6,
+          borderSkipped: false,
         },
         {
-          label: `Latest 4 Quarters`,
+          label: `Trailing 4 quarters`,
           data: quarterOrder.map((q) => newerMap[q]),
-          backgroundColor: chartColor,
+          backgroundColor: newerBackground,
+          borderColor: borderColors,
+          borderWidth: borderWidths,
+          borderRadius: 6,
+          borderSkipped: false,
         },
       ],
     };
@@ -240,7 +359,10 @@ function FinancialAnalysisBase({
       responsive: true,
       interaction: { mode: 'index', intersect: false },
       plugins: {
-        title: { display: true, text: `${activeMetric.label} by Quarter` },
+        title: {
+          display: true,
+          text: `${activeMetric.label} by Quarter (Trailing vs Prior)`,
+        },
         tooltip: {
           callbacks: {
             label: (context) => {
@@ -268,7 +390,7 @@ function FinancialAnalysisBase({
     });
   }
 
-  // Now mirror the layout of IncomeStatementAnalysis
+  // Shared layout for statement analysis views
   return (
     <Box sx={{ display: 'flex', height: '100%', p: 1 }}>
       {/* Sidebar with Metrics */}
@@ -297,16 +419,52 @@ function FinancialAnalysisBase({
           value={viewType}
           exclusive
           onChange={handleViewTypeChange}
-          sx={{ mb: 2 }}
+          sx={{
+            mb: 2,
+            borderRadius: '999px',
+            p: 0.5,
+            backgroundColor: 'rgba(0,0,0,0.04)',
+            '& .MuiToggleButton-root': {
+              flex: 1,
+              border: 'none',
+              textTransform: 'none',
+              fontWeight: 600,
+              letterSpacing: 0.5,
+              borderRadius: '999px',
+              transition: 'color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease',
+            },
+            '& .MuiToggleButton-root:hover': {
+              backgroundColor: 'rgba(0,0,0,0.08)',
+            },
+            '& .MuiToggleButton-root.Mui-selected': {
+              color: '#fff',
+              backgroundColor: 'primary.main',
+              boxShadow: 2,
+            },
+            '& .MuiToggleButton-root.Mui-selected:hover': {
+              backgroundColor: 'primary.dark',
+            },
+          }}
         >
-          <ToggleButton value="annual">Annual</ToggleButton>
-          <ToggleButton value="quarterly">Quarterly</ToggleButton>
+          <ToggleButton value="annual" aria-label="Show annual view">
+            {isPartialYearMode ? 'Year-to-Date' : 'Annual'}
+          </ToggleButton>
+          <ToggleButton value="quarterly" aria-label="Show quarterly view">
+            Quarterly
+          </ToggleButton>
         </ToggleButtonGroup>
+
+        {viewType === 'quarterly' && latestQuarterInfo && (
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+            Highlighted bars show {latestQuarterInfo.year} {latestQuarterInfo.quarter}
+            {' '}versus the same quarter from the prior year.
+          </Typography>
+        )}
 
         {/* Chart Section */}
         <Paper sx={{ p: 2, mb: 2 }}>
           <Typography variant="h5" gutterBottom>
-            {activeMetric.label}
+            {chartHeading}
           </Typography>
           <Bar data={chartData} options={chartOptions} />
         </Paper>
@@ -314,9 +472,7 @@ function FinancialAnalysisBase({
         {/* Table Section */}
         <Paper sx={{ p: 2 }}>
           <Typography variant="h6" gutterBottom>
-            {viewType === 'quarterly'
-              ? 'Quarter-by-Quarter Comparison'
-              : 'Year-over-Year Comparison'}
+            {tableTitle}
           </Typography>
 
           <TableContainer>

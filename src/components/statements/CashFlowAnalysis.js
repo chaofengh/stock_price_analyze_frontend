@@ -25,7 +25,9 @@ function CashFlowAnalysis({ symbol }) {
   // 3. Process annual reports
   const processAnnualReports = useCallback((annualReports) => {
     const arr = annualReports.map((report) => {
-      const year = report.fiscalDateEnding.split('-')[0];
+      const fallbackYear = report.fiscalDateEnding?.split('-')[0] || report.year || 'N/A';
+      const year = report.year || fallbackYear;
+      const quarterRange = report.quarterRange || null;
 
       // Convert fields from strings to numbers safely (handle "None" or missing data)
       const operatingCash = Number(report.operatingCashflow) || 0;
@@ -33,6 +35,8 @@ function CashFlowAnalysis({ symbol }) {
 
       return {
         year,
+        displayLabel: quarterRange ? `${year} (${quarterRange})` : year,
+        quarterRange,
         operatingCashflow: operatingCash,
         depreciationDepletionAndAmortization: Number(report.depreciationDepletionAndAmortization) || 0,
         changeInOperatingAssets: Number(report.changeInOperatingAssets) || 0,

@@ -17,9 +17,13 @@ function BalanceSheetAnalysis({ symbol }) {
   // a simplified shape for the base component.
   const processAnnualReports = useCallback((annualReports) => {
     const arr = annualReports.map((report) => {
-      const year = report.fiscalDateEnding.split('-')[0];
+      const fallbackYear = report.fiscalDateEnding?.split('-')[0] || report.year || 'N/A';
+      const year = report.year || fallbackYear;
+      const quarterRange = report.quarterRange || null;
       return {
         year,
+        displayLabel: quarterRange ? `${year} (${quarterRange})` : year,
+        quarterRange,
         totalAssets: Number(report.totalAssets) || 0,
         totalLiabilities: Number(report.totalLiabilities) || 0,
         totalEquity: Number(report.totalEquity) || 0,

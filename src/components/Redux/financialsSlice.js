@@ -1,6 +1,10 @@
 // /Redux/financialsSlice.js
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { fetchBalanceSheetData, fetchCashFlowData } from '../../API/StockService';
+import {
+  fetchBalanceSheetData,
+  fetchCashFlowData,
+  fetchIncomeStatementData,
+} from '../../API/StockService';
 
 // Thunk for balance sheet data
 export const fetchBalanceSheet = createAsyncThunk(
@@ -28,20 +32,42 @@ export const fetchCashFlow = createAsyncThunk(
   }
 );
 
+// Thunk for income statement data
+export const fetchIncomeStatement = createAsyncThunk(
+  'financials/fetchIncomeStatement',
+  async (symbol, { rejectWithValue }) => {
+    try {
+      const data = await fetchIncomeStatementData(symbol);
+      return data;
+    } catch (error) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
 const initialState = {
   balanceSheet: null,
   cashFlow: null,
+  incomeStatement: null,
   loadingBalanceSheet: false,
   loadingCashFlow: false,
+  loadingIncomeStatement: false,
   errorBalanceSheet: null,
   errorCashFlow: null,
+  errorIncomeStatement: null,
 };
 
 const financialsSlice = createSlice({
   name: 'financials',
   initialState,
   reducers: {
-    // If you need any synchronous reducers, define them here.
+    setIncomeStatement: (state, action) => {
+      const { data, symbol } = action.payload || {};
+      if (!data || !symbol) return;
+      state.incomeStatement = { ...data, symbol };
+      state.loadingIncomeStatement = false;
+      state.errorIncomeStatement = null;
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -52,7 +78,7 @@ const financialsSlice = createSlice({
       })
       .addCase(fetchBalanceSheet.fulfilled, (state, action) => {
         state.loadingBalanceSheet = false;
-        state.balanceSheet = action.payload;
+        state.balanceSheet = { ...action.payload, symbol: action.meta.arg };
       })
       .addCase(fetchBalanceSheet.rejected, (state, action) => {
         state.loadingBalanceSheet = false;
@@ -65,13 +91,27 @@ const financialsSlice = createSlice({
       })
       .addCase(fetchCashFlow.fulfilled, (state, action) => {
         state.loadingCashFlow = false;
-        state.cashFlow = action.payload;
+        state.cashFlow = { ...action.payload, symbol: action.meta.arg };
       })
       .addCase(fetchCashFlow.rejected, (state, action) => {
         state.loadingCashFlow = false;
         state.errorCashFlow = action.payload;
+      })
+      // income statement
+      .addCase(fetchIncomeStatement.pending, (state) => {
+        state.loadingIncomeStatement = true;
+        state.errorIncomeStatement = null;
+      })
+      .addCase(fetchIncomeStatement.fulfilled, (state, action) => {
+        state.loadingIncomeStatement = false;
+        state.incomeStatement = { ...action.payload, symbol: action.meta.arg };
+      })
+      .addCase(fetchIncomeStatement.rejected, (state, action) => {
+        state.loadingIncomeStatement = false;
+        state.errorIncomeStatement = action.payload;
       });
   },
 });
 
+export const { setIncomeStatement } = financialsSlice.actions;
 export default financialsSlice.reducer;
