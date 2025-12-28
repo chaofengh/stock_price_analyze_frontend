@@ -16,9 +16,10 @@ import {
   Route,
   useNavigate,
 } from 'react-router-dom';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { AlertsProvider } from './components/Notification/AlertContext';
 import StockDashboard from './components/StockDashboard';
+import SidebarRail from './components/SideBar/SidebarRail';
 import UserProfileIcon from './components/UserProfileIcon';
 import NotificationBell from './components/Notification/NotificationBell';
 import MoreOptionsMenu from './components/MoreOption/MoreOptionsMenu';
@@ -42,6 +43,7 @@ function AppShell() {
 
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const summary = useSelector((state) => state.summary.data);
 
   /* ───────── Symbol search handler ───────── */
   const handleSelectSymbol = (sym) => {
@@ -149,13 +151,38 @@ function AppShell() {
         {/* ================ MAIN CONTENT ================ */}
         <Container
           maxWidth="xl"
-          sx={{ mt: 4, mb: 4, position: 'relative', minHeight: 600 }}
+          sx={{
+            py: 4,
+            position: 'relative',
+            height: 'calc(100vh - 80px)',
+          }}
         >
-          <Routes>
-            <Route path="/" element={<StockDashboard />} />
-            <Route path="/analysis/:symbol" element={<FinancialAnalysisPage />} />
-            <Route path="/backtest" element={<Backtest />} />
-          </Routes>
+          <Box
+            sx={{
+              display: 'flex',
+              gap: 2,
+              alignItems: 'stretch',
+              height: '100%',
+              minHeight: 0,
+            }}
+          >
+            <SidebarRail summary={summary} />
+            <Box
+              sx={{
+                flex: 1,
+                minWidth: 0,
+                height: '100%',
+                minHeight: 0,
+                overflow: 'auto',
+              }}
+            >
+              <Routes>
+                <Route path="/" element={<StockDashboard />} />
+                <Route path="/analysis/:symbol" element={<FinancialAnalysisPage />} />
+                <Route path="/backtest" element={<Backtest />} />
+              </Routes>
+            </Box>
+          </Box>
 
           {/* Pop‑over side panels (unchanged) */}
           {selectedView === 'WatchList' && (

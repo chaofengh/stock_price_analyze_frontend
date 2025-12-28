@@ -1,9 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { Box, Paper, Typography, Grid, Avatar } from "@mui/material";
+import { Box, Paper, Typography, Avatar } from "@mui/material";
 import StockChart from "./Chart/StockChart";
-import AdvancedMetrics from "./AdvancedMetrics";
-import MarketSentiment from "./MarketSentiment";
-import FinancialWidget from "./FinancialWidget";
 import TradeHistoryList from "./TradeHistoryList";
 import KpiTiles from "./KpiTiles"; 
 import { fetchCompanyLogo } from "../API/FetchCompanyLogo";
@@ -157,17 +154,6 @@ const MainContent = ({ summary, eventMap }) => {
         <TradeHistoryList summary={summary} />
       </Paper>
 
-      <Grid container spacing={3}>
-        <Grid item xs={12} md={4}>
-          <AdvancedMetrics />
-        </Grid>
-        <Grid item xs={12} md={4}>
-          <MarketSentiment />
-        </Grid>
-        <Grid item xs={12} md={4}>
-          <FinancialWidget income_statement={summary.income_statement} />
-        </Grid>
-      </Grid>
     </Box>
   );
 };

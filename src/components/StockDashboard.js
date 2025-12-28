@@ -53,19 +53,28 @@ const StockDashboard = () => {
 
   /* -------------------------------- Rendering --------------------------------- */
   return (
-    <Box>
-      <Grid container spacing={3}>
-        <Grid item xs={12} md={3}>
-          <Sidebar summary={summary} error={error} />
+    <Box sx={{ height: '100%' }}>
+      <Grid
+        container
+        columnSpacing={3}
+        rowSpacing={{ xs: 3, md: 0 }}
+        sx={{ height: '100%', alignItems: 'stretch' }}
+      >
+        <Grid item xs={12} md={3} sx={{ height: '100%', minHeight: 0 }}>
+          <Box sx={{ height: '100%', overflowY: 'auto', pr: 1 }}>
+            <Sidebar summary={summary} error={error} />
+          </Box>
         </Grid>
 
-        <Grid item xs={12} md={9}>
+        <Grid item xs={12} md={9} sx={{ height: '100%', minHeight: 0 }}>
           {loading ? (
             <Box display="flex" justifyContent="center" sx={{ my: 6 }}>
               <CircularProgress size={48} />
             </Box>
           ) : summary ? (
-            <MainContent summary={summary} eventMap={eventMap} />
+            <Box sx={{ height: '100%', overflowY: 'auto', pr: 1 }}>
+              <MainContent summary={summary} eventMap={eventMap} />
+            </Box>
           ) : (
             <Paper sx={{ p: 3, textAlign: 'center' }} elevation={1}>
               <Typography variant="h6" color="textSecondary">

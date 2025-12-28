@@ -36,7 +36,16 @@ const Donut = ({ value = 0, color }) => (
 const DonutPair = ({ sRaw, mRaw }) => {
   const theme = useTheme();
   return (
-    <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center' }}>
+    <Box
+      sx={{
+        display: 'flex',
+        gap: 2,
+        justifyContent: 'center',
+        width: '100%',
+        maxWidth: 180,
+        flexWrap: 'wrap',
+      }}
+    >
       <Donut value={sRaw} color={theme.palette.primary.main} />
       <Donut value={mRaw} color={theme.palette.secondary.main} />
     </Box>
@@ -110,7 +119,15 @@ const LinearPair = ({ sRaw, mRaw, sVal, mVal }) => {
   ];
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, width: 180 }}>
+    <Box
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 1,
+        width: '100%',
+        maxWidth: 180,
+      }}
+    >
       {rows.map(({ raw, txt, col }, idx) => (
         <Box key={idx} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <LinearProgress
@@ -146,7 +163,15 @@ const SingleBar = ({ sRaw, sVal }) => {
       : 100;
 
   return (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: 180 }}>
+    <Box
+      sx={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 1,
+        width: '100%',
+        maxWidth: 180,
+      }}
+    >
       <LinearProgress
         variant="determinate"
         value={pct}
@@ -203,7 +228,7 @@ const StatRowVisual = ({
       sx={{
         position: 'relative',
         display: 'grid',
-        gridTemplateColumns: 'minmax(100px,1fr) 180px',
+        gridTemplateColumns: 'minmax(110px, 1fr) minmax(140px, 180px)',
         alignItems: 'center',
         height: 96,
         px: 1,
