@@ -64,7 +64,7 @@ const TradeHistoryList = ({ summary }) => {
 
   return (
     <div>
-      <Typography variant="h6" gutterBottom>
+      <Typography variant="h6" gutterBottom sx={{ textAlign: "center" }}>
         Performance Blotter
       </Typography>
 

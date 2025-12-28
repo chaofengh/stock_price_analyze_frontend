@@ -3,7 +3,6 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
   ThemeProvider,
   CssBaseline,
-  Container,
   AppBar,
   Toolbar,
   Typography,
@@ -16,6 +15,7 @@ import {
   Route,
   useNavigate,
   useLocation,
+  Link as RouterLink,
 } from 'react-router-dom';
 import { alpha } from '@mui/material/styles';
 import { useDispatch, useSelector } from 'react-redux';
@@ -42,6 +42,8 @@ function AppShell() {
   const tickerListRef = useRef(null);
   const ratioRef = useRef(null);
   const newsRef = useRef(null);
+  const navHeight = 72;
+  const railWidth = 176;
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -51,10 +53,19 @@ function AppShell() {
 
   /* ───────── Symbol search handler ───────── */
   const handleSelectSymbol = (sym) => {
-    if (!sym) return;
-    dispatch(fetchSummary(sym));
-    navigate('/'); // stay on the dashboard
+    const normalized = sym?.trim().toUpperCase();
+    if (!normalized) return;
+    navigate(`/?symbol=${encodeURIComponent(normalized)}`);
   };
+
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const rawSymbol = searchParams.get('symbol');
+    const normalized = rawSymbol?.trim().toUpperCase();
+    if (!normalized) return;
+    if (summary?.symbol === normalized) return;
+    dispatch(fetchSummary(normalized));
+  }, [dispatch, location.search, summary?.symbol]);
 
   /* ───────── Click‑outside logic (unchanged) ───────── */
   useEffect(() => {
@@ -108,6 +119,7 @@ function AppShell() {
             padding: 0,
             backgroundColor: theme.palette.background.default,
             color: theme.palette.text.primary,
+            overscrollBehavior: 'none',
           },
         }}
       />
@@ -117,66 +129,124 @@ function AppShell() {
 
         {/* ================= HEADER ================= */}
         <AppBar
-          position="static"
-          elevation={4}
-          sx={{
-            p:0,
+          position="fixed"
+          elevation={0}
+          sx={(theme) => ({
+            p: 0,
+            top: 0,
+            left: 0,
+            right: 0,
+            zIndex: theme.zIndex.appBar + 1,
             backgroundColor: theme.palette.background.header,
-            boxShadow: '0 0 12px rgba(0,184,255,0.25)',
-          }}
+            boxShadow: 'none',
+            borderBottom: '1px solid',
+            borderColor: theme.palette.background.header,
+          })}
         >
           <Toolbar
-            sx={{ minHeight: 80, gap: 3, display: 'flex',}}>
-            {/* Left: Title */}
-            <Box sx={{ flex: 1, display: 'flex', alignItems: 'center' }}>
-              <Typography variant="h6" sx={gradientTitleStyle}>
+            sx={{
+              minHeight: navHeight,
+              px: 0,
+              display: 'flex',
+              alignItems: 'center',
+              width: '100%',
+              color: 'text.primary',
+            }}
+          >
+            <Box
+              sx={(theme) => ({
+                width: railWidth,
+                height: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'flex-start',
+                pl: 2.5,
+                pr: 1.25,
+              })}
+            >
+              <Typography
+                component={RouterLink}
+                to="/"
+                variant="h6"
+                sx={{
+                  ...gradientTitleStyle,
+                  fontSize: 18,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  textDecoration: 'none',
+                  cursor: 'pointer',
+                }}
+                noWrap
+              >
                 Lumina
               </Typography>
             </Box>
 
-            {/* Center: Search bar (with search button removed via new prop) */}
-            <Box sx={{ flex: 1, display: 'flex', justifyContent: 'center'}}>
-              <SymbolSearch
-                placeholder="Search symbol…"
-                onSelectSymbol={handleSelectSymbol}
-                hideButton
-              />
-            </Box>
+            <Box
+              sx={{
+                flex: 1,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 2,
+                px: { xs: 2, md: 3 },
+              }}
+            >
+              <Box sx={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
+                <Box sx={{ width: '100%', maxWidth: 560 }}>
+                  <SymbolSearch
+                    placeholder="Search symbol…"
+                    onSelectSymbol={handleSelectSymbol}
+                    hideButton
+                  />
+                </Box>
+              </Box>
 
-            {/* Right: Icons */}
-            <Box sx={{ flex: 1, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 1 }}>
-              <UserProfileIcon />
-              <NotificationBell />
-              <MoreOptionsMenu onSelectView={setSelectedView} />
+              <Box
+                sx={{
+                  display: 'flex',
+                  justifyContent: 'flex-end',
+                  alignItems: 'center',
+                  gap: 1,
+                  ml: 'auto',
+                  flexShrink: 0,
+                }}
+              >
+                <UserProfileIcon />
+                <NotificationBell />
+                <MoreOptionsMenu onSelectView={setSelectedView} />
+              </Box>
             </Box>
           </Toolbar>
         </AppBar>
+        <Toolbar sx={{ minHeight: navHeight }} />
 
         {/* ================ MAIN CONTENT ================ */}
-        <Container
-          maxWidth="xl"
+        <Box
           sx={{
-            py: 4,
             position: 'relative',
-            height: 'calc(100vh - 80px)',
+            display: 'flex',
+            height: `calc(100vh - ${navHeight}px)`,
+            minHeight: 0,
           }}
         >
           <Box
             sx={{
               display: 'flex',
-              gap: 2,
               alignItems: 'stretch',
               height: '100%',
               minHeight: 0,
+              flex: 1,
             }}
           >
-            <SidebarRail summary={summary} />
+            <SidebarRail summary={summary} railWidth={railWidth} />
             <Box
               sx={(theme) => ({
                 flex: 1,
                 minWidth: 0,
                 height: '100%',
                 minHeight: 0,
+                py: isDashboardRoute ? 0 : { xs: 2, md: 3 },
+                px: { xs: 2, md: 3 },
                 overflow: isDashboardRoute ? 'hidden' : 'auto',
                 scrollbarWidth: 'thin',
                 scrollbarColor: `${alpha(theme.palette.primary.main, 0.5)} ${alpha(
@@ -232,7 +302,7 @@ function AppShell() {
               <News />
             </Box>
           )}
-        </Container>
+        </Box>
       </AlertsProvider>
     </ThemeProvider>
   );

@@ -148,23 +148,37 @@ const KpiTiles = ({ summary }) => {
   ];
 
   return (
-    <Box
-      sx={{
-        display: 'grid',
-        gap: 3,
-        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))'
-      }}
-    >
-      {tiles.map((t) => (
-        <Pill
-          key={t.label}
-          label={t.label}
-          value={t.value ?? f(t.raw)}
-          peer={t.peer != null ? f(t.peer) : null}
-          color={deltaColor(t.raw, t.peer, t.lowerBetter)}
-          tip={tips[t.label]}
-        />
-      ))}
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <Typography
+        variant="subtitle1"
+        sx={{
+          textAlign: 'center',
+          fontWeight: 700,
+          letterSpacing: 0.6,
+          textTransform: 'uppercase',
+          color: 'text.secondary'
+        }}
+      >
+        Fundamental
+      </Typography>
+      <Box
+        sx={{
+          display: 'grid',
+          gap: 3,
+          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))'
+        }}
+      >
+        {tiles.map((t) => (
+          <Pill
+            key={t.label}
+            label={t.label}
+            value={t.value ?? f(t.raw)}
+            peer={t.peer != null ? f(t.peer) : null}
+            color={deltaColor(t.raw, t.peer, t.lowerBetter)}
+            tip={tips[t.label]}
+          />
+        ))}
+      </Box>
     </Box>
   );
 };

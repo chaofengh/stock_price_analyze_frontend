@@ -56,6 +56,8 @@ const StockDashboard = () => {
   const scrollPanelSx = (theme) => ({
     height: '100%',
     overflowY: 'auto',
+    pt: { xs: 2, md: 3 },
+    pb: 0,
     pr: 1,
     scrollbarWidth: 'thin',
     scrollbarColor: `${alpha(theme.palette.primary.main, 0.5)} ${alpha(

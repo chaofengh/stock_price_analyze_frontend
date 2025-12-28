@@ -1,20 +1,28 @@
 import React from 'react';
-import { Box, Stack, IconButton, Tooltip } from '@mui/material';
+import { Box, Stack, ListItemButton, ListItemIcon, ListItemText } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import { Link as RouterLink, useLocation, matchPath } from 'react-router-dom';
+import DashboardOutlinedIcon from '@mui/icons-material/DashboardOutlined';
 import AssessmentOutlinedIcon from '@mui/icons-material/AssessmentOutlined';
 import AutoGraphOutlinedIcon from '@mui/icons-material/AutoGraphOutlined';
 import BookmarkBorderOutlinedIcon from '@mui/icons-material/BookmarkBorderOutlined';
 import NotificationsNoneOutlinedIcon from '@mui/icons-material/NotificationsNoneOutlined';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 
-const SidebarRail = ({ summary }) => {
+const SidebarRail = ({ summary, railWidth = 176 }) => {
   const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const searchSymbol = searchParams.get('symbol')?.trim().toUpperCase() || '';
   const analysisMatch = matchPath('/analysis/:symbol', location.pathname);
-  const analysisSymbol = summary?.symbol || analysisMatch?.params?.symbol || '';
+  const analysisSymbol =
+    summary?.symbol || analysisMatch?.params?.symbol || searchSymbol || '';
   const hasSymbol = Boolean(analysisSymbol);
   const isAnalysisActive = Boolean(analysisMatch);
   const isOrbActive = location.pathname.startsWith('/orb');
+  const isDashboardActive = location.pathname === '/' && Boolean(analysisSymbol);
+  const dashboardLink = analysisSymbol
+    ? `/?symbol=${encodeURIComponent(analysisSymbol)}`
+    : '/';
   const analysisLinkProps = hasSymbol
     ? {
         component: RouterLink,
@@ -25,48 +33,81 @@ const SidebarRail = ({ summary }) => {
       }
     : {};
 
-  const baseIconStyles = (theme, isActive, isDisabled) => ({
-    width: 40,
-    height: 40,
-    borderRadius: 2,
-    border: '1px solid',
-    borderColor: isActive ? theme.palette.primary.main : theme.palette.divider,
-    color: isActive ? theme.palette.primary.main : theme.palette.text.secondary,
+  const baseItemStyles = (theme, isActive) => ({
+    position: 'relative',
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    gap: 1.25,
+    pl: 2.5,
+    pr: 1.25,
+    py: 2,
+    minHeight: 40,
+    border: '1px solid transparent',
+    borderColor: isActive ? alpha(theme.palette.common.white, 0.12) : 'transparent',
+    color: isActive ? theme.palette.text.primary : theme.palette.text.secondary,
     backgroundColor: isActive
-      ? alpha(theme.palette.primary.main, 0.14)
+      ? alpha(theme.palette.common.white, 0.08)
       : 'transparent',
-    transition: 'all 0.2s ease',
+    transition: 'background-color 0.2s ease, color 0.2s ease',
+    '&::before': {
+      content: '""',
+      position: 'absolute',
+      left: 0,
+      top: 3,
+      bottom: 3,
+      width: 3,
+      borderRadius: 2,
+      backgroundColor: alpha(theme.palette.common.white, 0.85),
+      opacity: isActive ? 1 : 0,
+    },
     '&:hover': {
-      backgroundColor: alpha(theme.palette.primary.main, 0.12),
-      color: theme.palette.primary.main,
+      backgroundColor: alpha(theme.palette.common.white, 0.06),
+      color: theme.palette.text.primary,
+    },
+    '& .MuiListItemIcon-root': {
+      minWidth: 0,
+      color: 'inherit',
+    },
+    '& .MuiListItemText-root': {
+      margin: 0,
+    },
+    '& .MuiListItemText-primary': {
+      fontSize: 12,
+      fontWeight: isActive ? 600 : 500,
+      letterSpacing: 0.1,
+      lineHeight: 1.2,
+      color: 'inherit',
     },
     '& svg': {
-      fontSize: 28,
+      fontSize: 19,
     },
-    ...(isDisabled && {
+    '&.Mui-disabled': {
       color: theme.palette.text.disabled,
-      borderColor: theme.palette.divider,
       backgroundColor: 'transparent',
-    }),
+      opacity: 1,
+    },
   });
 
   return (
     <Box
       sx={(theme) => ({
-        width: 56,
+        width: railWidth,
         height: '100%',
         minHeight: 0,
-        py: 2,
-        px: 1,
-        borderRadius: `${theme.shape.borderRadius}px`,
+        pt: 3,
+        pb: 0,
         display: 'flex',
+        alignItems: 'flex-start',
         justifyContent: 'flex-start',
         alignSelf: 'stretch',
         backgroundColor: theme.palette.background.header,
         backgroundImage: 'none',
-        borderColor: theme.palette.divider,
-        boxShadow: 'none',
         overflowY: 'auto',
+        overflowX: 'hidden',
+        overscrollBehaviorY: 'contain',
+        overscrollBehaviorX: 'none',
+        WebkitOverflowScrolling: 'auto',
         scrollbarWidth: 'thin',
         scrollbarColor: `${alpha(theme.palette.primary.main, 0.5)} ${alpha(
           theme.palette.background.header,
@@ -76,87 +117,97 @@ const SidebarRail = ({ summary }) => {
           width: 8,
         },
         '&::-webkit-scrollbar-track': {
-          backgroundColor: alpha(theme.palette.background.header, 0.4),
-          borderRadius: 999,
+          backgroundColor: alpha(theme.palette.background.header, 0.4)
         },
         '&::-webkit-scrollbar-thumb': {
           backgroundColor: alpha(theme.palette.text.primary, 0.28),
-          borderRadius: 999,
         },
         '&::-webkit-scrollbar-thumb:hover': {
           backgroundColor: alpha(theme.palette.primary.main, 0.7),
         },
       })}
     >
-      <Stack spacing={2.5} alignItems="center">
-        <Tooltip title="Financial Analysis" placement="right">
-          <span>
-            <IconButton
-              aria-label="Financial analysis"
-              aria-current={isAnalysisActive ? 'page' : undefined}
-              size="medium"
-              disabled={!hasSymbol}
-              {...analysisLinkProps}
-              sx={(theme) => ({
-                ...baseIconStyles(theme, isAnalysisActive, !hasSymbol),
-                '&.Mui-disabled': {
-                  color: theme.palette.text.disabled,
-                  borderColor: theme.palette.divider,
-                },
-              })}
-            >
-              <AssessmentOutlinedIcon fontSize="small" />
-            </IconButton>
-          </span>
-        </Tooltip>
-        <Tooltip title="Opening Range Breakout" placement="right">
-          <IconButton
-            aria-label="Opening range breakout"
-            aria-current={isOrbActive ? 'page' : undefined}
-            size="medium"
-            component={RouterLink}
-            to="/orb"
-            sx={(theme) => baseIconStyles(theme, isOrbActive, false)}
-          >
+      <Stack spacing={0.25} width="100%" sx={{ flexGrow: 0 }}>
+        <ListItemButton
+          aria-label="Dashboard"
+          aria-current={isDashboardActive ? 'page' : undefined}
+          component={RouterLink}
+          to={dashboardLink}
+          disableGutters
+          sx={(theme) => baseItemStyles(theme, isDashboardActive)}
+        >
+          <ListItemIcon>
+            <DashboardOutlinedIcon />
+          </ListItemIcon>
+          <ListItemText primary="Dashboard" primaryTypographyProps={{ noWrap: true }} />
+        </ListItemButton>
+
+        <ListItemButton
+          aria-label="Financial analysis"
+          aria-current={isAnalysisActive ? 'page' : undefined}
+          disabled={!hasSymbol}
+          {...analysisLinkProps}
+          disableGutters
+          sx={(theme) => baseItemStyles(theme, isAnalysisActive)}
+        >
+          <ListItemIcon>
+            <AssessmentOutlinedIcon />
+          </ListItemIcon>
+          <ListItemText
+            primary="Financial Analysis"
+            primaryTypographyProps={{ noWrap: true }}
+          />
+        </ListItemButton>
+
+        <ListItemButton
+          aria-label="Opening range breakout"
+          aria-current={isOrbActive ? 'page' : undefined}
+          component={RouterLink}
+          to="/orb"
+          disableGutters
+          sx={(theme) => baseItemStyles(theme, isOrbActive)}
+        >
+          <ListItemIcon>
             <AutoGraphOutlinedIcon />
-          </IconButton>
-        </Tooltip>
-        <Tooltip title="Watchlist (Coming Soon)" placement="right">
-          <span>
-            <IconButton
-              aria-label="Watchlist"
-              size="medium"
-              disabled
-              sx={(theme) => baseIconStyles(theme, false, true)}
-            >
-              <BookmarkBorderOutlinedIcon />
-            </IconButton>
-          </span>
-        </Tooltip>
-        <Tooltip title="Alerts (Coming Soon)" placement="right">
-          <span>
-            <IconButton
-              aria-label="Alerts"
-              size="medium"
-              disabled
-              sx={(theme) => baseIconStyles(theme, false, true)}
-            >
-              <NotificationsNoneOutlinedIcon />
-            </IconButton>
-          </span>
-        </Tooltip>
-        <Tooltip title="Settings (Coming Soon)" placement="right">
-          <span>
-            <IconButton
-              aria-label="Settings"
-              size="medium"
-              disabled
-              sx={(theme) => baseIconStyles(theme, false, true)}
-            >
-              <SettingsOutlinedIcon />
-            </IconButton>
-          </span>
-        </Tooltip>
+          </ListItemIcon>
+          <ListItemText primary="ORB Strategy" primaryTypographyProps={{ noWrap: true }} />
+        </ListItemButton>
+
+        <ListItemButton
+          aria-label="Watchlist"
+          disabled
+          disableGutters
+          sx={(theme) => baseItemStyles(theme, false)}
+        >
+          <ListItemIcon>
+            <BookmarkBorderOutlinedIcon />
+          </ListItemIcon>
+          <ListItemText primary="Watchlist" primaryTypographyProps={{ noWrap: true }} />
+        </ListItemButton>
+
+        <ListItemButton
+          aria-label="Alerts"
+          disabled
+          disableGutters
+          sx={(theme) => baseItemStyles(theme, false)}
+        >
+          <ListItemIcon>
+            <NotificationsNoneOutlinedIcon />
+          </ListItemIcon>
+          <ListItemText primary="Alerts" primaryTypographyProps={{ noWrap: true }} />
+        </ListItemButton>
+
+        <ListItemButton
+          aria-label="Settings"
+          disabled
+          disableGutters
+          sx={(theme) => baseItemStyles(theme, false)}
+        >
+          <ListItemIcon>
+            <SettingsOutlinedIcon />
+          </ListItemIcon>
+          <ListItemText primary="Settings" primaryTypographyProps={{ noWrap: true }} />
+        </ListItemButton>
       </Stack>
     </Box>
   );
