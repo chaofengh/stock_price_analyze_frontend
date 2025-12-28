@@ -1,20 +1,23 @@
 import React, { useState, useEffect } from "react";
 import { Box, Paper, Typography, Avatar } from "@mui/material";
+import { useDispatch, useSelector } from "react-redux";
 import StockChart from "./Chart/StockChart";
 import TradeHistoryList from "./TradeHistoryList";
 import KpiTiles from "./KpiTiles"; 
-import { fetchCompanyLogo } from "../API/FetchCompanyLogo";
+import { ensureLogoForSymbol, selectLogoUrlBySymbol } from "./Redux/logosSlice";
 import NumberFlow from "@number-flow/react"; // NEW (already installed)
 
 const MainContent = ({ summary, eventMap }) => {
   const [hoverData, setHoverData] = useState(null);
-  const [logo, setLogo] = useState(null);
+  const dispatch = useDispatch();
+  const symbol = summary?.symbol;
+  const logo = useSelector((state) => selectLogoUrlBySymbol(state, symbol));
 
   useEffect(() => {
-    if (summary?.symbol) {
-      fetchCompanyLogo(summary.symbol).then(setLogo);
+    if (symbol) {
+      dispatch(ensureLogoForSymbol(symbol));
     }
-  }, [summary?.symbol]);
+  }, [dispatch, symbol]);
 
   // ── Values that follow the cursor ────────────────────────────────────────
   const latestChartPoint =
