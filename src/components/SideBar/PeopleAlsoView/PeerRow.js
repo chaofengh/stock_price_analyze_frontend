@@ -32,14 +32,31 @@ const PeerRow = ({ peerSymbol, latest, pct, series, onClick }) => {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        borderRadius: 2,
+        position: 'relative',
         padding: theme.spacing(1.5),
         mb: 1.5,
         cursor: 'pointer',
+        overflow: 'hidden',
         transition: 'background-color 0.15s ease-in-out',
         backgroundColor: 'transparent',
+        '&::before': {
+          content: '""',
+          position: 'absolute',
+          inset: 0,
+          background: 'linear-gradient(90deg, rgba(0,123,255,0.16), rgba(0,0,0,0))',
+          transform: 'translateX(-100%)',
+          transition: 'transform 0.35s',
+          zIndex: 0,
+        },
+        '& > *': {
+          position: 'relative',
+          zIndex: 1,
+        },
         '&:hover': {
-          backgroundColor: alpha(theme.palette.primary.main, 0.08),
+          backgroundColor: alpha(theme.palette.primary.main, 0.02),
+        },
+        '&:hover::before': {
+          transform: 'translateX(0)',
         },
         '&:focus-visible': {
           outline: `2px solid ${theme.palette.primary.main}`,
