@@ -150,7 +150,7 @@ const MainContent = ({ summary, eventMap }) => {
       <Paper sx={{ p: 3, mb: 3 }}>
         <KpiTiles summary={summary} />
       </Paper>
-      <Paper sx={{ p: 3, mb: 3 }}>
+      <Paper sx={{ p: 3, mb: 0 }}>
         <TradeHistoryList summary={summary} />
       </Paper>
 

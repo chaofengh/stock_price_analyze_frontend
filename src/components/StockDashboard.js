@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { Grid, Box, Paper, CircularProgress, Typography } from '@mui/material';
+import { alpha } from '@mui/material/styles';
 import Sidebar from './SideBar/Sidebar';
 import MainContent from './MainContent';
 import { useSelector } from 'react-redux';
@@ -52,6 +53,31 @@ const StockDashboard = () => {
   }, [summary]);
 
   /* -------------------------------- Rendering --------------------------------- */
+  const scrollPanelSx = (theme) => ({
+    height: '100%',
+    overflowY: 'auto',
+    pr: 1,
+    scrollbarWidth: 'thin',
+    scrollbarColor: `${alpha(theme.palette.primary.main, 0.5)} ${alpha(
+      theme.palette.background.header,
+      0.35
+    )}`,
+    '&::-webkit-scrollbar': {
+      width: 8,
+    },
+    '&::-webkit-scrollbar-track': {
+      backgroundColor: alpha(theme.palette.background.header, 0.4),
+      borderRadius: 999,
+    },
+    '&::-webkit-scrollbar-thumb': {
+      backgroundColor: alpha(theme.palette.text.primary, 0.28),
+      borderRadius: 999,
+    },
+    '&::-webkit-scrollbar-thumb:hover': {
+      backgroundColor: alpha(theme.palette.primary.main, 0.7),
+    },
+  });
+
   return (
     <Box sx={{ height: '100%' }}>
       <Grid
@@ -61,7 +87,7 @@ const StockDashboard = () => {
         sx={{ height: '100%', alignItems: 'stretch' }}
       >
         <Grid item xs={12} md={3} sx={{ height: '100%', minHeight: 0 }}>
-          <Box sx={{ height: '100%', overflowY: 'auto', pr: 1 }}>
+          <Box sx={scrollPanelSx}>
             <Sidebar summary={summary} error={error} />
           </Box>
         </Grid>
@@ -72,7 +98,7 @@ const StockDashboard = () => {
               <CircularProgress size={48} />
             </Box>
           ) : summary ? (
-            <Box sx={{ height: '100%', overflowY: 'auto', pr: 1 }}>
+            <Box sx={scrollPanelSx}>
               <MainContent summary={summary} eventMap={eventMap} />
             </Box>
           ) : (

@@ -15,7 +15,9 @@ import {
   Routes,
   Route,
   useNavigate,
+  useLocation,
 } from 'react-router-dom';
+import { alpha } from '@mui/material/styles';
 import { useDispatch, useSelector } from 'react-redux';
 import { AlertsProvider } from './components/Notification/AlertContext';
 import StockDashboard from './components/StockDashboard';
@@ -42,8 +44,10 @@ function AppShell() {
   const newsRef = useRef(null);
 
   const navigate = useNavigate();
+  const location = useLocation();
   const dispatch = useDispatch();
   const summary = useSelector((state) => state.summary.data);
+  const isDashboardRoute = location.pathname === '/';
 
   /* ───────── Symbol search handler ───────── */
   const handleSelectSymbol = (sym) => {
@@ -168,13 +172,32 @@ function AppShell() {
           >
             <SidebarRail summary={summary} />
             <Box
-              sx={{
+              sx={(theme) => ({
                 flex: 1,
                 minWidth: 0,
                 height: '100%',
                 minHeight: 0,
-                overflow: 'auto',
-              }}
+                overflow: isDashboardRoute ? 'hidden' : 'auto',
+                scrollbarWidth: 'thin',
+                scrollbarColor: `${alpha(theme.palette.primary.main, 0.5)} ${alpha(
+                  theme.palette.background.header,
+                  0.35
+                )}`,
+                '&::-webkit-scrollbar': {
+                  width: 8,
+                },
+                '&::-webkit-scrollbar-track': {
+                  backgroundColor: alpha(theme.palette.background.header, 0.4),
+                  borderRadius: 999,
+                },
+                '&::-webkit-scrollbar-thumb': {
+                  backgroundColor: alpha(theme.palette.text.primary, 0.28),
+                  borderRadius: 999,
+                },
+                '&::-webkit-scrollbar-thumb:hover': {
+                  backgroundColor: alpha(theme.palette.primary.main, 0.7),
+                },
+              })}
             >
               <Routes>
                 <Route path="/" element={<StockDashboard />} />

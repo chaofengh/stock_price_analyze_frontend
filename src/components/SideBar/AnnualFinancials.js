@@ -130,7 +130,10 @@ const AnnualFinancials = ({ annualReports }) => {
   ];
 
   return (
-    <TableContainer component={Paper} sx={{ mt: 2, borderRadius: 2, boxShadow: 3 }}>
+    <TableContainer
+      component={Paper}
+      sx={{ mt: 2, mb: 0, borderRadius: 2, boxShadow: 3 }}
+    >
       <Table size="small">
         <TableHead>
           <TableRow>
