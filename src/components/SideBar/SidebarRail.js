@@ -6,7 +6,8 @@ import DashboardOutlinedIcon from '@mui/icons-material/DashboardOutlined';
 import AssessmentOutlinedIcon from '@mui/icons-material/AssessmentOutlined';
 import AutoGraphOutlinedIcon from '@mui/icons-material/AutoGraphOutlined';
 import BookmarkBorderOutlinedIcon from '@mui/icons-material/BookmarkBorderOutlined';
-import NotificationsNoneOutlinedIcon from '@mui/icons-material/NotificationsNoneOutlined';
+import SwapHorizOutlinedIcon from '@mui/icons-material/SwapHorizOutlined';
+import ArticleOutlinedIcon from '@mui/icons-material/ArticleOutlined';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 
 const SidebarRail = ({ summary, railWidth = 176 }) => {
@@ -18,7 +19,10 @@ const SidebarRail = ({ summary, railWidth = 176 }) => {
     summary?.symbol || analysisMatch?.params?.symbol || searchSymbol || '';
   const hasSymbol = Boolean(analysisSymbol);
   const isAnalysisActive = Boolean(analysisMatch);
-  const isOrbActive = location.pathname.startsWith('/orb');
+  const isOptionRatioActive = location.pathname === '/option-price-ratio';
+  const isWatchListActive = location.pathname === '/watchlist';
+  const isNewsActive = location.pathname === '/news';
+  const isBacktestActive = location.pathname === '/backtest';
   const isDashboardActive = location.pathname === '/' && Boolean(analysisSymbol);
   const dashboardLink = analysisSymbol
     ? `/?symbol=${encodeURIComponent(analysisSymbol)}`
@@ -160,41 +164,59 @@ const SidebarRail = ({ summary, railWidth = 176 }) => {
         </ListItemButton>
 
         <ListItemButton
-          aria-label="Opening range breakout"
-          aria-current={isOrbActive ? 'page' : undefined}
+          aria-label="Option price ratio"
+          aria-current={isOptionRatioActive ? 'page' : undefined}
           component={RouterLink}
-          to="/orb"
+          to="/option-price-ratio"
           disableGutters
-          sx={(theme) => baseItemStyles(theme, isOrbActive)}
+          sx={(theme) => baseItemStyles(theme, isOptionRatioActive)}
         >
           <ListItemIcon>
-            <AutoGraphOutlinedIcon />
+            <SwapHorizOutlinedIcon />
           </ListItemIcon>
-          <ListItemText primary="ORB Strategy" primaryTypographyProps={{ noWrap: true }} />
+          <ListItemText primary="Option Price Ratio" primaryTypographyProps={{ noWrap: true }} />
         </ListItemButton>
 
         <ListItemButton
-          aria-label="Watchlist"
-          disabled
+          aria-label="Watch list"
+          aria-current={isWatchListActive ? 'page' : undefined}
+          component={RouterLink}
+          to="/watchlist"
           disableGutters
-          sx={(theme) => baseItemStyles(theme, false)}
+          sx={(theme) => baseItemStyles(theme, isWatchListActive)}
         >
           <ListItemIcon>
             <BookmarkBorderOutlinedIcon />
           </ListItemIcon>
-          <ListItemText primary="Watchlist" primaryTypographyProps={{ noWrap: true }} />
+          <ListItemText primary="Watch List" primaryTypographyProps={{ noWrap: true }} />
         </ListItemButton>
 
         <ListItemButton
-          aria-label="Alerts"
-          disabled
+          aria-label="News"
+          aria-current={isNewsActive ? 'page' : undefined}
+          component={RouterLink}
+          to="/news"
           disableGutters
-          sx={(theme) => baseItemStyles(theme, false)}
+          sx={(theme) => baseItemStyles(theme, isNewsActive)}
         >
           <ListItemIcon>
-            <NotificationsNoneOutlinedIcon />
+            <ArticleOutlinedIcon />
           </ListItemIcon>
-          <ListItemText primary="Alerts" primaryTypographyProps={{ noWrap: true }} />
+          <ListItemText primary="News" primaryTypographyProps={{ noWrap: true }} />
+        </ListItemButton>
+
+        <ListItemButton
+          aria-label="Backtest"
+          aria-current={isBacktestActive ? 'page' : undefined}
+          component={RouterLink}
+          to="/backtest"
+          disableGutters
+          sx={(theme) => baseItemStyles(theme, isBacktestActive)}
+        >
+          <ListItemIcon>
+            <AutoGraphOutlinedIcon />
+          </ListItemIcon>
+          <ListItemText primary="BackTest" primaryTypographyProps={{ noWrap: true }} />
         </ListItemButton>
 
         <ListItemButton
