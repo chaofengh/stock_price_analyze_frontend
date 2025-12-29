@@ -46,17 +46,30 @@ const NotificationBell = () => {
         variant="contained"
         color="primary"
         disableElevation
+        disableRipple
         onClick={handleOpen}
         sx={{
           boxShadow: 'none',
-          minWidth: 40,
-          p: 0.5,
-          transition: 'transform 0.2s',
-          '&:hover': { boxShadow: 'none', transform: 'scale(1.05)' }
+          minWidth: 36,
+          width: 36,
+          height: 36,
+          p: 0,
+          borderRadius: 8,
+          transition: 'background-color 150ms ease',
+          '&:hover': { boxShadow: 'none' }
         }}
       >
-        <Badge badgeContent={alertCount} color="secondary">
-          <Notifications sx={{ fontSize: 30 }} />
+        <Badge
+          badgeContent={alertCount}
+          color="secondary"
+          sx={{
+            '& .MuiBadge-badge': {
+              top: 2,
+              right: 2,
+            },
+          }}
+        >
+          <Notifications sx={{ fontSize: 22 }} />
         </Badge>
       </Button>
 

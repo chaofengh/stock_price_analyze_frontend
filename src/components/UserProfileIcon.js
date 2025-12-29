@@ -1,13 +1,16 @@
 import React, { useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import {
-  Button,
+  Box,
   Menu,
   MenuItem,
   Avatar,
+  Typography,
   useTheme,
 } from '@mui/material';
+import { alpha } from '@mui/material/styles';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
+import KeyboardArrowDownRoundedIcon from '@mui/icons-material/KeyboardArrowDownRounded';
 import { logout } from './Redux/authSlice';
 import AuthDialog from './AuthDialog';
 import { stringToHslColor } from '../utils/stringToColor';
@@ -24,6 +27,10 @@ function UserProfileIcon() {
   const [authMode, setAuthMode] = useState('login');
 
   const isLoggedIn = Boolean(accessToken);
+  const displayName = isLoggedIn
+    ? user?.name || user?.fullName || user?.username || user?.email || 'User'
+    : 'Sign in';
+  const displayPlan = isLoggedIn ? user?.plan || 'Member' : 'Create account';
 
   /* ───────── handlers ───────── */
   const handleMenuOpen = (e) => setAnchorEl(e.currentTarget);
@@ -33,44 +40,72 @@ function UserProfileIcon() {
 
   /* ───────── avatar colour/letter for logged‑in users ───────── */
   let avatarColor  = neon;
-  let avatarLetter = '?';
+  let avatarLetter = displayName?.charAt(0)?.toUpperCase() || '?';
   if (user?.email) {
     avatarColor  = stringToHslColor(user.email, 70, 45);
     avatarLetter = user.email.charAt(0).toUpperCase();
   }
+
+  const buttonSx = {
+    all: 'unset',
+    boxSizing: 'border-box',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 1,
+    px: 0.75,
+    py: 0.25,
+    minHeight: 36,
+    borderRadius: 8,
+    backgroundColor: 'transparent',
+    border: 'none',
+    color: theme.palette.text.primary,
+    transition: 'background-color 150ms ease, border-color 150ms ease',
+    '&:hover': {
+      backgroundColor: alpha(theme.palette.common.white, 0.06),
+    },
+    '&:focus-visible': {
+      outline: `2px solid ${alpha(theme.palette.primary.main, 0.6)}`,
+      outlineOffset: 2,
+    },
+  };
+
+  const profileButton = (onClick, showAvatarIcon) => (
+    <Box component="button" type="button" onClick={onClick} sx={buttonSx}>
+      <Avatar
+        sx={{
+          width: 36,
+          height: 36,
+          bgcolor: avatarColor,
+          color: theme.palette.common.white,
+          fontSize: 16,
+          fontWeight: 700,
+        }}
+      >
+        {showAvatarIcon ? <AccountCircleIcon sx={{ fontSize: 20 }} /> : avatarLetter}
+      </Avatar>
+      <Box sx={{ minWidth: 0, textAlign: 'left' }}>
+        <Typography variant="subtitle2" sx={{ fontWeight: 700, lineHeight: 1.1 }} noWrap>
+          {displayName}
+        </Typography>
+        <Typography
+          variant="caption"
+          sx={{ color: 'text.secondary', lineHeight: 1.1 }}
+          noWrap
+        >
+          {displayPlan}
+        </Typography>
+      </Box>
+      <KeyboardArrowDownRoundedIcon sx={{ color: 'text.secondary', fontSize: 20 }} />
+    </Box>
+  );
 
   return (
     <>
       {/* ================= Logged‑in ================= */}
       {isLoggedIn ? (
         <>
-          <Button
-            variant="contained"
-            color="primary"
-            disableElevation
-            onClick={handleMenuOpen}
-            sx={{
-              minWidth: 40,
-              p: 0.5,
-              boxShadow: 'none',
-              transition: 'transform 0.2s',
-              '&:hover': { boxShadow: 'none', transform: 'scale(1.05)' },
-            }}
-          >
-            <Avatar
-              sx={{
-                width: 30,
-                height: 30,
-                bgcolor: 'inherit',
-                border: `2px solid ${neon}`,
-                color: '#fff',
-                fontSize: 14,
-                fontWeight: 600,
-              }}
-            >
-              {avatarLetter}
-            </Avatar>
-          </Button>
+          {profileButton(handleMenuOpen, false)}
 
           <Menu
             anchorEl={anchorEl}
@@ -90,21 +125,7 @@ function UserProfileIcon() {
       ) : (
         /* ================= Logged‑out ================= */
         <>
-          <Button
-            variant="contained"
-            color="primary"
-            disableElevation
-            onClick={() => handleDialogOpen('login')}
-            sx={{
-              minWidth: 40,
-              p: 0.5,
-              boxShadow: 'none',
-              transition: 'transform 0.2s',
-              '&:hover': { boxShadow: 'none', transform: 'scale(1.05)' },
-            }}
-          >
-            <AccountCircleIcon sx={{ fontSize: 30, color: '#fff' }} />
-          </Button>
+          {profileButton(() => handleDialogOpen('login'), true)}
         </>
       )}
 

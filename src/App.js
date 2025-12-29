@@ -21,15 +21,15 @@ import { alpha } from '@mui/material/styles';
 import { useDispatch, useSelector } from 'react-redux';
 import { AlertsProvider } from './components/Notification/AlertContext';
 import StockDashboard from './components/StockDashboard';
-import SidebarRail from './components/SideBar/SidebarRail';
+import SidebarRail from './components/SidebarRail/SidebarRail';
 import UserProfileIcon from './components/UserProfileIcon';
 import NotificationBell from './components/Notification/NotificationBell';
 import AlertsSnackbar from './components/Notification/AlertsSnackbar';
 import FinancialAnalysisPage from './components/statements/FinancialAnalysisPage';
 import Backtest from './components/Backtest/Backtest';
-import OptionPriceRatio from './components/Views/OptionPriceRatio';
-import TickerList from './components/Views/TickerList';
-import News from './components/Views/News';
+import OptionPriceRatio from './components/SidebarRail/OptionPriceRatio';
+import TickerList from './components/SidebarRail/TickerList';
+import News from './components/SidebarRail/News';
 import SymbolSearch from './components/SymbolSearch';
 
 import { fetchSummary } from './components/Redux/summarySlice';
@@ -175,8 +175,15 @@ function AppShell() {
                   flexShrink: 0,
                 }}
               >
-                <UserProfileIcon />
                 <NotificationBell />
+                <Box
+                  sx={(theme) => ({
+                    width: 2,
+                    height: 28,
+                    bgcolor: alpha(theme.palette.common.white, 0.2),
+                  })}
+                />
+                <UserProfileIcon />
               </Box>
             </Box>
           </Toolbar>
