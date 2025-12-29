@@ -12,11 +12,17 @@ const Sidebar = ({ summary, error }) => {
   const loadingIncomeStatement = useSelector(
     (state) => state.financials.loadingIncomeStatement
   );
+  const incomeStatementError = useSelector(
+    (state) => state.financials.errorIncomeStatement
+  );
+  const currentSymbol = useSelector((state) => state.summary.currentSymbol);
   const peerLoadingState = useSelector((state) => state.summary.peerLoading);
-  const symbol = summary?.symbol;
+  const symbol = summary?.symbol || currentSymbol;
   const incomeSymbol = incomeStatement?.symbol;
-  const isPending = summary?.status === 'pending';
   const peerLoading = peerLoadingState;
+  const incomeMatches = incomeSymbol === symbol;
+  const annualReports = incomeMatches ? incomeStatement?.annualReports : [];
+  const showIncomeLoading = Boolean(symbol) && (loadingIncomeStatement || !incomeMatches);
 
   useEffect(() => {
     if (!symbol) return;
@@ -37,13 +43,14 @@ const Sidebar = ({ summary, error }) => {
         <Box>
           <BollingerMicroPanel summary={summary} />
           <PeopleAlsoView summary={summary} isLoading={peerLoading} />
+          {incomeStatementError && (
+            <Typography variant="body2" color="error" sx={{ mt: 2 }}>
+              {incomeStatementError}
+            </Typography>
+          )}
           <AnnualFinancials
-            isLoading={loadingIncomeStatement}
-            annualReports={
-              incomeStatement
-                ? incomeStatement.annualReports
-                : []
-            }
+            isLoading={showIncomeLoading}
+            annualReports={annualReports || []}
           />
 
         </Box>

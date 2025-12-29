@@ -21,6 +21,7 @@ const StockDashboard = () => {
   const isPending = summary?.status === 'pending';
   const dispatch = useDispatch();
   const activeSymbol = summary?.symbol || currentSymbol;
+  const hasSummary = Boolean(summary);
 
   useEffect(() => {
     if (activeSymbol) {
@@ -28,7 +29,7 @@ const StockDashboard = () => {
       dispatch(fetchSummaryFundamentals(activeSymbol));
       dispatch(fetchSummaryPeerAverages(activeSymbol));
     }
-  }, [dispatch, activeSymbol, summary?.status]);
+  }, [dispatch, activeSymbol, summary?.status, summary?.symbol]);
 
   /* -------------- Build eventMap for StockChart from window_5 data ------------ */
   const eventMap = useMemo(() => {
@@ -105,13 +106,15 @@ const StockDashboard = () => {
         rowSpacing={{ xs: 3, md: 0 }}
         sx={{ height: '100%', alignItems: 'stretch' }}
       >
-        <Grid item xs={12} md={3} sx={{ height: '100%', minHeight: 0 }}>
-          <Box sx={scrollPanelSx}>
-            <Sidebar summary={summary} error={error} />
-          </Box>
-        </Grid>
+        {hasSummary && (
+          <Grid item xs={12} md={3} sx={{ height: '100%', minHeight: 0 }}>
+            <Box sx={scrollPanelSx}>
+              <Sidebar summary={summary} error={error} />
+            </Box>
+          </Grid>
+        )}
 
-        <Grid item xs={12} md={9} sx={{ height: '100%', minHeight: 0 }}>
+        <Grid item xs={12} md={hasSummary ? 9 : 12} sx={{ height: '100%', minHeight: 0 }}>
           {loading && !isPending ? (
             <Box
               sx={{

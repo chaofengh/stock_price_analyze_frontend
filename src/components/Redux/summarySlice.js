@@ -7,6 +7,9 @@ import {
   fetchStockPeerAverages,
 } from '../../API/StockService';
 
+const normalizeSymbol = (symbol) =>
+  typeof symbol === 'string' ? symbol.trim().toUpperCase() : '';
+
 // Thunk to fetch summary data
 export const fetchSummary = createAsyncThunk(
   'summary/fetchSummary',
@@ -28,18 +31,12 @@ export const fetchSummary = createAsyncThunk(
   },
   {
     condition: (symbol, { getState }) => {
-      const normalized = typeof symbol === 'string' ? symbol.trim().toUpperCase() : '';
+      const normalized = normalizeSymbol(symbol);
       if (!normalized) return false;
 
       const { summary } = getState();
-      const currentSymbol =
-        typeof summary?.currentSymbol === 'string'
-          ? summary.currentSymbol.trim().toUpperCase()
-          : '';
-      const loadedSymbol =
-        typeof summary?.data?.symbol === 'string'
-          ? summary.data.symbol.trim().toUpperCase()
-          : '';
+      const currentSymbol = normalizeSymbol(summary?.currentSymbol);
+      const loadedSymbol = normalizeSymbol(summary?.data?.symbol);
       const isPending = summary?.data?.status === 'pending';
 
       if (summary?.loading && currentSymbol === normalized && !isPending) {
@@ -73,16 +70,15 @@ export const fetchSummaryPeers = createAsyncThunk(
   },
   {
     condition: (symbol, { getState }) => {
-      const normalized = typeof symbol === 'string' ? symbol.trim().toUpperCase() : '';
+      const normalized = normalizeSymbol(symbol);
       if (!normalized) return false;
 
       const { summary } = getState();
-      const loadedSymbol =
-        typeof summary?.data?.symbol === 'string'
-          ? summary.data.symbol.trim().toUpperCase()
-          : '';
+      const loadedSymbol = normalizeSymbol(summary?.data?.symbol);
+      const currentSymbol = normalizeSymbol(summary?.currentSymbol);
+      const activeSymbol = loadedSymbol || currentSymbol;
 
-      if (loadedSymbol !== normalized) {
+      if (activeSymbol !== normalized) {
         return false;
       }
 
@@ -117,16 +113,15 @@ export const fetchSummaryFundamentals = createAsyncThunk(
   },
   {
     condition: (symbol, { getState }) => {
-      const normalized = typeof symbol === 'string' ? symbol.trim().toUpperCase() : '';
+      const normalized = normalizeSymbol(symbol);
       if (!normalized) return false;
 
       const { summary } = getState();
-      const loadedSymbol =
-        typeof summary?.data?.symbol === 'string'
-          ? summary.data.symbol.trim().toUpperCase()
-          : '';
+      const loadedSymbol = normalizeSymbol(summary?.data?.symbol);
+      const currentSymbol = normalizeSymbol(summary?.currentSymbol);
+      const activeSymbol = loadedSymbol || currentSymbol;
 
-      if (loadedSymbol !== normalized) {
+      if (activeSymbol !== normalized) {
         return false;
       }
 
@@ -161,16 +156,15 @@ export const fetchSummaryPeerAverages = createAsyncThunk(
   },
   {
     condition: (symbol, { getState }) => {
-      const normalized = typeof symbol === 'string' ? symbol.trim().toUpperCase() : '';
+      const normalized = normalizeSymbol(symbol);
       if (!normalized) return false;
 
       const { summary } = getState();
-      const loadedSymbol =
-        typeof summary?.data?.symbol === 'string'
-          ? summary.data.symbol.trim().toUpperCase()
-          : '';
+      const loadedSymbol = normalizeSymbol(summary?.data?.symbol);
+      const currentSymbol = normalizeSymbol(summary?.currentSymbol);
+      const activeSymbol = loadedSymbol || currentSymbol;
 
-      if (loadedSymbol !== normalized) {
+      if (activeSymbol !== normalized) {
         return false;
       }
 
@@ -223,48 +217,54 @@ const summarySlice = createSlice({
   extraReducers: (builder) => {
     builder
       .addCase(fetchSummary.pending, (state, action) => {
+        const normalized = normalizeSymbol(action.meta.arg);
+        const existingSymbol = normalizeSymbol(state.data?.symbol);
+        const isSameSymbol = normalized && existingSymbol && normalized === existingSymbol;
         state.loading = true;
         state.error = null;
-        state.data = null;
-        state.currentSymbol =
-          typeof action.meta.arg === 'string'
-            ? action.meta.arg.trim().toUpperCase()
-            : null;
-        state.peerLoading = false;
-        state.peerError = null;
-        state.peerSymbol = null;
-        state.fundamentalsLoading = false;
-        state.fundamentalsError = null;
-        state.fundamentalsSymbol = null;
-        state.peerAvgLoading = false;
-        state.peerAvgError = null;
-        state.peerAvgSymbol = null;
+        state.currentSymbol = normalized || null;
+        if (!isSameSymbol) {
+          state.data = normalized ? { symbol: normalized, status: 'pending' } : null;
+          state.peerLoading = false;
+          state.peerError = null;
+          state.peerSymbol = null;
+          state.fundamentalsLoading = false;
+          state.fundamentalsError = null;
+          state.fundamentalsSymbol = null;
+          state.peerAvgLoading = false;
+          state.peerAvgError = null;
+          state.peerAvgSymbol = null;
+        }
       })
       .addCase(fetchSummary.fulfilled, (state, action) => {
+        const incomingSymbol = normalizeSymbol(action.payload?.symbol || action.meta.arg);
+        const existingSymbol = normalizeSymbol(state.data?.symbol);
+        const sameSymbol = incomingSymbol && existingSymbol && incomingSymbol === existingSymbol;
+        const existing = sameSymbol ? state.data || {} : {};
+        const extra = {};
+        if (existing.peer_info) extra.peer_info = existing.peer_info;
+        if (existing.trailingPE != null) extra.trailingPE = existing.trailingPE;
+        if (existing.forwardPE != null) extra.forwardPE = existing.forwardPE;
+        if (existing.PEG != null) extra.PEG = existing.PEG;
+        if (existing.PGI != null) extra.PGI = existing.PGI;
+        if (existing.dividendYield != null) extra.dividendYield = existing.dividendYield;
+        if (existing.beta != null) extra.beta = existing.beta;
+        if (existing.marketCap != null) extra.marketCap = existing.marketCap;
+        if (existing.avg_peer_trailingPE != null) {
+          extra.avg_peer_trailingPE = existing.avg_peer_trailingPE;
+        }
+        if (existing.avg_peer_forwardPE != null) {
+          extra.avg_peer_forwardPE = existing.avg_peer_forwardPE;
+        }
+        if (existing.avg_peer_PEG != null) extra.avg_peer_PEG = existing.avg_peer_PEG;
+        if (existing.avg_peer_PGI != null) extra.avg_peer_PGI = existing.avg_peer_PGI;
+        if (existing.avg_peer_beta != null) extra.avg_peer_beta = existing.avg_peer_beta;
+
         if (action.payload?.status === 'pending') {
           state.loading = true;
-          state.data = action.payload;
+          state.data = { ...action.payload, ...extra };
           state.currentSymbol = null;
         } else {
-          const existing = state.data || {};
-          const extra = {};
-          if (existing.peer_info) extra.peer_info = existing.peer_info;
-          if (existing.trailingPE != null) extra.trailingPE = existing.trailingPE;
-          if (existing.forwardPE != null) extra.forwardPE = existing.forwardPE;
-          if (existing.PEG != null) extra.PEG = existing.PEG;
-          if (existing.PGI != null) extra.PGI = existing.PGI;
-          if (existing.dividendYield != null) extra.dividendYield = existing.dividendYield;
-          if (existing.beta != null) extra.beta = existing.beta;
-          if (existing.marketCap != null) extra.marketCap = existing.marketCap;
-          if (existing.avg_peer_trailingPE != null) {
-            extra.avg_peer_trailingPE = existing.avg_peer_trailingPE;
-          }
-          if (existing.avg_peer_forwardPE != null) {
-            extra.avg_peer_forwardPE = existing.avg_peer_forwardPE;
-          }
-          if (existing.avg_peer_PEG != null) extra.avg_peer_PEG = existing.avg_peer_PEG;
-          if (existing.avg_peer_PGI != null) extra.avg_peer_PGI = existing.avg_peer_PGI;
-          if (existing.avg_peer_beta != null) extra.avg_peer_beta = existing.avg_peer_beta;
           state.loading = false;
           state.data = { ...action.payload, ...extra };
           state.currentSymbol = null;
@@ -296,11 +296,9 @@ const summarySlice = createSlice({
         }
         state.peerLoading = false;
         state.peerError = null;
-        state.peerSymbol =
-          typeof action.meta.arg === 'string'
-            ? action.meta.arg.trim().toUpperCase()
-            : null;
-        if (state.data) {
+        state.peerSymbol = normalizeSymbol(action.meta.arg) || null;
+        const dataSymbol = normalizeSymbol(state.data?.symbol);
+        if (state.data && dataSymbol === state.peerSymbol) {
           state.data = { ...state.data, ...action.payload };
         }
       })
@@ -320,11 +318,9 @@ const summarySlice = createSlice({
         }
         state.fundamentalsLoading = false;
         state.fundamentalsError = null;
-        state.fundamentalsSymbol =
-          typeof action.meta.arg === 'string'
-            ? action.meta.arg.trim().toUpperCase()
-            : null;
-        if (state.data) {
+        state.fundamentalsSymbol = normalizeSymbol(action.meta.arg) || null;
+        const dataSymbol = normalizeSymbol(state.data?.symbol);
+        if (state.data && dataSymbol === state.fundamentalsSymbol) {
           state.data = { ...state.data, ...action.payload };
         }
       })
@@ -344,11 +340,9 @@ const summarySlice = createSlice({
         }
         state.peerAvgLoading = false;
         state.peerAvgError = null;
-        state.peerAvgSymbol =
-          typeof action.meta.arg === 'string'
-            ? action.meta.arg.trim().toUpperCase()
-            : null;
-        if (state.data) {
+        state.peerAvgSymbol = normalizeSymbol(action.meta.arg) || null;
+        const dataSymbol = normalizeSymbol(state.data?.symbol);
+        if (state.data && dataSymbol === state.peerAvgSymbol) {
           state.data = { ...state.data, ...action.payload };
         }
       })

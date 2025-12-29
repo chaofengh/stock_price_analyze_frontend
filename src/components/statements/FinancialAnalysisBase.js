@@ -80,15 +80,33 @@ function FinancialAnalysisBase({
   const [activeMetricIndex, setActiveMetricIndex] = useState(0);
   const [viewType, setViewType] = useState('quarterly');
   const inFlightSymbolRef = useRef(null);
+  const fetchAttemptedSymbolRef = useRef(null);
+
+  const hasAnnualData = Boolean(
+    effectiveStatementData?.partialYearReports?.length ||
+      effectiveStatementData?.annualReports?.length
+  );
+  const hasQuarterlyData = Boolean(
+    effectiveStatementData?.quarterlyReports?.length
+  );
+  const needsAnnualData = viewType === 'annual' && !hasAnnualData;
+  const needsQuarterlyData = viewType === 'quarterly' && !hasQuarterlyData;
+  const shouldFetch =
+    !effectiveStatementData || needsAnnualData || needsQuarterlyData;
 
   useEffect(() => {
     if (!symbol) {
       inFlightSymbolRef.current = null;
+      fetchAttemptedSymbolRef.current = null;
       return;
     }
 
-    if (effectiveStatementData) {
+    if (!shouldFetch || loading) {
       inFlightSymbolRef.current = null;
+      return;
+    }
+
+    if (fetchAttemptedSymbolRef.current === symbol) {
       return;
     }
 
@@ -97,6 +115,7 @@ function FinancialAnalysisBase({
       return;
     }
 
+    fetchAttemptedSymbolRef.current = symbol;
     inFlightSymbolRef.current = symbol;
 
     dispatch(fetchDataThunk(symbol)).finally(() => {
@@ -104,7 +123,7 @@ function FinancialAnalysisBase({
         inFlightSymbolRef.current = null;
       }
     });
-  }, [symbol, dispatch, fetchDataThunk, effectiveStatementData]);
+  }, [symbol, dispatch, fetchDataThunk, shouldFetch, loading]);
 
   const activeMetric = metrics[activeMetricIndex];
 
