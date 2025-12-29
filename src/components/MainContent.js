@@ -12,6 +12,19 @@ const MainContent = ({ summary, eventMap }) => {
   const dispatch = useDispatch();
   const symbol = summary?.symbol;
   const logo = useSelector((state) => selectLogoUrlBySymbol(state, symbol));
+  const fundamentalsLoading = useSelector((state) => state.summary.fundamentalsLoading);
+  const peerAvgLoading = useSelector((state) => state.summary.peerAvgLoading);
+  const hasFundamentals = Boolean(
+    summary &&
+      (summary.marketCap != null ||
+        summary.trailingPE != null ||
+        summary.forwardPE != null ||
+        summary.PEG != null ||
+        summary.PGI != null ||
+        summary.beta != null ||
+        summary.dividendYield != null)
+  );
+  const kpiLoading = fundamentalsLoading && !hasFundamentals;
 
   useEffect(() => {
     if (symbol) {
@@ -151,7 +164,7 @@ const MainContent = ({ summary, eventMap }) => {
         />
       </Paper>
       <Paper sx={{ p: 3, mb: 3 }}>
-        <KpiTiles summary={summary} />
+        <KpiTiles summary={summary} isLoading={kpiLoading} peerLoading={peerAvgLoading} />
       </Paper>
       <Paper sx={{ p: 3, mb: 0 }}>
         <TradeHistoryList summary={summary} />

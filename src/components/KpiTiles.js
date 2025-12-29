@@ -1,5 +1,5 @@
 import React from 'react';
-import { Paper, Box, Typography, Tooltip } from '@mui/material';
+import { Paper, Box, Typography, Tooltip, Skeleton } from '@mui/material';
 
 /* colour helper vs. peer avg */
 const deltaColor = (raw, peer, lowerBetter = true) => {
@@ -41,7 +41,7 @@ const formatMarketCap = (n) => {
 };
 
 /* pill component */
-const Pill = ({ label, value, peer, color, tip }) => {
+const Pill = ({ label, value, peer, color, tip, peerLoading = false }) => {
   const body = (
     <Paper
       elevation={0}
@@ -71,11 +71,13 @@ const Pill = ({ label, value, peer, color, tip }) => {
         {value}
       </Typography>
 
-      {peer != null && (
+      {peer != null ? (
         <Typography variant="caption" sx={{ opacity: 0.8 }}>
           Peer Avg&nbsp;{peer}
         </Typography>
-      )}
+      ) : peerLoading ? (
+        <Skeleton variant="text" width={80} height={14} />
+      ) : null}
     </Paper>
   );
 
@@ -88,7 +90,59 @@ const Pill = ({ label, value, peer, color, tip }) => {
   );
 };
 
-const KpiTiles = ({ summary }) => {
+const KpiTiles = ({ summary, isLoading = false, peerLoading = false }) => {
+  if (isLoading) {
+    const tiles = Array.from({ length: 7 });
+    return (
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <Typography
+          variant="subtitle1"
+          sx={{
+            textAlign: 'center',
+            fontWeight: 700,
+            letterSpacing: 0.6,
+            textTransform: 'uppercase',
+            color: 'text.secondary'
+          }}
+        >
+          Fundamental
+        </Typography>
+        <Box
+          sx={{
+            display: 'grid',
+            gap: 3,
+            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))'
+          }}
+        >
+          {tiles.map((_, idx) => (
+            <Paper
+              key={idx}
+              elevation={0}
+              square
+              sx={{
+                p: 2,
+                boxShadow: 'none !important',
+                borderRadius: 3,
+                minHeight: 90,
+                bgcolor: 'rgba(255,255,255,0.04)',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                alignItems: 'center',
+                textAlign: 'center',
+                gap: 1
+              }}
+            >
+              <Skeleton variant="text" width={90} height={16} />
+              <Skeleton variant="text" width={70} height={24} />
+              <Skeleton variant="text" width={80} height={14} />
+            </Paper>
+          ))}
+        </Box>
+      </Box>
+    );
+  }
+
   if (!summary) return null;
 
   const tips = {
@@ -105,45 +159,52 @@ const KpiTiles = ({ summary }) => {
   const tiles = [
     {
       label: 'Market Cap',
-      value: formatMarketCap(summary.marketCap)
+      value: formatMarketCap(summary.marketCap),
+      hasPeer: false
     },
     {
       label: 'Trailing PE',
       raw: summary.trailingPE,
       peer: summary.avg_peer_trailingPE,
-      lowerBetter: true
+      lowerBetter: true,
+      hasPeer: true
     },
     {
       label: 'Forward P/E',
       raw: summary.forwardPE,
       peer: summary.avg_peer_forwardPE,
-      lowerBetter: true
+      lowerBetter: true,
+      hasPeer: true
     },
     /* NEW: PEG ratio */
     {
       label: 'PEG',
       raw: summary.PEG,                 // <- backend-provided
       peer: summary.avg_peer_PEG,       // <- backend-provided
-      lowerBetter: true
+      lowerBetter: true,
+      hasPeer: true
     },
     {
       label: 'PGI',
       raw: summary.PGI,
       peer: summary.avg_peer_PGI,
-      lowerBetter: true
+      lowerBetter: true,
+      hasPeer: true
     },
     {
       label: 'Beta',
       raw: summary.beta,
       peer: summary.avg_peer_beta,
-      lowerBetter: true
+      lowerBetter: true,
+      hasPeer: true
     },
     {
       label: 'Dividend Yield',
       value:
         summary.dividendYield != null && isFinite(summary.dividendYield)
           ? `${summary.dividendYield.toFixed(2)}%`
-          : '-'
+          : '-',
+      hasPeer: false
     }
   ];
 
@@ -176,6 +237,7 @@ const KpiTiles = ({ summary }) => {
             peer={t.peer != null ? f(t.peer) : null}
             color={deltaColor(t.raw, t.peer, t.lowerBetter)}
             tip={tips[t.label]}
+            peerLoading={peerLoading && t.hasPeer}
           />
         ))}
       </Box>

@@ -9,11 +9,52 @@ import {
   TableRow,
   Typography,
   Box,
+  Skeleton,
 } from '@mui/material';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import TrendingDownIcon from '@mui/icons-material/TrendingDown';
 
-const AnnualFinancials = ({ annualReports }) => {
+const AnnualFinancials = ({ annualReports, isLoading = false }) => {
+  if (isLoading) {
+    const rows = Array.from({ length: 5 });
+    const cols = Array.from({ length: 3 });
+    return (
+      <TableContainer
+        component={Paper}
+        sx={{ mt: 2, mb: 0, borderRadius: 2, boxShadow: 3 }}
+      >
+        <Table size="small">
+          <TableHead>
+            <TableRow>
+              <TableCell sx={{ py: 2 }}>
+                <strong>Metric</strong>
+              </TableCell>
+              {cols.map((_, idx) => (
+                <TableCell key={idx} align="center" sx={{ py: 2 }}>
+                  <Skeleton variant="text" width={40} height={18} />
+                </TableCell>
+              ))}
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {rows.map((_, rowIdx) => (
+              <TableRow key={rowIdx}>
+                <TableCell component="th" scope="row" sx={{ py: 2 }}>
+                  <Skeleton variant="text" width={90} height={18} />
+                </TableCell>
+                {cols.map((_, colIdx) => (
+                  <TableCell key={colIdx} align="center" sx={{ py: 2 }}>
+                    <Skeleton variant="text" width={70} height={18} />
+                  </TableCell>
+                ))}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    );
+  }
+
   if (!annualReports || annualReports.length === 0) {
     return <Typography variant="body2">No annual financial data available.</Typography>;
   }

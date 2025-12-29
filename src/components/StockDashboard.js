@@ -1,9 +1,14 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { Grid, Box, Paper, CircularProgress, Typography } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import Sidebar from './SideBar/Sidebar';
 import MainContent from './MainContent';
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
+import {
+  fetchSummaryPeers,
+  fetchSummaryFundamentals,
+  fetchSummaryPeerAverages,
+} from './Redux/summarySlice';
 
 const StockDashboard = () => {
   /* -------------------------------- Redux state ------------------------------- */
@@ -11,7 +16,19 @@ const StockDashboard = () => {
     data: summary,
     loading,
     error,
+    currentSymbol,
   } = useSelector((state) => state.summary);
+  const isPending = summary?.status === 'pending';
+  const dispatch = useDispatch();
+  const activeSymbol = summary?.symbol || currentSymbol;
+
+  useEffect(() => {
+    if (activeSymbol) {
+      dispatch(fetchSummaryPeers(activeSymbol));
+      dispatch(fetchSummaryFundamentals(activeSymbol));
+      dispatch(fetchSummaryPeerAverages(activeSymbol));
+    }
+  }, [dispatch, activeSymbol, summary?.status]);
 
   /* -------------- Build eventMap for StockChart from window_5 data ------------ */
   const eventMap = useMemo(() => {
@@ -95,8 +112,16 @@ const StockDashboard = () => {
         </Grid>
 
         <Grid item xs={12} md={9} sx={{ height: '100%', minHeight: 0 }}>
-          {loading ? (
-            <Box display="flex" justifyContent="center" sx={{ my: 6 }}>
+          {loading && !isPending ? (
+            <Box
+              sx={{
+                height: '100%',
+                minHeight: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
               <CircularProgress size={48} />
             </Box>
           ) : summary ? (
@@ -104,16 +129,29 @@ const StockDashboard = () => {
               <MainContent summary={summary} eventMap={eventMap} />
             </Box>
           ) : (
-            <Paper sx={{ p: 3, textAlign: 'center' }} elevation={1}>
-              <Typography variant="h6" color="textSecondary">
-                Enter a stock symbol to begin analysis.
-              </Typography>
-              {error && (
-                <Typography variant="body2" color="error" sx={{ mt: 1 }}>
-                  {error}
+            <Box
+              sx={{
+                height: '100%',
+                minHeight: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Paper
+                sx={{ p: 3, textAlign: 'center', maxWidth: 560, width: '100%' }}
+                elevation={1}
+              >
+                <Typography variant="h6" color="textSecondary">
+                  Enter a stock symbol to begin analysis.
                 </Typography>
-              )}
-            </Paper>
+                {error && (
+                  <Typography variant="body2" color="error" sx={{ mt: 1 }}>
+                    {error}
+                  </Typography>
+                )}
+              </Paper>
+            </Box>
           )}
         </Grid>
       </Grid>

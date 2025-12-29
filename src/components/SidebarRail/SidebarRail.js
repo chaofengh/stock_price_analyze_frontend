@@ -31,9 +31,6 @@ const SidebarRail = ({ summary, railWidth = 176 }) => {
     ? {
         component: RouterLink,
         to: `/analysis/${analysisSymbol}`,
-        state: summary?.income_statement
-          ? { income_statement: summary.income_statement }
-          : undefined,
       }
     : {};
 

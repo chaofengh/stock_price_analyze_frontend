@@ -151,6 +151,7 @@ function StockChart({ summary, eventMap, onHoverPriceChange }) {
   // ── Zoom / pan events ──────────────────────────────────────────────────
   const handleZoomComplete = useCallback(
     ({ chart }) => {
+      if (!summary?.chart_data?.length) return;
       const xScale = chart.scales.x;
       const minIndex = Math.floor(xScale.min);
       const maxIndex = Math.ceil(xScale.max);
