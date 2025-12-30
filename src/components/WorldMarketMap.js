@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Box, Typography, useTheme } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import { fetchWorldMarketMoves } from '../API/StockService';
@@ -11,11 +11,11 @@ const MARKET_MARKERS = [
   { id: 'CADOW', label: 'CADOW', lat: 30.65, lon: -90.38, offsetX: -42, offsetY: -18 },
   { id: 'DOW', label: 'DOW', lat: 25.71, lon: -84.0, offsetX: 24, offsetY: 10 },
   { id: 'MXDOW', label: 'MXDOW', lat: 12.43, lon: -99.13, offsetX: 10, offsetY: 32 },
-  { id: 'FTSE', label: 'FTSE', lat: 51.5, lon: -0.12, offsetX: 20, offsetY: -26 },
-  { id: 'FRDOW', label: 'FRDOW', lat: 48.86, lon: 2.35, offsetX: 44, offsetY: 8 },
-  { id: 'DEDOW', label: 'DEDOW', lat: 50.11, lon: 8.68, offsetX: 78, offsetY: 6 },
-  { id: 'ESDOW', label: 'ESDOW', lat: 40.42, lon: -3.7, offsetX: 12, offsetY: 36 },
-  { id: 'ITDOW', label: 'ITDOW', lat: 45.46, lon: 9.19, offsetX: 92, offsetY: 34 },
+  { id: 'FTSE', label: 'FTSE', lat: 41.5, lon: -0.12, offsetX: 20, offsetY: -26 },
+  { id: 'FRDOW', label: 'FRDOW', lat: 35.86, lon: -10.35, offsetX: 44, offsetY: 8 },
+  { id: 'DEDOW', label: 'DEDOW', lat: 35.11, lon: 8.68, offsetX: 78, offsetY: 6 },
+  { id: 'ESDOW', label: 'ESDOW', lat: 30.42, lon: -3.7, offsetX: 12, offsetY: 36 },
+  { id: 'ITDOW', label: 'ITDOW', lat: 30.46, lon: 4.19, offsetX: 92, offsetY: 34 },
   { id: 'HKDOW', label: 'HKDOW', lat: 5.32, lon: 114.17, offsetX: -28, offsetY: -18 },
   { id: 'N225', label: 'N225', lat: 12.69, lon: 120.69, offsetX: 42, offsetY: -18 },
   { id: 'SGDOW', label: 'SGDOW', lat: 1.35, lon: 103.82, offsetX: -8, offsetY: 30 },
@@ -58,9 +58,39 @@ const WorldMapImage = () => (
 
 const WorldMarketMap = ({ summaryError }) => {
   const theme = useTheme();
+  const mapContainerRef = useRef(null);
   const [snapshot, setSnapshot] = useState(null);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState(null);
+  const [mapBounds, setMapBounds] = useState({ width: 0, height: 0 });
+
+  useEffect(() => {
+    const node = mapContainerRef.current;
+    if (!node) return undefined;
+
+    const updateBounds = (rect) => {
+      const width = Math.round(rect.width);
+      const height = Math.round(rect.height);
+      setMapBounds((prev) =>
+        prev.width === width && prev.height === height ? prev : { width, height }
+      );
+    };
+
+    updateBounds(node.getBoundingClientRect());
+
+    if (typeof ResizeObserver === 'undefined') {
+      const handleResize = () => updateBounds(node.getBoundingClientRect());
+      window.addEventListener('resize', handleResize);
+      return () => window.removeEventListener('resize', handleResize);
+    }
+
+    const observer = new ResizeObserver((entries) => {
+      if (!entries.length) return;
+      updateBounds(entries[0].contentRect);
+    });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -112,18 +142,32 @@ const WorldMarketMap = ({ summaryError }) => {
     return map;
   }, [snapshot]);
 
-  const projectedMarkers = useMemo(
-    () =>
-      MARKET_MARKERS.map((marker) => {
-        const { x, y } = projectToMap(marker.lon, marker.lat);
-        return {
-          ...marker,
-          left: `${(x / MAP_VIEWBOX.width) * 100}%`,
-          top: `${(y / MAP_VIEWBOX.height) * 100}%`,
-        };
-      }),
-    []
-  );
+  const projectedMarkers = useMemo(() => {
+    const { width, height } = mapBounds;
+    const hasBounds = width > 0 && height > 0;
+    let scale = 1;
+    let offsetX = 0;
+    let offsetY = 0;
+
+    if (hasBounds) {
+      scale = Math.max(width / MAP_VIEWBOX.width, height / MAP_VIEWBOX.height);
+      const renderedWidth = MAP_VIEWBOX.width * scale;
+      const renderedHeight = MAP_VIEWBOX.height * scale;
+      offsetX = (width - renderedWidth) / 2;
+      offsetY = (height - renderedHeight) / 2;
+    }
+
+    return MARKET_MARKERS.map((marker) => {
+      const { x, y } = projectToMap(marker.lon, marker.lat);
+      const left = hasBounds
+        ? `${x * scale + offsetX}px`
+        : `${(x / MAP_VIEWBOX.width) * 100}%`;
+      const top = hasBounds
+        ? `${y * scale + offsetY}px`
+        : `${(y / MAP_VIEWBOX.height) * 100}%`;
+      return { ...marker, left, top };
+    });
+  }, [mapBounds]);
 
   const asOfLabel = useMemo(() => {
     if (!snapshot?.as_of) return 'As of --';
@@ -173,6 +217,7 @@ const WorldMarketMap = ({ summaryError }) => {
           background: 'linear-gradient(180deg, #111722 0%, #0b1018 60%, #0a0f16 100%)',
           boxShadow: 'none',
         }}
+        ref={mapContainerRef}
       >
         <WorldMapImage />
         <Box
