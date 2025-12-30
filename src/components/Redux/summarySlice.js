@@ -100,7 +100,6 @@ export const fetchSummaryFundamentals = createAsyncThunk(
   async (symbol, { dispatch, rejectWithValue }) => {
     try {
       const data = await fetchStockFundamentals(symbol);
-      console.log(data);
       if (data?.status === 'pending') {
         const retryMs = Math.max(500, Number(data?.retry_after_seconds || 1) * 1000);
         setTimeout(() => {

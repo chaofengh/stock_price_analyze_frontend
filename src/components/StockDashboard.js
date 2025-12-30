@@ -35,7 +35,6 @@ const StockDashboard = () => {
     if (!summary) return {};
     const windowData = summary.window_5 || {};
     const map = {};
-    console.log(summary)
 
     const pushEvent = (dateStr, eventObj) => {
       if (!map[dateStr]) map[dateStr] = [];
