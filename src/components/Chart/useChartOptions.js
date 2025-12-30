@@ -7,6 +7,7 @@ const useChartOptions = ({
   handleHover,
   handleZoomComplete,
   tooltipMappingTouch,
+  zoomEnabled = true,
 }) => {
   const theme = useTheme();
 
@@ -55,7 +56,7 @@ const useChartOptions = ({
 
         zoom: {
           zoom: {
-            drag: { enabled: true, backgroundColor: "rgba(0,0,0,0.15)" },
+            drag: { enabled: zoomEnabled, backgroundColor: "rgba(0,0,0,0.15)" },
             mode: "x",
             onZoomComplete: handleZoomComplete,
           },
@@ -72,6 +73,7 @@ const useChartOptions = ({
       handleHover,
       handleZoomComplete,
       tooltipMappingTouch,
+      zoomEnabled,
     ]
   );
 };

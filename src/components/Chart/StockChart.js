@@ -28,6 +28,7 @@ ChartJS.register(
 function StockChart({ summary, eventMap, onHoverPriceChange }) {
   const chartRef = useRef(null);
   const [dragInfo, setDragInfo] = useState(null);
+  const [hasZoomed, setHasZoomed] = useState(false);
 
   // ── Data prep ───────────────────────────────────────────────────────────
   const eventTypeMappingTouch = useTouchEventTypes(summary, formatDate);
@@ -102,10 +103,6 @@ function StockChart({ summary, eventMap, onHoverPriceChange }) {
       backgroundColor: "rgba(20,133,203,0.2)",
       yAxisID: "y",
       order: 1,
-      animations: {
-        x: { duration: 50, easing: "easeOutQuad" },
-        y: { duration: 50, easing: "easeOutQuad" },
-      },
     };
 
     setChartData({
@@ -157,6 +154,15 @@ function StockChart({ summary, eventMap, onHoverPriceChange }) {
       const maxIndex = Math.ceil(xScale.max);
       const clampedMin = Math.max(0, minIndex);
       const clampedMax = Math.min(summary.chart_data.length - 1, maxIndex);
+      const fullRange = summary.chart_data.length - 1;
+      const isZoomed = clampedMax - clampedMin < fullRange;
+      if (!isZoomed) {
+        setDragInfo(null);
+        setHasZoomed(false);
+        return;
+      }
+
+      setHasZoomed(true);
       const points = summary.chart_data.slice(clampedMin, clampedMax + 1);
       if (points.length < 2) return;
 
@@ -183,6 +189,7 @@ function StockChart({ summary, eventMap, onHoverPriceChange }) {
   const handleResetZoom = useCallback(() => {
     chartRef.current?.resetZoom();
     setDragInfo(null);
+    setHasZoomed(false);
   }, []);
 
   const chartOptions = useChartOptions({
@@ -190,6 +197,7 @@ function StockChart({ summary, eventMap, onHoverPriceChange }) {
     handleHover,
     handleZoomComplete,
     tooltipMappingTouch, // still needed by TooltipHandler for rows
+    zoomEnabled: !hasZoomed,
   });
 
   return (
