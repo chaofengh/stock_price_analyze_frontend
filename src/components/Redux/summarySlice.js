@@ -100,11 +100,9 @@ export const fetchSummaryFundamentals = createAsyncThunk(
   async (symbol, { dispatch, rejectWithValue }) => {
     try {
       const data = await fetchStockFundamentals(symbol);
-      if (data?.status === 'pending') {
-        const retryMs = Math.max(500, Number(data?.retry_after_seconds || 1) * 1000);
-        setTimeout(() => {
-          dispatch(fetchSummaryFundamentals(symbol));
-        }, retryMs);
+      console.log(data);
+      if (data?.status !== 'pending') {
+        dispatch(fetchSummaryPeerAverages(symbol));
       }
       return data;
     } catch (err) {
@@ -143,12 +141,6 @@ export const fetchSummaryPeerAverages = createAsyncThunk(
   async (symbol, { dispatch, rejectWithValue }) => {
     try {
       const data = await fetchStockPeerAverages(symbol);
-      if (data?.status === 'pending') {
-        const retryMs = Math.max(500, Number(data?.retry_after_seconds || 1) * 1000);
-        setTimeout(() => {
-          dispatch(fetchSummaryPeerAverages(symbol));
-        }, retryMs);
-      }
       return data;
     } catch (err) {
       return rejectWithValue(err.message);

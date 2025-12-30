@@ -64,18 +64,34 @@ const WorldMarketMap = ({ summaryError }) => {
 
   useEffect(() => {
     let isMounted = true;
+    let retryTimeout;
 
     const loadSnapshot = async () => {
+      let pending = false;
       try {
         const payload = await fetchWorldMarketMoves();
         if (!isMounted) return;
+        pending = payload?.status === 'pending';
+        if (pending) {
+          const retryMs = Math.max(
+            500,
+            Number(payload?.retry_after_seconds || 1) * 1000
+          );
+          setFetchError(null);
+          setLoading(true);
+          clearTimeout(retryTimeout);
+          retryTimeout = setTimeout(() => {
+            if (isMounted) loadSnapshot();
+          }, retryMs);
+          return;
+        }
         setSnapshot(payload);
         setFetchError(null);
       } catch (error) {
         if (!isMounted) return;
         setFetchError(error?.message || 'Market data unavailable');
       } finally {
-        if (isMounted) setLoading(false);
+        if (isMounted && !pending) setLoading(false);
       }
     };
 
@@ -84,6 +100,7 @@ const WorldMarketMap = ({ summaryError }) => {
     return () => {
       isMounted = false;
       clearInterval(interval);
+      clearTimeout(retryTimeout);
     };
   }, []);
 

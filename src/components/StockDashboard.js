@@ -8,7 +8,6 @@ import { useDispatch, useSelector } from 'react-redux';
 import {
   fetchSummaryPeers,
   fetchSummaryFundamentals,
-  fetchSummaryPeerAverages,
 } from './Redux/summarySlice';
 
 const StockDashboard = () => {
@@ -28,15 +27,15 @@ const StockDashboard = () => {
     if (activeSymbol) {
       dispatch(fetchSummaryPeers(activeSymbol));
       dispatch(fetchSummaryFundamentals(activeSymbol));
-      dispatch(fetchSummaryPeerAverages(activeSymbol));
     }
-  }, [dispatch, activeSymbol, summary?.status, summary?.symbol]);
+  }, [dispatch, activeSymbol]);
 
   /* -------------- Build eventMap for StockChart from window_5 data ------------ */
   const eventMap = useMemo(() => {
     if (!summary) return {};
     const windowData = summary.window_5 || {};
     const map = {};
+    console.log(summary)
 
     const pushEvent = (dateStr, eventObj) => {
       if (!map[dateStr]) map[dateStr] = [];

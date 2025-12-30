@@ -40,6 +40,7 @@ const formatMarketCap = (n) => {
   return `$${Math.round(n).toLocaleString()}`;
 };
 
+
 /* pill component */
 const Pill = ({ label, value, peer, color, tip, peerLoading = false }) => {
   const body = (
