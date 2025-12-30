@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo } from 'react';
-import { Grid, Box, Paper, CircularProgress, Typography } from '@mui/material';
+import { Grid, Box, CircularProgress } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import Sidebar from './SideBar/Sidebar';
 import MainContent from './MainContent';
+import WorldMarketMap from './WorldMarketMap';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   fetchSummaryPeers,
@@ -102,9 +103,14 @@ const StockDashboard = () => {
     <Box sx={{ height: '100%' }}>
       <Grid
         container
-        columnSpacing={3}
-        rowSpacing={{ xs: 3, md: 0 }}
-        sx={{ height: '100%', alignItems: 'stretch' }}
+        columnSpacing={hasSummary ? 3 : 0}
+        rowSpacing={{ xs: hasSummary ? 3 : 0, md: 0 }}
+        sx={{
+          height: '100%',
+          alignItems: 'stretch',
+          pl: hasSummary ? 3 : 0,
+          pr: hasSummary ? 3 : 0,
+        }}
       >
         {hasSummary && (
           <Grid item xs={12} md={3} sx={{ height: '100%', minHeight: 0 }}>
@@ -141,19 +147,7 @@ const StockDashboard = () => {
                 justifyContent: 'center',
               }}
             >
-              <Paper
-                sx={{ p: 3, textAlign: 'center', maxWidth: 560, width: '100%' }}
-                elevation={1}
-              >
-                <Typography variant="h6" color="textSecondary">
-                  Enter a stock symbol to begin analysis.
-                </Typography>
-                {error && (
-                  <Typography variant="body2" color="error" sx={{ mt: 1 }}>
-                    {error}
-                  </Typography>
-                )}
-              </Paper>
+              <WorldMarketMap summaryError={error} />
             </Box>
           )}
         </Grid>

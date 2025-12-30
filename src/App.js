@@ -32,7 +32,7 @@ import TickerList from './components/SidebarRail/TickerList';
 import News from './components/SidebarRail/News';
 import SymbolSearch from './components/SymbolSearch';
 
-import { fetchSummary } from './components/Redux/summarySlice';
+import { fetchSummary, clearSummary } from './components/Redux/summarySlice';
 import theme from './theme';
 
 function AppShell() {
@@ -61,6 +61,16 @@ function AppShell() {
     if (summary?.symbol === normalized) return;
     dispatch(fetchSummary(normalized));
   }, [dispatch, location.search, summary?.symbol]);
+
+  useEffect(() => {
+    if (!isDashboardRoute) return;
+    const searchParams = new URLSearchParams(location.search);
+    const rawSymbol = searchParams.get('symbol');
+    if (rawSymbol) return;
+    if (summary) {
+      dispatch(clearSummary());
+    }
+  }, [dispatch, isDashboardRoute, location.search, summary]);
 
   /* ───────── Gradient text style for the title ───────── */
   const gradientTitleStyle = {
@@ -216,7 +226,7 @@ function AppShell() {
                 height: '100%',
                 minHeight: 0,
                 py: isDashboardRoute ? 0 : { xs: 2, md: 3 },
-                px: { xs: 2, md: 3 },
+                px: isDashboardRoute ? 0 : { xs: 2, md: 3 },
                 overflow: isDashboardRoute ? 'hidden' : 'auto',
                 scrollbarWidth: 'thin',
                 scrollbarColor: `${alpha(theme.palette.primary.main, 0.5)} ${alpha(

@@ -64,3 +64,11 @@ export async function fetchIncomeStatementData(symbol) {
   }
   return response.json();
 }
+
+export async function fetchWorldMarketMoves() {
+  const response = await fetch(`${stock_summary_api_key}/world-markets`);
+  if (!response.ok) {
+    throw new Error(`Server error: ${response.statusText}`);
+  }
+  return response.json();
+}
