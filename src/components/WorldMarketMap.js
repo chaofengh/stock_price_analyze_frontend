@@ -8,7 +8,7 @@ const MAP_VIEWBOX = { width: 1536, height: 1024 };
 const MAP_PADDING = { x: 0, y: 0 };
 
 const MARKET_MARKERS = [
-  { id: 'CADOW', label: 'CADOW', lat: 43.65, lon: -79.38, offsetX: -42, offsetY: -18 },
+  { id: 'CADOW', label: 'CADOW', lat: 30.65, lon: -90.38, offsetX: -42, offsetY: -18 },
   { id: 'DOW', label: 'DOW', lat: 25.71, lon: -84.0, offsetX: 24, offsetY: 10 },
   { id: 'MXDOW', label: 'MXDOW', lat: 12.43, lon: -99.13, offsetX: 10, offsetY: 32 },
   { id: 'FTSE', label: 'FTSE', lat: 51.5, lon: -0.12, offsetX: 20, offsetY: -26 },
