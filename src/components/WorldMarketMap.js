@@ -99,7 +99,7 @@ const WorldMarketMap = ({ summaryError }) => {
     const loadSnapshot = async () => {
       let pending = false;
       try {
-        const payload = await fetchWorldMarketMoves();
+        const payload = await fetchWorldMarketMoves({ refresh: true });
         if (!isMounted) return;
         pending = payload?.status === 'pending';
         if (pending) {

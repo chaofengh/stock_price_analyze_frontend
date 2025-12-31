@@ -65,8 +65,14 @@ export async function fetchIncomeStatementData(symbol) {
   return response.json();
 }
 
-export async function fetchWorldMarketMoves() {
-  const response = await fetch(`${stock_summary_api_key}/world-markets`);
+export async function fetchWorldMarketMoves({ refresh = true } = {}) {
+  const endpoint = refresh
+    ? `${stock_summary_api_key}/world-markets?refresh=1`
+    : `${stock_summary_api_key}/world-markets`;
+  const response = await fetch(endpoint, {
+    cache: 'no-store',
+    headers: { 'Cache-Control': 'no-cache' },
+  });
   if (!response.ok) {
     throw new Error(`Server error: ${response.statusText}`);
   }
