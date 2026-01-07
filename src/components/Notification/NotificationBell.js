@@ -7,8 +7,7 @@ import {
 import { Notifications } from '@mui/icons-material';
 import { AlertsContext } from './AlertContext';
 import { useTheme } from '@mui/system';
-import { useDispatch } from 'react-redux';
-import { fetchSummary } from '../Redux/summarySlice';
+import { useNavigate } from 'react-router-dom';
 import GroupedAlerts from './GroupedAlerts';
 
 const Transition = React.forwardRef(function Transition(props, ref) {
@@ -21,7 +20,7 @@ const NotificationBell = () => {
   const [sortOption, setSortOption] = useState('symbol');
   const theme = useTheme();
   const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const alertCount = alerts.length;
 
@@ -38,7 +37,12 @@ const NotificationBell = () => {
   const handleOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
   const handleMarkAsRead = () => { clearAlerts(); handleClose(); };
-  const handleViewDetailsAndClose = (symbol) => { dispatch(fetchSummary(symbol)); handleClose(); };
+  const handleViewDetailsAndClose = (symbol) => {
+    const normalized = symbol?.trim().toUpperCase();
+    if (!normalized) return;
+    navigate(`/?symbol=${encodeURIComponent(normalized)}`);
+    handleClose();
+  };
 
   return (
     <>

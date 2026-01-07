@@ -252,6 +252,31 @@ const summarySlice = createSlice({
         if (existing.dividendYield != null) extra.dividendYield = existing.dividendYield;
         if (existing.beta != null) extra.beta = existing.beta;
         if (existing.marketCap != null) extra.marketCap = existing.marketCap;
+        if (existing.revenuePerEmployee != null) extra.revenuePerEmployee = existing.revenuePerEmployee;
+        if (existing.grossProfitPerEmployee != null) {
+          extra.grossProfitPerEmployee = existing.grossProfitPerEmployee;
+        }
+        if (existing.operatingIncomePerEmployee != null) {
+          extra.operatingIncomePerEmployee = existing.operatingIncomePerEmployee;
+        }
+        if (existing.sgaPerEmployee != null) extra.sgaPerEmployee = existing.sgaPerEmployee;
+        if (existing.salesPerSalesperson != null) {
+          extra.salesPerSalesperson = existing.salesPerSalesperson;
+        }
+        if (existing.roic != null) extra.roic = existing.roic;
+        if (existing.roa != null) extra.roa = existing.roa;
+        if (existing.assetTurnover != null) extra.assetTurnover = existing.assetTurnover;
+        if (existing.capexIntensity != null) extra.capexIntensity = existing.capexIntensity;
+        if (existing.freeCashFlowMargin != null) {
+          extra.freeCashFlowMargin = existing.freeCashFlowMargin;
+        }
+        if (existing.grossMargin != null) extra.grossMargin = existing.grossMargin;
+        if (existing.operatingMargin != null) extra.operatingMargin = existing.operatingMargin;
+        if (existing.sgaPercentRevenue != null) {
+          extra.sgaPercentRevenue = existing.sgaPercentRevenue;
+        }
+        if (existing.rdPercentRevenue != null) extra.rdPercentRevenue = existing.rdPercentRevenue;
+        if (existing.metricTrends != null) extra.metricTrends = existing.metricTrends;
         if (existing.avg_peer_trailingPE != null) {
           extra.avg_peer_trailingPE = existing.avg_peer_trailingPE;
         }

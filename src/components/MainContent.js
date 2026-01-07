@@ -22,7 +22,21 @@ const MainContent = ({ summary, eventMap }) => {
         summary.PEG != null ||
         summary.PGI != null ||
         summary.beta != null ||
-        summary.dividendYield != null)
+        summary.dividendYield != null ||
+        summary.revenuePerEmployee != null ||
+        summary.grossProfitPerEmployee != null ||
+        summary.operatingIncomePerEmployee != null ||
+        summary.sgaPerEmployee != null ||
+        summary.salesPerSalesperson != null ||
+        summary.roic != null ||
+        summary.roa != null ||
+        summary.assetTurnover != null ||
+        summary.capexIntensity != null ||
+        summary.freeCashFlowMargin != null ||
+        summary.grossMargin != null ||
+        summary.operatingMargin != null ||
+        summary.sgaPercentRevenue != null ||
+        summary.rdPercentRevenue != null)
   );
   const kpiLoading = fundamentalsLoading && !hasFundamentals;
 
