@@ -1,13 +1,22 @@
-'StockService.js'
 const stock_summary_api_key = process.env.REACT_APP_summary_root_api;
 
 export async function fetchStockSummary(symbol) {
-    const response = await fetch(`${stock_summary_api_key}/summary?symbol=${symbol}`);
-    if (!response.ok) {
-      throw new Error(`Server error: ${response.statusText}`);
+  const response = await fetch(
+    `${stock_summary_api_key}/summary?symbol=${symbol}`,
+    { cache: 'no-store' }
+  );
+  if (!response.ok) {
+    let message = response.statusText || response.status;
+    try {
+      const errorBody = await response.json();
+      message = errorBody?.error || message;
+    } catch {
+      // keep statusText fallback
     }
-    return response.json();
+    throw new Error(`Server error: ${message}`);
   }
+  return response.json();
+}
 
 export async function fetchStockOverview(symbol) {
   const response = await fetch(`${stock_summary_api_key}/summary/overview?symbol=${symbol}`);

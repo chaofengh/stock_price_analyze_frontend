@@ -18,10 +18,10 @@ const StockDashboard = () => {
     error,
     currentSymbol,
   } = useSelector((state) => state.summary);
-  const isPending = summary?.status === 'pending';
   const dispatch = useDispatch();
   const activeSymbol = summary?.symbol || currentSymbol;
-  const hasSummary = Boolean(summary);
+  const hasSymbol = Boolean(activeSymbol);
+  const showLoading = loading && !error;
 
   useEffect(() => {
     if (activeSymbol) {
@@ -101,16 +101,16 @@ const StockDashboard = () => {
     <Box sx={{ height: '100%' }}>
       <Grid
         container
-        columnSpacing={hasSummary ? 3 : 0}
-        rowSpacing={{ xs: hasSummary ? 3 : 0, md: 0 }}
+        columnSpacing={hasSymbol ? 3 : 0}
+        rowSpacing={{ xs: hasSymbol ? 3 : 0, md: 0 }}
         sx={{
           height: '100%',
           alignItems: 'stretch',
-          pl: hasSummary ? 3 : 0,
-          pr: hasSummary ? 3 : 0,
+          pl: hasSymbol ? 3 : 0,
+          pr: hasSymbol ? 3 : 0,
         }}
       >
-        {hasSummary && (
+        {hasSymbol && (
           <Grid item xs={12} md={3} sx={{ height: '100%', minHeight: 0 }}>
             <Box sx={scrollPanelSx}>
               <Sidebar summary={summary} error={error} />
@@ -118,8 +118,8 @@ const StockDashboard = () => {
           </Grid>
         )}
 
-        <Grid item xs={12} md={hasSummary ? 9 : 12} sx={{ height: '100%', minHeight: 0 }}>
-          {loading && !isPending ? (
+        <Grid item xs={12} md={hasSymbol ? 9 : 12} sx={{ height: '100%', minHeight: 0 }}>
+          {showLoading ? (
             <Box
               sx={{
                 height: '100%',

@@ -109,6 +109,10 @@ const financialsSlice = createSlice({
       .addCase(fetchIncomeStatement.rejected, (state, action) => {
         state.loadingIncomeStatement = false;
         state.errorIncomeStatement = action.payload;
+        state.incomeStatement = {
+          annualReports: [],
+          symbol: action.meta.arg,
+        };
       });
   },
 });

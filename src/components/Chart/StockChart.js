@@ -1,6 +1,6 @@
 // StockChart.js
 import React, { useCallback, useState, useRef, useEffect, useMemo } from "react";
-import { Box } from "@mui/material";
+import { Box, Typography, ToggleButton, ToggleButtonGroup } from "@mui/material";
 import { Line } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -19,6 +19,15 @@ import PriceChangeInfo from "./PriceChangeInfo";
 import useChartOptions from "./useChartOptions";
 import { formatDate } from "../../utils/formatDate";
 
+const EMPTY_POINTS = [];
+
+const parseTimestamp = (value) => {
+  if (!value) return null;
+  if (value instanceof Date) return value.getTime();
+  const parsed = Date.parse(value);
+  return Number.isNaN(parsed) ? null : parsed;
+};
+
 ChartJS.register(
   CategoryScale, LinearScale, PointElement, LineElement,
   Title, ChartTooltip, Legend, annotationPlugin, zoomPlugin,
@@ -29,6 +38,58 @@ function StockChart({ summary, eventMap, onHoverPriceChange }) {
   const chartRef = useRef(null);
   const [dragInfo, setDragInfo] = useState(null);
   const [hasZoomed, setHasZoomed] = useState(false);
+  const [range, setRange] = useState("3M");
+
+  const chartPoints = useMemo(
+    () => summary?.chart_data ?? EMPTY_POINTS,
+    [summary?.chart_data]
+  );
+
+  useEffect(() => {
+    setRange("3M");
+  }, [summary?.symbol]);
+
+  const latestTimestamp = useMemo(() => {
+    if (!chartPoints.length) return null;
+    return parseTimestamp(chartPoints[chartPoints.length - 1].date);
+  }, [chartPoints]);
+
+  const rangeStartTimestamp = useMemo(() => {
+    if (latestTimestamp == null) return null;
+    if (range === "YTD") {
+      const latest = new Date(latestTimestamp);
+      return new Date(latest.getFullYear(), 0, 1).getTime();
+    }
+    const start = new Date(latestTimestamp);
+    if (range === "1M") {
+      start.setMonth(start.getMonth() - 1);
+    } else if (range === "3M") {
+      start.setMonth(start.getMonth() - 3);
+    } else if (range === "1Y") {
+      start.setFullYear(start.getFullYear() - 1);
+    }
+    return start.getTime();
+  }, [latestTimestamp, range]);
+
+  const filteredPoints = useMemo(() => {
+    if (!chartPoints.length) return chartPoints;
+    if (rangeStartTimestamp == null) return chartPoints;
+    const filtered = chartPoints.filter((pt) => {
+      const ts = parseTimestamp(pt.date);
+      return ts == null ? true : ts >= rangeStartTimestamp;
+    });
+    return filtered.length ? filtered : chartPoints;
+  }, [chartPoints, rangeStartTimestamp]);
+
+  const rangeChange = useMemo(() => {
+    if (filteredPoints.length < 2) return null;
+    const firstPrice = filteredPoints[0].close;
+    const lastPrice = filteredPoints[filteredPoints.length - 1].close;
+    if (firstPrice == null || lastPrice == null || firstPrice === 0) return null;
+    const diff = lastPrice - firstPrice;
+    const pct = (diff / firstPrice) * 100;
+    return { diff, pct };
+  }, [filteredPoints]);
 
   // ── Data prep ───────────────────────────────────────────────────────────
   const eventTypeMappingTouch = useTouchEventTypes(summary, formatDate);
@@ -54,15 +115,21 @@ function StockChart({ summary, eventMap, onHoverPriceChange }) {
     return out;
   }, [tooltipMappingTouch]);
 
-  const baseChartData = useChartData(summary, eventTypeMappingTouch, pnlStatusByDate);
+  const chartSummary = useMemo(() => {
+    if (!summary) return summary;
+    if (filteredPoints === summary.chart_data) return summary;
+    return { ...summary, chart_data: filteredPoints };
+  }, [summary, filteredPoints]);
+
+  const baseChartData = useChartData(chartSummary, eventTypeMappingTouch, pnlStatusByDate);
 
   const upperBand = useMemo(
-    () => summary?.chart_data?.map((pt) => pt.upper ?? null) || [],
-    [summary]
+    () => filteredPoints.map((pt) => pt.upper ?? null),
+    [filteredPoints]
   );
   const lowerBand = useMemo(
-    () => summary?.chart_data?.map((pt) => pt.lower ?? null) || [],
-    [summary]
+    () => filteredPoints.map((pt) => pt.lower ?? null),
+    [filteredPoints]
   );
 
   const [chartData, setChartData] = useState({ labels: [], datasets: [] });
@@ -116,7 +183,7 @@ function StockChart({ summary, eventMap, onHoverPriceChange }) {
 
   const handleHover = useCallback(
     (event, chartElements, chart) => {
-      if (!summary?.chart_data) return;
+      if (!filteredPoints.length) return;
 
       if (event.type === "mouseout" || !chartElements.length) {
         if (chart.$currentHoverIndex != null) {
@@ -131,7 +198,7 @@ function StockChart({ summary, eventMap, onHoverPriceChange }) {
       if (newIndex === chart.$currentHoverIndex) return;
 
       chart.$currentHoverIndex = newIndex;
-      const pt = summary.chart_data[newIndex];
+      const pt = filteredPoints[newIndex];
 
       onHoverPriceChange?.({
         date: pt.date,
@@ -142,19 +209,19 @@ function StockChart({ summary, eventMap, onHoverPriceChange }) {
 
       chart.draw();
     },
-    [summary, onHoverPriceChange]
+    [filteredPoints, onHoverPriceChange]
   );
 
   // ── Zoom / pan events ──────────────────────────────────────────────────
   const handleZoomComplete = useCallback(
     ({ chart }) => {
-      if (!summary?.chart_data?.length) return;
+      if (!filteredPoints.length) return;
       const xScale = chart.scales.x;
       const minIndex = Math.floor(xScale.min);
       const maxIndex = Math.ceil(xScale.max);
       const clampedMin = Math.max(0, minIndex);
-      const clampedMax = Math.min(summary.chart_data.length - 1, maxIndex);
-      const fullRange = summary.chart_data.length - 1;
+      const clampedMax = Math.min(filteredPoints.length - 1, maxIndex);
+      const fullRange = filteredPoints.length - 1;
       const isZoomed = clampedMax - clampedMin < fullRange;
       if (!isZoomed) {
         setDragInfo(null);
@@ -163,7 +230,7 @@ function StockChart({ summary, eventMap, onHoverPriceChange }) {
       }
 
       setHasZoomed(true);
-      const points = summary.chart_data.slice(clampedMin, clampedMax + 1);
+      const points = filteredPoints.slice(clampedMin, clampedMax + 1);
       if (points.length < 2) return;
 
       const firstPrice = points[0].close;
@@ -183,7 +250,7 @@ function StockChart({ summary, eventMap, onHoverPriceChange }) {
         duration: durationDays,
       });
     },
-    [summary]
+    [filteredPoints]
   );
 
   const handleResetZoom = useCallback(() => {
@@ -191,6 +258,12 @@ function StockChart({ summary, eventMap, onHoverPriceChange }) {
     setDragInfo(null);
     setHasZoomed(false);
   }, []);
+
+  useEffect(() => {
+    chartRef.current?.resetZoom();
+    setDragInfo(null);
+    setHasZoomed(false);
+  }, [range, filteredPoints.length]);
 
   const chartOptions = useChartOptions({
     externalTooltipHandler,
@@ -200,8 +273,62 @@ function StockChart({ summary, eventMap, onHoverPriceChange }) {
     zoomEnabled: !hasZoomed,
   });
 
+  const formattedRangePct = rangeChange
+    ? `${rangeChange.pct >= 0 ? "+" : ""}${rangeChange.pct.toFixed(2)}%`
+    : "—";
+  const rangeColor = rangeChange
+    ? rangeChange.pct >= 0
+      ? "success.main"
+      : "error.main"
+    : "text.secondary";
+
   return (
     <Box sx={{ height: 450, mb: 3, position: "relative" }}>
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          flexWrap: "wrap",
+          gap: 1.5,
+          mb: 1,
+        }}
+      >
+        <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+          Price Movement
+        </Typography>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, flexWrap: "wrap" }}>
+          <Typography variant="body2" sx={{ fontWeight: 700, color: rangeColor }}>
+            {formattedRangePct}
+          </Typography>
+          <ToggleButtonGroup
+            value={range}
+            exclusive
+            onChange={(_, value) => value && setRange(value)}
+            size="small"
+            sx={{
+              background: "rgba(255,255,255,0.06)",
+              borderRadius: 2,
+              "& .MuiToggleButton-root": {
+                py: 0,
+                px: 1,
+                fontSize: 12,
+                minWidth: 44,
+                color: "text.secondary",
+                "&.Mui-selected": {
+                  color: "primary.main",
+                  backgroundColor: "rgba(0,123,255,0.15)",
+                },
+              },
+            }}
+          >
+            <ToggleButton value="1M">1M</ToggleButton>
+            <ToggleButton value="3M">3M</ToggleButton>
+            <ToggleButton value="YTD">YTD</ToggleButton>
+            <ToggleButton value="1Y">1Y</ToggleButton>
+          </ToggleButtonGroup>
+        </Box>
+      </Box>
       <PriceChangeInfo dragInfo={dragInfo} onResetZoom={handleResetZoom} />
       <Line ref={chartRef} data={chartData} options={chartOptions} />
     </Box>

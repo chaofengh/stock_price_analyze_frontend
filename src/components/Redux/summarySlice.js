@@ -10,40 +10,38 @@ import {
 const normalizeSymbol = (symbol) =>
   typeof symbol === 'string' ? symbol.trim().toUpperCase() : '';
 
+const getSymbolArg = (arg) =>
+  typeof arg === 'string' ? arg : arg?.symbol;
+
 // Thunk to fetch summary data
 export const fetchSummary = createAsyncThunk(
   'summary/fetchSummary',
-  async (symbol, { dispatch, rejectWithValue }) => {
+  async (arg, { rejectWithValue }) => {
+    const normalizedSymbol = normalizeSymbol(getSymbolArg(arg));
+    if (!normalizedSymbol) {
+      return rejectWithValue('Missing symbol');
+    }
     try {
-      const data = await fetchStockSummary(symbol);
-      if (data?.status === 'pending') {
-        const retryMs = Math.max(500, Number(data?.retry_after_seconds || 1) * 1000);
-        setTimeout(() => {
-          dispatch(fetchSummary(symbol));
-        }, retryMs);
-      }
-      return data;
+      return await fetchStockSummary(normalizedSymbol);
     } catch (err) {
-      // If using server errors, adapt as needed:
-      // return rejectWithValue(err.response.data);
-      return rejectWithValue(err.message);
+      const message = err?.message || 'Server error';
+      return rejectWithValue(message);
     }
   },
   {
-    condition: (symbol, { getState }) => {
-      const normalized = normalizeSymbol(symbol);
+    condition: (arg, { getState }) => {
+      const normalized = normalizeSymbol(getSymbolArg(arg));
       if (!normalized) return false;
 
       const { summary } = getState();
       const currentSymbol = normalizeSymbol(summary?.currentSymbol);
       const loadedSymbol = normalizeSymbol(summary?.data?.symbol);
-      const isPending = summary?.data?.status === 'pending';
 
-      if (summary?.loading && currentSymbol === normalized && !isPending) {
+      if (summary?.loading && currentSymbol === normalized) {
         return false;
       }
 
-      if (loadedSymbol === normalized && !isPending) {
+      if (loadedSymbol === normalized && !summary?.error) {
         return false;
       }
 
@@ -54,16 +52,9 @@ export const fetchSummary = createAsyncThunk(
 
 export const fetchSummaryPeers = createAsyncThunk(
   'summary/fetchSummaryPeers',
-  async (symbol, { dispatch, rejectWithValue }) => {
+  async (symbol, { rejectWithValue }) => {
     try {
-      const data = await fetchStockPeers(symbol);
-      if (data?.status === 'pending') {
-        const retryMs = Math.max(500, Number(data?.retry_after_seconds || 1) * 1000);
-        setTimeout(() => {
-          dispatch(fetchSummaryPeers(symbol));
-        }, retryMs);
-      }
-      return data;
+      return await fetchStockPeers(symbol);
     } catch (err) {
       return rejectWithValue(err.message);
     }
@@ -100,13 +91,6 @@ export const fetchSummaryFundamentals = createAsyncThunk(
   async (symbol, { dispatch, rejectWithValue }) => {
     try {
       const data = await fetchStockFundamentals(symbol);
-      if (data?.status === 'pending') {
-        const retryMs = Math.max(500, Number(data?.retry_after_seconds || 1) * 1000);
-        setTimeout(() => {
-          dispatch(fetchSummaryFundamentals(symbol));
-        }, retryMs);
-        return data;
-      }
       dispatch(fetchSummaryPeerAverages(symbol));
       return data;
     } catch (err) {
@@ -142,16 +126,9 @@ export const fetchSummaryFundamentals = createAsyncThunk(
 
 export const fetchSummaryPeerAverages = createAsyncThunk(
   'summary/fetchSummaryPeerAverages',
-  async (symbol, { dispatch, rejectWithValue }) => {
+  async (symbol, { rejectWithValue }) => {
     try {
-      const data = await fetchStockPeerAverages(symbol);
-      if (data?.status === 'pending') {
-        const retryMs = Math.max(500, Number(data?.retry_after_seconds || 1) * 1000);
-        setTimeout(() => {
-          dispatch(fetchSummaryPeerAverages(symbol));
-        }, retryMs);
-      }
-      return data;
+      return await fetchStockPeerAverages(symbol);
     } catch (err) {
       return rejectWithValue(err.message);
     }
@@ -219,14 +196,14 @@ const summarySlice = createSlice({
   extraReducers: (builder) => {
     builder
       .addCase(fetchSummary.pending, (state, action) => {
-        const normalized = normalizeSymbol(action.meta.arg);
+        const normalized = normalizeSymbol(getSymbolArg(action.meta.arg));
         const existingSymbol = normalizeSymbol(state.data?.symbol);
         const isSameSymbol = normalized && existingSymbol && normalized === existingSymbol;
         state.loading = true;
         state.error = null;
         state.currentSymbol = normalized || null;
         if (!isSameSymbol) {
-          state.data = normalized ? { symbol: normalized, status: 'pending' } : null;
+          state.data = normalized ? { symbol: normalized } : null;
           state.peerLoading = false;
           state.peerError = null;
           state.peerSymbol = null;
@@ -239,7 +216,8 @@ const summarySlice = createSlice({
         }
       })
       .addCase(fetchSummary.fulfilled, (state, action) => {
-        const incomingSymbol = normalizeSymbol(action.payload?.symbol || action.meta.arg);
+        const incomingArgSymbol = normalizeSymbol(getSymbolArg(action.meta.arg));
+        const incomingSymbol = normalizeSymbol(action.payload?.symbol || incomingArgSymbol);
         const existingSymbol = normalizeSymbol(state.data?.symbol);
         const sameSymbol = incomingSymbol && existingSymbol && incomingSymbol === existingSymbol;
         const existing = sameSymbol ? state.data || {} : {};
@@ -287,20 +265,20 @@ const summarySlice = createSlice({
         if (existing.avg_peer_PGI != null) extra.avg_peer_PGI = existing.avg_peer_PGI;
         if (existing.avg_peer_beta != null) extra.avg_peer_beta = existing.avg_peer_beta;
 
-        if (action.payload?.status === 'pending') {
-          state.loading = true;
-          state.data = { ...action.payload, ...extra };
-          state.currentSymbol = null;
-        } else {
-          state.loading = false;
-          state.data = { ...action.payload, ...extra };
-          state.currentSymbol = null;
-        }
+        state.loading = false;
+        state.data = { ...action.payload, ...extra };
+        state.currentSymbol = null;
       })
       .addCase(fetchSummary.rejected, (state, action) => {
+        const incomingSymbol = normalizeSymbol(getSymbolArg(action.meta?.arg));
+        const dataSymbol = normalizeSymbol(state.data?.symbol);
+        const hasChartData = Array.isArray(state.data?.chart_data) && state.data.chart_data.length > 0;
         state.loading = false;
         state.error = action.payload; // or some error message
         state.currentSymbol = null;
+        if (!hasChartData || dataSymbol !== incomingSymbol) {
+          state.data = incomingSymbol ? { symbol: incomingSymbol } : null;
+        }
         state.peerLoading = false;
         state.peerError = null;
         state.peerSymbol = null;
@@ -316,11 +294,6 @@ const summarySlice = createSlice({
         state.peerError = null;
       })
       .addCase(fetchSummaryPeers.fulfilled, (state, action) => {
-        if (action.payload?.status === 'pending') {
-          state.peerLoading = true;
-          state.peerError = null;
-          return;
-        }
         state.peerLoading = false;
         state.peerError = null;
         state.peerSymbol = normalizeSymbol(action.meta.arg) || null;
@@ -338,11 +311,6 @@ const summarySlice = createSlice({
         state.fundamentalsError = null;
       })
       .addCase(fetchSummaryFundamentals.fulfilled, (state, action) => {
-        if (action.payload?.status === 'pending') {
-          state.fundamentalsLoading = true;
-          state.fundamentalsError = null;
-          return;
-        }
         state.fundamentalsLoading = false;
         state.fundamentalsError = null;
         state.fundamentalsSymbol = normalizeSymbol(action.meta.arg) || null;
@@ -360,11 +328,6 @@ const summarySlice = createSlice({
         state.peerAvgError = null;
       })
       .addCase(fetchSummaryPeerAverages.fulfilled, (state, action) => {
-        if (action.payload?.status === 'pending') {
-          state.peerAvgLoading = true;
-          state.peerAvgError = null;
-          return;
-        }
         state.peerAvgLoading = false;
         state.peerAvgError = null;
         state.peerAvgSymbol = normalizeSymbol(action.meta.arg) || null;
