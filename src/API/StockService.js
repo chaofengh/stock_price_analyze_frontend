@@ -2,7 +2,7 @@ const stock_summary_api_key = process.env.REACT_APP_summary_root_api;
 
 export async function fetchStockSummary(symbol) {
   const response = await fetch(
-    `${stock_summary_api_key}/summary?symbol=${symbol}`,
+    `${stock_summary_api_key}/summary/bundle?symbol=${symbol}`,
     { cache: 'no-store' }
   );
   if (!response.ok) {

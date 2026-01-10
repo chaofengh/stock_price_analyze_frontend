@@ -1,14 +1,10 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { Grid, Box, CircularProgress } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import Sidebar from './SideBar/Sidebar';
 import MainContent from './MainContent';
 import WorldMarketMap from './WorldMarketMap';
-import { useDispatch, useSelector } from 'react-redux';
-import {
-  fetchSummaryPeers,
-  fetchSummaryFundamentals,
-} from './Redux/summarySlice';
+import { useSelector } from 'react-redux';
 
 const StockDashboard = () => {
   /* -------------------------------- Redux state ------------------------------- */
@@ -18,17 +14,9 @@ const StockDashboard = () => {
     error,
     currentSymbol,
   } = useSelector((state) => state.summary);
-  const dispatch = useDispatch();
   const activeSymbol = summary?.symbol || currentSymbol;
   const hasSymbol = Boolean(activeSymbol);
   const showLoading = loading && !error;
-
-  useEffect(() => {
-    if (activeSymbol) {
-      dispatch(fetchSummaryPeers(activeSymbol));
-      dispatch(fetchSummaryFundamentals(activeSymbol));
-    }
-  }, [dispatch, activeSymbol]);
 
   /* -------------- Build eventMap for StockChart from window_5 data ------------ */
   const eventMap = useMemo(() => {

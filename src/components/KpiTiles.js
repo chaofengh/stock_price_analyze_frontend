@@ -292,7 +292,6 @@ const KpiTiles = ({ summary, isLoading = false, peerLoading = false }) => {
     'Gross Profit/Employee': 'Gross profit divided by total employees.',
     'Op Income/Employee': 'Operating income per employee (falls back to EBITDA when needed).',
     'SG&A/Employee': 'Selling, general & administrative spend per employee.',
-    'Sales/Salesperson': 'Direct sales productivity; often unavailable in public data.',
     ROIC: 'NOPAT divided by invested capital.',
     ROA: 'Net income divided by total assets.',
     'Asset Turnover': 'Revenue divided by total assets.',
@@ -386,12 +385,6 @@ const KpiTiles = ({ summary, isLoading = false, peerLoading = false }) => {
       trendKey: 'sgaPerEmployee',
       trendValue: summary.sgaPerEmployee,
     },
-    {
-      label: 'Sales/Salesperson',
-      value: formatCurrencyCompact(summary.salesPerSalesperson),
-      trendKey: 'salesPerSalesperson',
-      trendValue: summary.salesPerSalesperson,
-    }
   ];
 
   const capitalTiles = [

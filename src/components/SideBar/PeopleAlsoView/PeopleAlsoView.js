@@ -1,15 +1,18 @@
 // Main list: imports smaller pieces
 import React from 'react';
 import { Paper, Typography, Divider, Box, Skeleton } from '@mui/material';
-import { useDispatch } from 'react-redux';
-import { fetchSummary } from '../../Redux/summarySlice'; // adjust path
+import { useNavigate } from 'react-router-dom';
 import PeerRow from './PeerRow';
 
 const PeopleAlsoView = ({ summary, isLoading = false }) => {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { peer_info: peersObj = {} } = summary ?? {};
 
-  const handlePeerClick = (symbol) => dispatch(fetchSummary(symbol));
+  const handlePeerClick = (symbol) => {
+    const normalized = symbol?.trim().toUpperCase();
+    if (!normalized) return;
+    navigate(`/?symbol=${encodeURIComponent(normalized)}`);
+  };
 
   const rows = Object.entries(peersObj).map(([peer, info]) => ({
     peerSymbol: peer,
