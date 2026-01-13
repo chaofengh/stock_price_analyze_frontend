@@ -34,20 +34,23 @@ ChartJS.register(
   CrosshairLinePlugin, Filler
 );
 
-function StockChart({ summary, eventMap, onHoverPriceChange }) {
+function StockChart({ summary, eventMap, onHoverPriceChange, range = "3M", onRangeChange }) {
   const chartRef = useRef(null);
   const [dragInfo, setDragInfo] = useState(null);
   const [hasZoomed, setHasZoomed] = useState(false);
-  const [range, setRange] = useState("3M");
 
   const chartPoints = useMemo(
     () => summary?.chart_data ?? EMPTY_POINTS,
     [summary?.chart_data]
   );
 
-  useEffect(() => {
-    setRange("3M");
-  }, [summary?.symbol]);
+  const handleRangeChange = useCallback(
+    (_, value) => {
+      if (!value) return;
+      onRangeChange?.(value);
+    },
+    [onRangeChange]
+  );
 
   const latestTimestamp = useMemo(() => {
     if (!chartPoints.length) return null;
@@ -304,7 +307,7 @@ function StockChart({ summary, eventMap, onHoverPriceChange }) {
           <ToggleButtonGroup
             value={range}
             exclusive
-            onChange={(_, value) => value && setRange(value)}
+            onChange={handleRangeChange}
             size="small"
             sx={{
               background: "rgba(255,255,255,0.06)",

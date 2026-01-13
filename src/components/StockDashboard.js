@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Grid, Box, CircularProgress } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import Sidebar from './SideBar/Sidebar';
@@ -17,6 +17,13 @@ const StockDashboard = () => {
   const activeSymbol = summary?.symbol || currentSymbol;
   const hasSymbol = Boolean(activeSymbol);
   const showLoading = loading && !error;
+  const [chartRange, setChartRange] = useState('3M');
+
+  useEffect(() => {
+    if (summary?.symbol) {
+      setChartRange('3M');
+    }
+  }, [summary?.symbol]);
 
   /* -------------- Build eventMap for StockChart from window_5 data ------------ */
   const eventMap = useMemo(() => {
@@ -101,7 +108,7 @@ const StockDashboard = () => {
         {hasSymbol && (
           <Grid item xs={12} md={3} sx={{ height: '100%', minHeight: 0 }}>
             <Box sx={scrollPanelSx}>
-              <Sidebar summary={summary} error={error} />
+              <Sidebar summary={summary} error={error} chartRange={chartRange} />
             </Box>
           </Grid>
         )}
@@ -121,7 +128,12 @@ const StockDashboard = () => {
             </Box>
           ) : summary ? (
             <Box sx={scrollPanelSx}>
-              <MainContent summary={summary} eventMap={eventMap} />
+              <MainContent
+                summary={summary}
+                eventMap={eventMap}
+                chartRange={chartRange}
+                onChartRangeChange={setChartRange}
+              />
             </Box>
           ) : (
             <Box

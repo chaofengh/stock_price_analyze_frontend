@@ -6,7 +6,7 @@ import BollingerMicroPanel from './BBStat/BollingerMicroPanel';
 import PeopleAlsoView from './PeopleAlsoView/PeopleAlsoView';      
 import { fetchIncomeStatement } from '../Redux/financialsSlice';
 
-const Sidebar = ({ summary, error }) => {
+const Sidebar = ({ summary, error, chartRange }) => {
   const dispatch = useDispatch();
   const incomeStatement = useSelector((state) => state.financials.incomeStatement);
   const loadingIncomeStatement = useSelector(
@@ -41,7 +41,7 @@ const Sidebar = ({ summary, error }) => {
 
       {summary && (
         <Box>
-          <BollingerMicroPanel summary={summary} />
+          <BollingerMicroPanel summary={summary} range={chartRange} />
           <PeopleAlsoView summary={summary} isLoading={peerLoading} />
           {incomeStatementError && (
             <Typography variant="body2" color="error" sx={{ mt: 2 }}>

@@ -7,7 +7,7 @@ import KpiTiles from "./KpiTiles";
 import { ensureLogoForSymbol, selectLogoUrlBySymbol } from "./Redux/logosSlice";
 import NumberFlow from "@number-flow/react"; // NEW (already installed)
 
-const MainContent = ({ summary, eventMap }) => {
+const MainContent = ({ summary, eventMap, chartRange, onChartRangeChange }) => {
   const [hoverData, setHoverData] = useState(null);
   const dispatch = useDispatch();
   const symbol = summary?.symbol;
@@ -175,6 +175,8 @@ const MainContent = ({ summary, eventMap }) => {
           summary={summary}
           eventMap={eventMap}
           onHoverPriceChange={setHoverData}
+          range={chartRange}
+          onRangeChange={onChartRangeChange}
         />
       </Paper>
       <Paper sx={{ p: 3, mb: 3 }}>
