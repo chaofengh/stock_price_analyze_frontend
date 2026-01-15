@@ -1,47 +1,132 @@
 // TickerList.js
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState, useId } from 'react';
 import {
   Box,
   Typography,
   Button,
   TextField,
   Paper,
-  IconButton
+  IconButton,
+  Snackbar,
+  Alert,
+  Stack,
+  Tooltip,
+  Avatar
 } from '@mui/material';
+import { alpha, useTheme } from '@mui/material/styles';
 import { DataGrid } from '@mui/x-data-grid';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { Sparklines, SparklinesLine } from 'react-sparklines';
+import LoginRoundedIcon from '@mui/icons-material/LoginRounded';
+import { Area, AreaChart } from 'recharts';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchSummary } from '../Redux/summarySlice';
+import { ensureLogoForSymbol, selectLogoUrlBySymbol } from '../Redux/logosSlice';
+import { useNavigate } from 'react-router-dom';
 
-function SparklineCell({ closePrices }) {
+function TrendCell({ closePrices }) {
+  const theme = useTheme();
+  const gradientId = `trend-${useId().replace(/:/g, '')}`;
+
   if (!closePrices || closePrices.length === 0) return null;
   const firstClose = closePrices[0];
   const lastClose = closePrices[closePrices.length - 1];
-  const pctChange = ((lastClose - firstClose) / firstClose) * 100;
+  const isUp = lastClose >= firstClose;
+  const stroke = isUp ? theme.palette.success.main : theme.palette.error.main;
+  const fillTop = alpha(stroke, 0.35);
+  const fillBottom = alpha(stroke, 0.02);
+
+  const data = closePrices.map((close, idx) => ({ idx, close }));
+
   return (
     <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
-      <Sparklines data={closePrices} width={80} height={30} margin={0}>
-        <SparklinesLine color={pctChange >= 0 ? 'green' : 'red'} />
-      </Sparklines>
+      <AreaChart width={140} height={36} data={data} margin={{ top: 6, right: 0, bottom: 2, left: 0 }}>
+        <defs>
+          <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={fillTop} />
+            <stop offset="100%" stopColor={fillBottom} />
+          </linearGradient>
+        </defs>
+        <Area
+          type="monotone"
+          dataKey="close"
+          stroke={stroke}
+          fill={`url(#${gradientId})`}
+          strokeWidth={2}
+          dot={false}
+          isAnimationActive={false}
+        />
+      </AreaChart>
+    </Box>
+  );
+}
+
+function SymbolCell({ symbol }) {
+  const dispatch = useDispatch();
+  const theme = useTheme();
+  const logoUrl = useSelector((state) => selectLogoUrlBySymbol(state, symbol));
+
+  useEffect(() => {
+    dispatch(ensureLogoForSymbol(symbol));
+  }, [dispatch, symbol]);
+
+  return (
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
+      <Avatar
+        src={logoUrl || undefined}
+        alt={symbol}
+        sx={{
+          width: 28,
+          height: 28,
+          bgcolor: alpha(theme.palette.common.white, 0.08),
+          border: `1px solid ${alpha(theme.palette.common.white, 0.12)}`,
+        }}
+        variant="rounded"
+      >
+        <Typography variant="caption" sx={{ color: 'text.secondaryBright', fontWeight: 800 }}>
+          {symbol?.[0]?.toUpperCase() || '?'}
+        </Typography>
+      </Avatar>
+      <Typography variant="body2" sx={{ fontWeight: 800, letterSpacing: 0.2 }} noWrap>
+        {symbol}
+      </Typography>
     </Box>
   );
 }
 
 function TickerList() {
   const dispatch = useDispatch();
-  const user = useSelector((state) => state.auth.user);
-  const userId = user ? user.id : null; // Grab the logged-in user's ID
+  const navigate = useNavigate();
+  const theme = useTheme();
+  const { user, accessToken } = useSelector((state) => state.auth);
+  const userId = user?.id ?? null;
+  const isLoggedIn = Boolean(accessToken && userId);
 
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [mutating, setMutating] = useState(false);
   const [newTicker, setNewTicker] = useState('');
+  const [rowSelectionModel, setRowSelectionModel] = useState([]);
+  const [snackbar, setSnackbar] = useState({ open: false, severity: 'info', message: '' });
 
   useEffect(() => {
     // Re-fetch when userId changes.
     fetchData();
     // eslint-disable-next-line
   }, [userId]);
+
+  const openLoginDialog = () => {
+    window.dispatchEvent(new CustomEvent('auth:open', { detail: { mode: 'login' } }));
+  };
+
+  const requireLogin = (message) => {
+    if (isLoggedIn) return true;
+    setSnackbar({
+      open: true,
+      severity: 'info',
+      message: message || 'Please sign in to update your watch list.',
+    });
+    return false;
+  };
 
   const fetchData = async () => {
     setLoading(true);
@@ -57,7 +142,7 @@ function TickerList() {
       const data = await response.json();
 
       const newRows = Object.entries(data)
-        .map(([symbol, priceArray], idx) => {
+        .map(([symbol, priceArray]) => {
           if (!priceArray || priceArray.length === 0) return null;
 
           const closePrices = priceArray.map(r => r.close);
@@ -66,9 +151,10 @@ function TickerList() {
           const percentageChange = ((lastClose - firstClose) / firstClose) * 100;
 
           return {
-            id: idx,
+            id: symbol,
             symbol,
             closePrices,
+            price: lastClose,
             percentageChange
           };
         })
@@ -84,35 +170,85 @@ function TickerList() {
 
   const handleAddTicker = async () => {
     if (!newTicker.trim()) return;
+    if (!requireLogin('Sign in to add symbols to your watch list.')) return;
     try {
+      setMutating(true);
       const response = await fetch(`${process.env.REACT_APP_summary_root_api}/tickers`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id: userId, ticker: newTicker.trim().toUpperCase() })
       });
       if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          setSnackbar({ open: true, severity: 'info', message: 'Please sign in to update your watch list.' });
+          return;
+        }
         throw new Error(`Failed to add ticker: ${response.status} ${response.statusText}`);
       }
       setNewTicker('');
       await fetchData();
     } catch (error) {
       console.error('Error adding ticker:', error);
+      setSnackbar({ open: true, severity: 'error', message: 'Failed to add ticker. Please try again.' });
+    } finally {
+      setMutating(false);
     }
   };
 
   const handleDeleteTicker = async (symbol) => {
     try {
+      if (!requireLogin('Sign in to remove symbols from your watch list.')) return;
+      setMutating(true);
       const response = await fetch(`${process.env.REACT_APP_summary_root_api}/tickers`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id: userId, ticker: symbol })
       });
       if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          setSnackbar({ open: true, severity: 'info', message: 'Please sign in to update your watch list.' });
+          return;
+        }
         throw new Error(`Failed to delete ticker: ${response.status} ${response.statusText}`);
       }
       await fetchData();
     } catch (error) {
       console.error('Error deleting ticker:', error);
+      setSnackbar({ open: true, severity: 'error', message: 'Failed to delete ticker. Please try again.' });
+    } finally {
+      setMutating(false);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (rowSelectionModel.length === 0) return;
+    if (!requireLogin('Sign in to update your watch list.')) return;
+
+    const symbols = rowSelectionModel.map(String);
+    const ok = window.confirm(`Delete ${symbols.length} selected tickers from your watch list?`);
+    if (!ok) return;
+
+    setMutating(true);
+    try {
+      await Promise.all(
+        symbols.map((symbol) =>
+          fetch(`${process.env.REACT_APP_summary_root_api}/tickers`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: userId, ticker: symbol }),
+          }).then((res) => {
+            if (!res.ok) throw new Error(`Failed to delete ${symbol}`);
+            return res;
+          })
+        )
+      );
+      setRowSelectionModel([]);
+      await fetchData();
+    } catch (error) {
+      console.error('Error bulk deleting tickers:', error);
+      setSnackbar({ open: true, severity: 'error', message: 'Failed to delete some tickers. Please try again.' });
+    } finally {
+      setMutating(false);
     }
   };
 
@@ -122,52 +258,86 @@ function TickerList() {
     }
   };
 
+  const selectedSymbols = rowSelectionModel.map(String);
+  const canAnalyze = selectedSymbols.length === 1;
+
   const columns = [
     {
       field: 'symbol',
-      headerName: 'Symbol',
-      flex: 0.8,
+      headerName: 'Ticker',
+      flex: 1.1,
       sortable: true,
-      align: 'center',
-      headerAlign: 'center'
+      renderCell: (params) => <SymbolCell symbol={params.value} />,
+    },
+    {
+      field: 'price',
+      headerName: 'Price',
+      flex: 0.7,
+      sortable: true,
+      type: 'number',
+      align: 'right',
+      headerAlign: 'right',
+      valueFormatter: (value) =>
+        typeof value === 'number' ? `$${value.toFixed(2)}` : '',
     },
     {
       field: 'sparkline',
-      headerName: 'Chart',
-      flex: 1,
+      headerName: 'Movement',
+      flex: 1.1,
       sortable: false,
-      renderCell: (params) => <SparklineCell closePrices={params.row.closePrices} />
+      renderCell: (params) => <TrendCell closePrices={params.row.closePrices} />,
     },
     {
       field: 'percentageChange',
-      headerName: '% Change',
-      flex: 1,
+      headerName: '%',
+      flex: 0.7,
       sortable: true,
-      align: 'center',
-      headerAlign: 'center',
+      align: 'right',
+      headerAlign: 'right',
       renderCell: (params) => {
         const value = params.value;
         if (typeof value !== 'number') return '';
-        const color = value >= 0 ? 'green' : 'red';
-        const backgroundColor = value >= 0 ? 'rgba(0, 255, 0, 0.1)' : 'rgba(255, 0, 0, 0.1)';
+        const isUp = value >= 0;
+        const color = isUp ? theme.palette.success.main : theme.palette.error.main;
+        const backgroundColor = alpha(color, 0.12);
         return (
-          <Box sx={{ color, backgroundColor, textAlign: 'center', borderRadius: 1, px: 1 }}>
+          <Box
+            sx={{
+              color,
+              backgroundColor,
+              textAlign: 'right',
+              borderRadius: 999,
+              px: 1,
+              fontWeight: 800,
+              minWidth: 72,
+            }}
+          >
             {value.toFixed(2)}%
           </Box>
         );
-      }
+      },
     },
     {
       field: 'actions',
       headerName: '',
-      flex: 0.5,
+      width: 54,
       sortable: false,
+      align: 'center',
+      headerAlign: 'center',
       renderCell: (params) => (
-        <IconButton size="small" onClick={() => handleDeleteTicker(params.row.symbol)}>
-          <DeleteIcon fontSize="small" />
-        </IconButton>
-      )
-    }
+        <Tooltip title="Remove" placement="left">
+          <span>
+            <IconButton
+              size="small"
+              onClick={() => handleDeleteTicker(params.row.symbol)}
+              disabled={mutating}
+            >
+              <DeleteIcon fontSize="small" />
+            </IconButton>
+          </span>
+        </Tooltip>
+      ),
+    },
   ];
 
   return (
@@ -180,9 +350,59 @@ function TickerList() {
         maxWidth: 600
       }}
     >
-      <Typography variant="h6" gutterBottom>
-        Watch List
-      </Typography>
+      <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
+        <Typography variant="h6">Watch List</Typography>
+        <Stack direction="row" spacing={1} alignItems="center">
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={() => {
+              if (!canAnalyze) return;
+              const symbol = selectedSymbols[0];
+              navigate(`/?symbol=${encodeURIComponent(symbol)}`);
+            }}
+            disabled={!canAnalyze}
+          >
+            Analyze
+          </Button>
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={handleBulkDelete}
+            disabled={mutating || selectedSymbols.length === 0}
+            startIcon={<DeleteIcon />}
+          >
+            Delete ({selectedSymbols.length})
+          </Button>
+          <Button
+            variant="text"
+            size="small"
+            onClick={() => setRowSelectionModel([])}
+            disabled={selectedSymbols.length === 0}
+          >
+            Clear
+          </Button>
+        </Stack>
+      </Stack>
+
+      {!isLoggedIn && (
+        <Alert
+          severity="info"
+          sx={{ mb: 2 }}
+          action={
+            <Button
+              color="inherit"
+              size="small"
+              onClick={openLoginDialog}
+              startIcon={<LoginRoundedIcon />}
+            >
+              Sign in
+            </Button>
+          }
+        >
+          Sign in to add/remove tickers and keep your watch list synced.
+        </Alert>
+      )}
 
       <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
         <TextField
@@ -191,9 +411,12 @@ function TickerList() {
           label="New Ticker"
           value={newTicker}
           onChange={(e) => setNewTicker(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') handleAddTicker();
+          }}
           sx={{ flexGrow: 1 }}
         />
-        <Button variant="contained" onClick={handleAddTicker} disabled={loading}>
+        <Button variant="contained" onClick={handleAddTicker} disabled={loading || mutating}>
           ADD
         </Button>
       </Box>
@@ -205,18 +428,65 @@ function TickerList() {
           <DataGrid
             rows={rows}
             columns={columns}
-            pageSize={5}
-            rowsPerPageOptions={[5, 10]}
-            disableSelectionOnClick
+            initialState={{ pagination: { paginationModel: { pageSize: 10, page: 0 } } }}
+            pageSizeOptions={[5, 10, 25, 100]}
+            autoHeight
+            checkboxSelection
+            disableRowSelectionOnClick
+            rowSelectionModel={rowSelectionModel}
+            onRowSelectionModelChange={(newModel) => setRowSelectionModel(newModel)}
             onCellClick={handleCellClick}
             sx={{
-              '& .MuiDataGrid-columnHeaders': { backgroundColor: '#f5f5f5', fontWeight: 'bold' },
-              '& .MuiDataGrid-footerContainer': { backgroundColor: '#f5f5f5' },
-              '& .MuiDataGrid-row:hover': { backgroundColor: 'rgba(0,0,0,0.04)' }
+              border: 'none',
+              bgcolor: 'transparent',
+              '& .MuiDataGrid-main, & .MuiDataGrid-virtualScroller, & .MuiDataGrid-overlayWrapper': {
+                bgcolor: 'transparent',
+              },
+              '& .MuiDataGrid-columnHeaders': {
+                bgcolor: alpha(theme.palette.common.white, 0.04),
+                borderBottom: `1px solid ${theme.palette.divider}`,
+                fontWeight: 800,
+              },
+              '& .MuiDataGrid-footerContainer': {
+                bgcolor: 'transparent',
+                borderTop: `1px solid ${theme.palette.divider}`,
+              },
+              '& .MuiDataGrid-cell': {
+                borderBottom: `1px solid ${alpha(theme.palette.divider, 0.55)}`,
+              },
+              '& .MuiDataGrid-row:hover': {
+                bgcolor: alpha(theme.palette.primary.main, 0.08),
+              },
+              '& .MuiCheckbox-root': { color: alpha(theme.palette.common.white, 0.55) },
+              '& .MuiCheckbox-root.Mui-checked': { color: theme.palette.primary.main },
+              '& .MuiDataGrid-cell:focus, & .MuiDataGrid-columnHeader:focus': { outline: 'none' },
+              '& .MuiTablePagination-root': { color: theme.palette.text.secondaryBright },
             }}
           />
         </Box>
       )}
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={3500}
+        onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
+          severity={snackbar.severity}
+          sx={{ width: '100%' }}
+          action={
+            !isLoggedIn ? (
+              <Button color="inherit" size="small" onClick={openLoginDialog}>
+                Sign in
+              </Button>
+            ) : null
+          }
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Paper>
   );
 }

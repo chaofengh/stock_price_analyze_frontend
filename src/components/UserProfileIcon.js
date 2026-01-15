@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import {
   Box,
@@ -37,6 +37,16 @@ function UserProfileIcon() {
   const handleMenuClose = () => setAnchorEl(null);
   const handleDialogOpen = (mode) => { setAuthMode(mode); setOpenDialog(true); };
   const handleLogout = () => { dispatch(logout()); handleMenuClose(); };
+
+  useEffect(() => {
+    const onOpenAuth = (event) => {
+      const mode = event?.detail?.mode;
+      setAuthMode(mode === 'register' ? 'register' : 'login');
+      setOpenDialog(true);
+    };
+    window.addEventListener('auth:open', onOpenAuth);
+    return () => window.removeEventListener('auth:open', onOpenAuth);
+  }, []);
 
   /* ───────── avatar colour/letter for logged‑in users ───────── */
   let avatarColor  = neon;
