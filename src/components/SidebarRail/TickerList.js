@@ -1,5 +1,5 @@
 // TickerList.js
-import React, { useEffect, useState, useId } from 'react';
+import React, { useEffect, useRef, useState, useId } from 'react';
 import {
   Box,
   Typography,
@@ -14,7 +14,7 @@ import {
   Avatar
 } from '@mui/material';
 import { alpha, useTheme } from '@mui/material/styles';
-import { DataGrid } from '@mui/x-data-grid';
+import { DataGrid, gridClasses, useGridApiRef } from '@mui/x-data-grid';
 import DeleteIcon from '@mui/icons-material/Delete';
 import LoginRoundedIcon from '@mui/icons-material/LoginRounded';
 import { Area, AreaChart } from 'recharts';
@@ -35,11 +35,18 @@ function TrendCell({ closePrices }) {
   const fillTop = alpha(stroke, 0.35);
   const fillBottom = alpha(stroke, 0.02);
 
-  const data = closePrices.map((close, idx) => ({ idx, close }));
+  const min = Math.min(...closePrices);
+  const max = Math.max(...closePrices);
+  const range = max - min;
+  const data = closePrices.map((close, idx) => ({
+    idx,
+    close,
+    value: range === 0 ? 0.5 : (close - min) / range,
+  }));
 
   return (
     <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
-      <AreaChart width={140} height={36} data={data} margin={{ top: 6, right: 0, bottom: 2, left: 0 }}>
+      <AreaChart width={140} height={40} data={data} margin={{ top: 6, right: 0, bottom: 2, left: 0 }}>
         <defs>
           <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor={fillTop} />
@@ -48,7 +55,7 @@ function TrendCell({ closePrices }) {
         </defs>
         <Area
           type="monotone"
-          dataKey="close"
+          dataKey="value"
           stroke={stroke}
           fill={`url(#${gradientId})`}
           strokeWidth={2}
@@ -97,6 +104,7 @@ function TickerList() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const theme = useTheme();
+  const apiRef = useGridApiRef();
   const { user, accessToken } = useSelector((state) => state.auth);
   const userId = user?.id ?? null;
   const isLoggedIn = Boolean(accessToken && userId);
@@ -107,12 +115,35 @@ function TickerList() {
   const [newTicker, setNewTicker] = useState('');
   const [rowSelectionModel, setRowSelectionModel] = useState([]);
   const [snackbar, setSnackbar] = useState({ open: false, severity: 'info', message: '' });
+  const dragSelectRef = useRef({
+    active: false,
+    anchorIndex: null,
+    baseSelection: [],
+    hasDragged: false,
+    suppressClick: false,
+  });
 
   useEffect(() => {
     // Re-fetch when userId changes.
     fetchData();
     // eslint-disable-next-line
   }, [userId]);
+
+  useEffect(() => {
+    const handleMouseUp = () => {
+      if (!dragSelectRef.current.active) return;
+      dragSelectRef.current.active = false;
+      if (dragSelectRef.current.hasDragged) {
+        dragSelectRef.current.suppressClick = true;
+        setTimeout(() => {
+          dragSelectRef.current.suppressClick = false;
+        }, 0);
+      }
+      dragSelectRef.current.hasDragged = false;
+    };
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => window.removeEventListener('mouseup', handleMouseUp);
+  }, []);
 
   const openLoginDialog = () => {
     window.dispatchEvent(new CustomEvent('auth:open', { detail: { mode: 'login' } }));
@@ -253,9 +284,84 @@ function TickerList() {
   };
 
   const handleCellClick = (params) => {
+    if (dragSelectRef.current.suppressClick) {
+      return;
+    }
     if (params.field === 'symbol') {
       dispatch(fetchSummary(params.value));
     }
+  };
+
+  const getSortedRowIds = () => {
+    const sorted = apiRef.current?.getSortedRowIds?.();
+    if (Array.isArray(sorted) && sorted.length > 0) {
+      return sorted;
+    }
+    return rows.map((row) => row.id);
+  };
+
+  const isInteractiveCell = (event) => {
+    const target = event.target;
+    if (!(target instanceof Element)) return false;
+    const cell = target.closest(`.${gridClasses.cell}`);
+    const field = cell?.getAttribute('data-field');
+    if (field === '__check__') return false;
+    if (target.closest('button, a, input, textarea, select, [role="button"]')) return true;
+    return field === 'actions';
+  };
+
+  const handleRowMouseDown = (event) => {
+    if (event.button !== 0) return;
+    if (isInteractiveCell(event)) return;
+
+    const rowIndex = Number(event.currentTarget?.dataset?.rowindex);
+    if (Number.isNaN(rowIndex)) return;
+    const cell = event.target?.closest?.(`.${gridClasses.cell}`);
+    const field = cell?.getAttribute?.('data-field');
+    const isCheckboxCell = field === '__check__';
+
+    const additive = event.ctrlKey || event.metaKey || event.shiftKey;
+    const baseSelection = additive ? rowSelectionModel : [];
+    dragSelectRef.current = {
+      active: true,
+      anchorIndex: rowIndex,
+      baseSelection,
+      hasDragged: false,
+      suppressClick: false,
+    };
+
+    if (!isCheckboxCell) {
+      const sortedIds = getSortedRowIds();
+      const anchorId = sortedIds[rowIndex];
+      if (anchorId !== undefined) {
+        const nextSelection = additive
+          ? Array.from(new Set([...baseSelection, anchorId]))
+          : [anchorId];
+        setRowSelectionModel(nextSelection);
+      }
+      event.preventDefault();
+    }
+  };
+
+  const handleRowMouseEnter = (event) => {
+    if (!dragSelectRef.current.active) return;
+    const rowIndex = Number(event.currentTarget?.dataset?.rowindex);
+    if (Number.isNaN(rowIndex)) return;
+
+    const anchorIndex = dragSelectRef.current.anchorIndex;
+    if (anchorIndex === null) return;
+    if (rowIndex !== anchorIndex) {
+      dragSelectRef.current.hasDragged = true;
+    }
+
+    const sortedIds = getSortedRowIds();
+    const start = Math.min(anchorIndex, rowIndex);
+    const end = Math.max(anchorIndex, rowIndex);
+    const rangeIds = sortedIds.slice(start, end + 1);
+    const merged = dragSelectRef.current.baseSelection.length
+      ? Array.from(new Set([...dragSelectRef.current.baseSelection, ...rangeIds]))
+      : rangeIds;
+    setRowSelectionModel(merged);
   };
 
   const selectedSymbols = rowSelectionModel.map(String);
@@ -426,6 +532,7 @@ function TickerList() {
       {!loading && rows.length > 0 && (
         <Box sx={{ width: '100%' }}>
           <DataGrid
+            apiRef={apiRef}
             rows={rows}
             columns={columns}
             initialState={{ pagination: { paginationModel: { pageSize: 10, page: 0 } } }}
@@ -433,6 +540,12 @@ function TickerList() {
             autoHeight
             checkboxSelection
             disableRowSelectionOnClick
+            slotProps={{
+              row: {
+                onMouseDown: handleRowMouseDown,
+                onMouseEnter: handleRowMouseEnter,
+              },
+            }}
             rowSelectionModel={rowSelectionModel}
             onRowSelectionModelChange={(newModel) => setRowSelectionModel(newModel)}
             onCellClick={handleCellClick}

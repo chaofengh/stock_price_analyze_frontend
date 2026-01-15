@@ -42,17 +42,16 @@ const Sidebar = ({ summary, error, chartRange }) => {
       {summary && (
         <Box>
           <BollingerMicroPanel summary={summary} range={chartRange} />
+          <AnnualFinancials
+            isLoading={showIncomeLoading}
+            annualReports={annualReports || []}
+          />
           <PeopleAlsoView summary={summary} isLoading={peerLoading} />
           {incomeStatementError && (
             <Typography variant="body2" color="error" sx={{ mt: 2 }}>
               {incomeStatementError}
             </Typography>
           )}
-          <AnnualFinancials
-            isLoading={showIncomeLoading}
-            annualReports={annualReports || []}
-          />
-
         </Box>
       )}
     </div>
