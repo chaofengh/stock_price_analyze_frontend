@@ -6,6 +6,8 @@ import { fetchIncomeStatement } from '../Redux/financialsSlice';
 const INCOME_METRICS = [
   { key: 'totalRevenue', label: 'Revenue ($)', isPercentage: false },
   { key: 'grossProfit', label: 'Gross Profit ($)', isPercentage: false },
+  { key: 'operatingIncome', label: 'Operating Income ($)', isPercentage: false },
+  { key: 'ebitda', label: 'EBITDA ($)', isPercentage: false },
   { key: 'operatingExpenses', label: 'Operating Expenses ($)', isPercentage: false },
   { key: 'researchAndDevelopment', label: 'R&D ($)', isPercentage: false },
   { key: 'netIncome', label: 'Net Income ($)', isPercentage: false },
@@ -22,6 +24,8 @@ function IncomeStatementAnalysis({ symbol, incomeStatementData }) {
       const quarterRange = report.quarterRange || null;
       const totalRevenue = Number(report.totalRevenue) || 0;
       const grossProfit = Number(report.grossProfit) || 0;
+      const operatingIncome = Number(report.operatingIncome) || 0;
+      const ebitda = Number(report.ebitda) || 0;
       const netIncome = Number(report.netIncome) || 0;
       const operatingExpenses = Number(report.operatingExpenses) || 0;
       const researchAndDevelopment =
@@ -36,6 +40,8 @@ function IncomeStatementAnalysis({ symbol, incomeStatementData }) {
         quarterRange,
         totalRevenue,
         grossProfit,
+        operatingIncome,
+        ebitda,
         operatingExpenses,
         researchAndDevelopment,
         netIncome,
@@ -60,6 +66,8 @@ function IncomeStatementAnalysis({ symbol, incomeStatementData }) {
       const [year, month] = report.fiscalDateEnding.split('-');
       const totalRevenue = Number(report.totalRevenue) || 0;
       const grossProfit = Number(report.grossProfit) || 0;
+      const operatingIncome = Number(report.operatingIncome) || 0;
+      const ebitda = Number(report.ebitda) || 0;
       const netIncome = Number(report.netIncome) || 0;
       const operatingExpenses = Number(report.operatingExpenses) || 0;
       const researchAndDevelopment =
@@ -73,6 +81,8 @@ function IncomeStatementAnalysis({ symbol, incomeStatementData }) {
         quarter: getQuarter(month),
         totalRevenue,
         grossProfit,
+        operatingIncome,
+        ebitda,
         operatingExpenses,
         researchAndDevelopment,
         netIncome,

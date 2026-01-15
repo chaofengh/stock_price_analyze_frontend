@@ -31,12 +31,28 @@ import {
 } from 'chart.js';
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
+const QUARTER_ORDER = ['Q1', 'Q2', 'Q3', 'Q4'];
+
 const withAlpha = (color, alpha) => {
   if (!color) return color;
   const rgbaMatch = color.match(/rgba?\((\d+(?:\.\d+)?),\s*(\d+(?:\.\d+)?),\s*(\d+(?:\.\d+)?)(?:,\s*([\d.]+))?\)/i);
   if (!rgbaMatch) return color;
   const [, r, g, b] = rgbaMatch;
   return `rgba(${Number(r)}, ${Number(g)}, ${Number(b)}, ${alpha})`;
+};
+
+const normalizeQuarterLabel = (value) => {
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim().toUpperCase();
+  return QUARTER_ORDER.includes(normalized) ? normalized : null;
+};
+
+const shiftQuarterLabel = (label, shift) => {
+  const normalized = normalizeQuarterLabel(label);
+  if (!normalized) return label;
+  const index = QUARTER_ORDER.indexOf(normalized);
+  const shiftedIndex = (index + shift + QUARTER_ORDER.length) % QUARTER_ORDER.length;
+  return QUARTER_ORDER[shiftedIndex];
 };
 
 function FinancialAnalysisBase({
@@ -152,7 +168,6 @@ function FinancialAnalysisBase({
     () => effectiveStatementData?.quarterlyReports || [],
     [effectiveStatementData]
   );
-
   // Statement-specific processing
   const processedAnnual = useMemo(
     () => processAnnualReports(annualReportsSource),
@@ -162,6 +177,29 @@ function FinancialAnalysisBase({
     () => processQuarterlyReports(quarterlyReports),
     [quarterlyReports, processQuarterlyReports]
   );
+  const mostRecentQuarterLabel = useMemo(
+    () => normalizeQuarterLabel(effectiveStatementData?.mostRecentQuarterLabel),
+    [effectiveStatementData]
+  );
+  const adjustedQuarterly = useMemo(() => {
+    if (!processedQuarterly.length || !mostRecentQuarterLabel) {
+      return processedQuarterly;
+    }
+    const latest = processedQuarterly[processedQuarterly.length - 1];
+    const latestLabel = normalizeQuarterLabel(latest?.quarter);
+    if (!latestLabel) {
+      return processedQuarterly;
+    }
+    const shift =
+      QUARTER_ORDER.indexOf(mostRecentQuarterLabel) - QUARTER_ORDER.indexOf(latestLabel);
+    if (!shift) {
+      return processedQuarterly;
+    }
+    return processedQuarterly.map((item) => ({
+      ...item,
+      quarter: shiftQuarterLabel(item.quarter, shift),
+    }));
+  }, [processedQuarterly, mostRecentQuarterLabel]);
 
   const ytdRangeLabel = useMemo(() => {
     if (!processedAnnual.length) return null;
@@ -226,9 +264,9 @@ function FinancialAnalysisBase({
   };
 
   const latestQuarterInfo = useMemo(() => {
-    if (!processedQuarterly.length) return null;
-    return processedQuarterly[processedQuarterly.length - 1];
-  }, [processedQuarterly]);
+    if (!adjustedQuarterly.length) return null;
+    return adjustedQuarterly[adjustedQuarterly.length - 1];
+  }, [adjustedQuarterly]);
 
   // Handle loading/error/no-data states
   if (!symbol) {
@@ -286,6 +324,7 @@ function FinancialAnalysisBase({
   let chartData, chartOptions, tableRows;
   let sumOlder = 0,
     sumNewer = 0;
+  let highlightQuarter = null;
 
   // If user selects Annual
   if (viewType === 'annual') {
@@ -343,7 +382,7 @@ function FinancialAnalysisBase({
     });
   } else {
     // Quarterly
-    if (!processedQuarterly.length) {
+    if (!adjustedQuarterly.length) {
       return (
         <Paper sx={{ p: 3 }}>
           <Typography variant="h6">No quarterly data available</Typography>
@@ -352,10 +391,9 @@ function FinancialAnalysisBase({
     }
 
     // Typically we compare the last 8 quarters as "older 4" vs. "newer 4"
-    const olderGroup = processedQuarterly.slice(-8, -4);
-    const newerGroup = processedQuarterly.slice(-4);
+    const olderGroup = adjustedQuarterly.slice(-8, -4);
+    const newerGroup = adjustedQuarterly.slice(-4);
 
-    const quarterOrder = ['Q1', 'Q2', 'Q3', 'Q4'];
     const olderMap = { Q1: 0, Q2: 0, Q3: 0, Q4: 0 };
     const newerMap = { Q1: 0, Q2: 0, Q3: 0, Q4: 0 };
 
@@ -369,9 +407,9 @@ function FinancialAnalysisBase({
     sumOlder = olderGroup.reduce((acc, item) => acc + (item[activeMetric.key] || 0), 0);
     sumNewer = newerGroup.reduce((acc, item) => acc + (item[activeMetric.key] || 0), 0);
 
-    const highlightQuarter = latestQuarterInfo?.quarter || null;
+    highlightQuarter = mostRecentQuarterLabel || latestQuarterInfo?.quarter || null;
     const highlightIndex = highlightQuarter
-      ? quarterOrder.indexOf(highlightQuarter)
+      ? QUARTER_ORDER.indexOf(highlightQuarter)
       : -1;
 
     const olderBaseColor = 'rgba(176, 190, 197, 0.08)';
@@ -380,23 +418,23 @@ function FinancialAnalysisBase({
     const newerHighlightColor = withAlpha(chartColor, 1);
     const highlightBorderColor = 'rgba(0, 0, 0, 0.8)';
 
-    const olderBackground = quarterOrder.map((_, idx) =>
+    const olderBackground = QUARTER_ORDER.map((_, idx) =>
       idx === highlightIndex ? olderHighlightColor : olderBaseColor
     );
-    const newerBackground = quarterOrder.map((_, idx) =>
+    const newerBackground = QUARTER_ORDER.map((_, idx) =>
       idx === highlightIndex ? newerHighlightColor : newerMutedColor
     );
-    const borderColors = quarterOrder.map((_, idx) =>
+    const borderColors = QUARTER_ORDER.map((_, idx) =>
       idx === highlightIndex ? highlightBorderColor : 'rgba(0, 0, 0, 0)'
     );
-    const borderWidths = quarterOrder.map((_, idx) => (idx === highlightIndex ? 3 : 0));
+    const borderWidths = QUARTER_ORDER.map((_, idx) => (idx === highlightIndex ? 3 : 0));
 
     chartData = {
-      labels: quarterOrder,
+      labels: QUARTER_ORDER,
       datasets: [
         {
           label: `Prior 4 trailing quarters`,
-          data: quarterOrder.map((q) => olderMap[q]),
+          data: QUARTER_ORDER.map((q) => olderMap[q]),
           backgroundColor: olderBackground,
           borderColor: borderColors,
           borderWidth: borderWidths,
@@ -405,7 +443,7 @@ function FinancialAnalysisBase({
         },
         {
           label: `Trailing 4 quarters`,
-          data: quarterOrder.map((q) => newerMap[q]),
+          data: QUARTER_ORDER.map((q) => newerMap[q]),
           backgroundColor: newerBackground,
           borderColor: borderColors,
           borderWidth: borderWidths,
@@ -443,7 +481,7 @@ function FinancialAnalysisBase({
     };
 
     // Build table rows for quarter vs quarter
-    tableRows = quarterOrder.map((q) => {
+    tableRows = QUARTER_ORDER.map((q) => {
       const olderVal = olderMap[q];
       const newerVal = newerMap[q];
       const diff = newerVal - olderVal;
@@ -529,15 +567,14 @@ function FinancialAnalysisBase({
           ))}
         </Box>
 
-        {viewType === 'quarterly' && latestQuarterInfo && (
+        {viewType === 'quarterly' && highlightQuarter && (
           <Typography
             variant="body2"
             color="text.secondary"
             align="center"
             sx={{ mb: 1 }}
           >
-            Highlighted bars show {latestQuarterInfo.year} {latestQuarterInfo.quarter}
-            {' '}versus the same quarter from the prior year.
+            Highlighted bars show {highlightQuarter} versus the same quarter from the prior year.
           </Typography>
         )}
 
@@ -592,7 +629,7 @@ function FinancialAnalysisBase({
                         key={row.period}
                         sx={{
                           backgroundColor:
-                            latestQuarterInfo?.quarter === row.period
+                            highlightQuarter === row.period
                               ? 'rgba(212, 235, 240, 0.08)'
                               : 'transparent',
                         }}
