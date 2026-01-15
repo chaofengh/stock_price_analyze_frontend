@@ -94,10 +94,8 @@ function OptionPriceRatio() {
     <Paper
       elevation={3}
       sx={{
-        p: 2,
-        mt: 2,
-        mx: 'auto',
-        maxWidth: 600
+        p: 3,
+        width: '100%',
       }}
     >
       <Typography variant="h6" gutterBottom>

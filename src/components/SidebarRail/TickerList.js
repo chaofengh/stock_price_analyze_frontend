@@ -77,7 +77,16 @@ function SymbolCell({ symbol }) {
   }, [dispatch, symbol]);
 
   return (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
+    <Box
+      sx={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 1,
+        minWidth: 0,
+        width: '100%',
+      }}
+    >
       <Avatar
         src={logoUrl || undefined}
         alt={symbol}
@@ -179,6 +188,9 @@ function TickerList() {
           const closePrices = priceArray.map(r => r.close);
           const firstClose = closePrices[0];
           const lastClose = closePrices[closePrices.length - 1];
+          const dayHigh = Math.max(...closePrices);
+          const dayLow = Math.min(...closePrices);
+          const dayChange = lastClose - firstClose;
           const percentageChange = ((lastClose - firstClose) / firstClose) * 100;
 
           return {
@@ -186,7 +198,10 @@ function TickerList() {
             symbol,
             closePrices,
             price: lastClose,
-            percentageChange
+            dayHigh,
+            dayLow,
+            dayChange,
+            percentageChange,
           };
         })
         .filter(Boolean);
@@ -373,6 +388,8 @@ function TickerList() {
       headerName: 'Ticker',
       flex: 1.1,
       sortable: true,
+      align: 'center',
+      headerAlign: 'center',
       renderCell: (params) => <SymbolCell symbol={params.value} />,
     },
     {
@@ -381,8 +398,64 @@ function TickerList() {
       flex: 0.7,
       sortable: true,
       type: 'number',
-      align: 'right',
-      headerAlign: 'right',
+      align: 'center',
+      headerAlign: 'center',
+      valueFormatter: (value) =>
+        typeof value === 'number' ? `$${value.toFixed(2)}` : '',
+    },
+    {
+      field: 'dayChange',
+      headerName: 'Change',
+      flex: 0.7,
+      sortable: true,
+      type: 'number',
+      align: 'center',
+      headerAlign: 'center',
+      renderCell: (params) => {
+        const value = params.value;
+        if (typeof value !== 'number') return '';
+        const isUp = value >= 0;
+        const sign = value > 0 ? '+' : value < 0 ? '-' : '';
+        const absValue = Math.abs(value);
+        const color = isUp ? theme.palette.success.main : theme.palette.error.main;
+        const backgroundColor = alpha(color, 0.12);
+        return (
+          <Box
+            sx={{
+              color,
+              backgroundColor,
+              textAlign: 'center',
+              borderRadius: 999,
+              px: 1,
+              fontWeight: 800,
+              minWidth: 80,
+            }}
+          >
+            {sign}
+            {`$${absValue.toFixed(2)}`}
+          </Box>
+        );
+      },
+    },
+    {
+      field: 'dayHigh',
+      headerName: 'High',
+      flex: 0.7,
+      sortable: true,
+      type: 'number',
+      align: 'center',
+      headerAlign: 'center',
+      valueFormatter: (value) =>
+        typeof value === 'number' ? `$${value.toFixed(2)}` : '',
+    },
+    {
+      field: 'dayLow',
+      headerName: 'Low',
+      flex: 0.7,
+      sortable: true,
+      type: 'number',
+      align: 'center',
+      headerAlign: 'center',
       valueFormatter: (value) =>
         typeof value === 'number' ? `$${value.toFixed(2)}` : '',
     },
@@ -391,6 +464,8 @@ function TickerList() {
       headerName: 'Movement',
       flex: 1.1,
       sortable: false,
+      align: 'center',
+      headerAlign: 'center',
       renderCell: (params) => <TrendCell closePrices={params.row.closePrices} />,
     },
     {
@@ -398,8 +473,8 @@ function TickerList() {
       headerName: '%',
       flex: 0.7,
       sortable: true,
-      align: 'right',
-      headerAlign: 'right',
+      align: 'center',
+      headerAlign: 'center',
       renderCell: (params) => {
         const value = params.value;
         if (typeof value !== 'number') return '';
@@ -411,7 +486,7 @@ function TickerList() {
             sx={{
               color,
               backgroundColor,
-              textAlign: 'right',
+              textAlign: 'center',
               borderRadius: 999,
               px: 1,
               fontWeight: 800,
@@ -450,10 +525,8 @@ function TickerList() {
     <Paper
       elevation={3}
       sx={{
-        p: 2,
-        mt: 2,
-        mx: 'auto',
-        maxWidth: 600
+        p: 3,
+        width: '100%',
       }}
     >
       <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
@@ -560,12 +633,16 @@ function TickerList() {
                 borderBottom: `1px solid ${theme.palette.divider}`,
                 fontWeight: 800,
               },
+              '& .MuiDataGrid-columnHeaderTitleContainer': {
+                justifyContent: 'center',
+              },
               '& .MuiDataGrid-footerContainer': {
                 bgcolor: 'transparent',
                 borderTop: `1px solid ${theme.palette.divider}`,
               },
               '& .MuiDataGrid-cell': {
                 borderBottom: `1px solid ${alpha(theme.palette.divider, 0.55)}`,
+                justifyContent: 'center',
               },
               '& .MuiDataGrid-row:hover': {
                 bgcolor: alpha(theme.palette.primary.main, 0.08),

@@ -233,14 +233,14 @@ function FinancialAnalysisBase({
   // Handle loading/error/no-data states
   if (!symbol) {
     return (
-      <Paper sx={{ p: 3, m: 3 }}>
+      <Paper sx={{ p: 3 }}>
         <Typography variant="h6">No symbol provided</Typography>
       </Paper>
     );
   }
   if (isStaleData) {
     return (
-      <Paper sx={{ p: 3, m: 3 }}>
+      <Paper sx={{ p: 3 }}>
         <Box sx={{ textAlign: 'center' }}>
           <CircularProgress />
           <Typography>Loading data...</Typography>
@@ -250,7 +250,7 @@ function FinancialAnalysisBase({
   }
   if (loading) {
     return (
-      <Paper sx={{ p: 3, m: 3 }}>
+      <Paper sx={{ p: 3 }}>
         <Box sx={{ textAlign: 'center' }}>
           <CircularProgress />
           <Typography>Loading data...</Typography>
@@ -260,7 +260,7 @@ function FinancialAnalysisBase({
   }
   if (error) {
     return (
-      <Paper sx={{ p: 3, m: 3 }}>
+      <Paper sx={{ p: 3 }}>
         <Typography variant="h6" color="error">
           Error fetching data
         </Typography>
@@ -270,7 +270,7 @@ function FinancialAnalysisBase({
   }
   if (!effectiveStatementData) {
     return (
-      <Paper sx={{ p: 3, m: 3 }}>
+      <Paper sx={{ p: 3 }}>
         <Typography variant="h6">No data available</Typography>
       </Paper>
     );
@@ -291,7 +291,7 @@ function FinancialAnalysisBase({
   if (viewType === 'annual') {
     if (!processedAnnual.length) {
       return (
-        <Paper sx={{ p: 3, m: 3 }}>
+        <Paper sx={{ p: 3 }}>
           <Typography variant="h6">
             {isPartialYearMode ? 'No year-to-date data available' : 'No annual data available'}
           </Typography>
@@ -345,7 +345,7 @@ function FinancialAnalysisBase({
     // Quarterly
     if (!processedQuarterly.length) {
       return (
-        <Paper sx={{ p: 3, m: 3 }}>
+        <Paper sx={{ p: 3 }}>
           <Typography variant="h6">No quarterly data available</Typography>
         </Paper>
       );
@@ -454,9 +454,9 @@ function FinancialAnalysisBase({
 
   // Shared layout for statement analysis views
   return (
-    <Box sx={{ display: 'flex', height: '100%', p: 1 }}>
+    <Box sx={{ display: 'flex', gap: 2, height: '100%', minHeight: 0 }}>
       {/* Sidebar with Metrics */}
-      <Paper elevation={3} sx={{ minWidth: 220, mr: 2 }}>
+      <Paper elevation={3} sx={{ minWidth: 220 }}>
         <Typography variant="h6" sx={{ p: 2 }}>
           {sidebarTitle}
         </Typography>
