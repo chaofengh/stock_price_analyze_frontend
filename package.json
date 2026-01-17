@@ -19,6 +19,7 @@
     "chartjs-plugin-zoom": "^2.2.0",
     "date-fns": "^4.1.0",
     "finnhub": "^1.2.19",
+    "posthog-js": "^1.326.0",
     "react": "^18.3.1",
     "react-calendar": "^5.1.0",
     "react-calendar-heatmap": "^1.10.0",
