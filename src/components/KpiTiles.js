@@ -183,7 +183,7 @@ const Pill = ({ label, value, peer, color, tip, peerLoading = false, chart }) =>
       sx={{
         p: 2,
         boxShadow: 'none !important',
-        borderRadius: 3,
+        borderRadius: 'var(--app-radius)',
         minHeight: 140,
         bgcolor: 'rgba(255,255,255,0.04)',
         display: 'flex',
@@ -258,7 +258,7 @@ const KpiTiles = ({ summary, isLoading = false, peerLoading = false }) => {
               sx={{
                 p: 2,
                 boxShadow: 'none !important',
-                borderRadius: 3,
+                borderRadius: 'var(--app-radius)',
                 minHeight: 140,
                 bgcolor: 'rgba(255,255,255,0.04)',
                 display: 'flex',

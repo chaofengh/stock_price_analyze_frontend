@@ -15,6 +15,7 @@ const DIVIDER_COLOR  = '#2B3245';
 
 // Slightly brighter helper for small text that still needs readability
 const TEXT_SECONDARY_BRIGHT = 'rgba(227,236,255,0.85)';
+const APP_RADIUS = 12;
 
 const theme = createTheme({
   palette: {
@@ -76,11 +77,14 @@ const theme = createTheme({
     button: { textTransform: 'none', fontWeight: 600 },
   },
 
-  shape: { borderRadius: 12 },
+  shape: { borderRadius: APP_RADIUS },
 
   components: {
     MuiCssBaseline: {
       styleOverrides: {
+        ':root': {
+          '--app-radius': `${APP_RADIUS}px`,
+        },
         body: { backgroundColor: BG_BASE, color: TEXT_PRIMARY },
       },
     },
@@ -116,15 +120,49 @@ const theme = createTheme({
 
     MuiButton: {
       styleOverrides: {
-        root: { borderRadius: 8 },
+        root: ({ theme }) => ({ borderRadius: theme.shape.borderRadius }),
         containedPrimary: { boxShadow: '0 0 8px rgba(0,184,255,0.6)' },
         containedSecondary: { boxShadow: '0 0 8px rgba(255,138,61,0.6)' },
       },
     },
 
-    MuiTabs: { styleOverrides: { indicator: { height: 3, borderRadius: 3 } } },
+    MuiTabs: { styleOverrides: { indicator: { height: 3, borderRadius: APP_RADIUS } } },
     MuiTab:  { styleOverrides: { root: { textTransform: 'none', fontWeight: 600, minHeight: 40 } } },
     MuiDivider: { styleOverrides: { root: { borderColor: DIVIDER_COLOR } } },
+
+    MuiChip: {
+      styleOverrides: {
+        root: ({ theme }) => ({ borderRadius: theme.shape.borderRadius }),
+      },
+    },
+
+    MuiTooltip: {
+      styleOverrides: {
+        tooltip: ({ theme }) => ({ borderRadius: theme.shape.borderRadius }),
+      },
+    },
+
+    MuiPopover: {
+      styleOverrides: {
+        paper: ({ theme }) => ({ borderRadius: theme.shape.borderRadius }),
+      },
+    },
+
+    MuiMenu: {
+      styleOverrides: {
+        paper: ({ theme }) => ({ borderRadius: theme.shape.borderRadius }),
+      },
+    },
+
+    MuiDialog: {
+      styleOverrides: {
+        paper: ({ theme }) => ({
+          borderRadius: theme.shape.borderRadius,
+          padding: 0,
+          marginBottom: 0,
+        }),
+      },
+    },
 
     // Ensure dialog content matches the dark theme (fixes washed-out headings)
     MuiDialogContent: {

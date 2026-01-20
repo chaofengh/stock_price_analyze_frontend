@@ -49,7 +49,7 @@ const GroupedAlerts = ({
         justifyContent="space-between"
         sx={{
           cursor: 'pointer',
-          borderRadius: 2,
+          borderRadius: 'var(--app-radius)',
           border: '1px solid',
           borderColor: 'divider',
           backgroundColor: alpha('#000', 0.25),

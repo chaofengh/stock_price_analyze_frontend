@@ -95,7 +95,7 @@ const BandBreakoutMeter = ({
         sx={(theme) => ({
           position: "relative",
           height: 12,
-          borderRadius: 6,
+          borderRadius: "var(--app-radius)",
           overflow: "hidden",
           // subtle tinted halves: left (oversold/green) | right (overbought/red)
           background: `linear-gradient(

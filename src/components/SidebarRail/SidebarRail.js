@@ -85,7 +85,7 @@ const SidebarRail = ({ summary, railWidth = 176 }) => {
       top: 3,
       bottom: 3,
       width: 3,
-      borderRadius: 2,
+      borderRadius: 'var(--app-radius)',
       backgroundColor: alpha(theme.palette.common.white, 0.85),
       opacity: isActive ? 1 : 0,
     },

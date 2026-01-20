@@ -136,7 +136,7 @@ const LinearPair = ({ sRaw, mRaw, sVal, mVal }) => {
             sx={{
               flex: 1,
               height: 10,
-              borderRadius: 5,
+              borderRadius: 'var(--app-radius)',
               backgroundColor: 'rgba(255,255,255,0.12)',
               '& .MuiLinearProgress-bar': { backgroundColor: col },
             }}
@@ -178,7 +178,7 @@ const SingleBar = ({ sRaw, sVal }) => {
         sx={{
           flex: 1,
           height: 10,
-          borderRadius: 5,
+          borderRadius: 'var(--app-radius)',
           backgroundColor: 'rgba(255,255,255,0.12)',
           '& .MuiLinearProgress-bar': { backgroundColor: theme.palette.warning.main },
         }}

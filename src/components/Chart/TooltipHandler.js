@@ -27,7 +27,7 @@ export function useExternalTooltipHandler() {
       background: "#fff",
       color: "#0b0f14",
       border: "1px solid #e5e7eb",
-      borderRadius: "12px",
+      borderRadius: "var(--app-radius)",
       boxShadow: "0 8px 24px rgba(0,0,0,.2)",
       padding: "10px 12px",
       lineHeight: 1.35,
@@ -107,7 +107,7 @@ export function useExternalTooltipHandler() {
     const chip = (text) =>
       `<span style="
         display:inline-flex;align-items:center;justify-content:center;
-        min-width:60px;height:22px;border-radius:999px;padding:0 12px;
+        min-width:60px;height:22px;border-radius:var(--app-radius);padding:0 12px;
         background:rgba(0,0,0,0.06);color:#0b1220;font-weight:800;white-space:nowrap;">${text}</span>`;
 
     const badge = (pnl) => {
@@ -115,7 +115,7 @@ export function useExternalTooltipHandler() {
       const bg = ok ? "rgba(46,204,113,0.12)" : "rgba(231,76,60,0.12)";
       const fg = ok ? "#2ecc71" : "#e74c3c";
       return `<span style="
-        display:inline-flex;align-items:center;height:22px;border-radius:6px;padding:0 8px;
+        display:inline-flex;align-items:center;height:22px;border-radius:var(--app-radius);padding:0 8px;
         font-weight:900;background:${bg};color:${fg};white-space:nowrap;">${money(pnl)}</span>`;
     };
 

@@ -21,7 +21,7 @@ const PriceChangeInfo = ({ dragInfo, onResetZoom }) => {
           top: 16,
           left: 16,
           p: 2,
-          borderRadius: 2,
+          borderRadius: 'var(--app-radius)',
           minWidth: 240,
           display: 'flex',
           flexDirection: 'column',

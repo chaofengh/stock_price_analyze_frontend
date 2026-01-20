@@ -33,7 +33,7 @@ export default function CalendarComponent({
           '& .react-calendar': {
             width: '100%',
             height: '100%',
-            borderRadius: 2,
+            borderRadius: 'var(--app-radius)',
             p: 1,
             border: '1px solid #ccc',
             fontFamily: 'inherit'

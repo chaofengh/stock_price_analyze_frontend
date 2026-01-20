@@ -21,7 +21,7 @@ const AnnualFinancials = ({ annualReports, isLoading = false }) => {
     return (
       <TableContainer
         component={Paper}
-        sx={{ mt: 2, mb: 0, borderRadius: 2, boxShadow: 3 }}
+        sx={{ mt: 2, mb: 0, borderRadius: 'var(--app-radius)', boxShadow: 3 }}
       >
         <Table size="small">
           <TableHead>
@@ -173,7 +173,7 @@ const AnnualFinancials = ({ annualReports, isLoading = false }) => {
   return (
     <TableContainer
       component={Paper}
-      sx={{ mt: 2, mb: 0, borderRadius: 2, boxShadow: 3 }}
+      sx={{ mt: 2, mb: 0, borderRadius: 'var(--app-radius)', boxShadow: 3 }}
     >
       <Table size="small">
         <TableHead>

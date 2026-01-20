@@ -79,7 +79,7 @@ const AlertItem = ({
         elevation={0}
         sx={{
           mb: 2,
-          borderRadius: 2,
+          borderRadius: 'var(--app-radius)',
           border: `1px solid ${alpha(theme.palette.divider, 0.6)}`,
           backgroundColor:
             index % 2 === 0

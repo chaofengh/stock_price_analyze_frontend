@@ -58,7 +58,7 @@ const NotificationBell = () => {
           width: 36,
           height: 36,
           p: 0,
-          borderRadius: 8,
+          borderRadius: 'var(--app-radius)',
           transition: 'background-color 150ms ease',
           '&:hover': { boxShadow: 'none' }
         }}

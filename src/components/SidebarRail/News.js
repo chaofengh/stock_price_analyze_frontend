@@ -51,7 +51,7 @@ function News() {
         variant="outlined"
         sx={{
           p: 2,
-          borderRadius: 2,
+          borderRadius: 'var(--app-radius)',
           bgcolor: 'background.paper',
           borderColor: 'divider',
         }}
@@ -84,7 +84,7 @@ function News() {
             sx={{
               p: 2,
               mb: 2,
-              borderRadius: 2,
+              borderRadius: 'var(--app-radius)',
               bgcolor: 'background.paper',
               borderColor: 'divider',
             }}
@@ -113,7 +113,7 @@ function News() {
                   display: 'block',
                   mt: 2,
                   mb: 2,
-                  borderRadius: 1,
+                  borderRadius: 'var(--app-radius)',
                   border: `1px solid ${theme.palette.divider}`,
                   backgroundColor: alpha(theme.palette.common.black, 0.06),
                 }}

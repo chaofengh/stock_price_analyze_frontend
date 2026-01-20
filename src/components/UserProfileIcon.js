@@ -66,7 +66,7 @@ function UserProfileIcon() {
     px: 0.75,
     py: 0.25,
     minHeight: 36,
-    borderRadius: 8,
+    borderRadius: 'var(--app-radius)',
     backgroundColor: 'transparent',
     border: 'none',
     color: theme.palette.text.primary,

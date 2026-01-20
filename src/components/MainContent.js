@@ -118,7 +118,7 @@ const MainContent = ({ summary, eventMap, chartRange, onChartRangeChange }) => {
                     padding: "0.3rem 0.6rem",
                     backgroundColor: "#f8d7da",
                     color: "#dc3545",
-                    borderRadius: "6px",
+                    borderRadius: "var(--app-radius)",
                   }}
                 >
                   $
@@ -144,7 +144,7 @@ const MainContent = ({ summary, eventMap, chartRange, onChartRangeChange }) => {
                     padding: "0.3rem 0.6rem",
                     backgroundColor: "#d4edda",
                     color: "#28a745",
-                    borderRadius: "6px",
+                    borderRadius: "var(--app-radius)",
                   }}
                 >
                   $

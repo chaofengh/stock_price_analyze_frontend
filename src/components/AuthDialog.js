@@ -194,11 +194,11 @@ function AuthDialog({ open, mode, onClose, onSwitchMode }) {
     '& .MuiInputLabel-shrink': {
       backgroundColor: alpha(theme.palette.background.paper, 0.92),
       padding: '0 8px',
-      borderRadius: 999,
+      borderRadius: 'var(--app-radius)',
       marginLeft: '-2px',
     },
     '& .MuiOutlinedInput-root': {
-      borderRadius: '16px',
+      borderRadius: 'var(--app-radius)',
       backgroundColor: alpha(theme.palette.common.white, 0.04),
       transition: 'box-shadow 150ms ease, border-color 150ms ease, background-color 150ms ease',
       '& fieldset': {
@@ -239,7 +239,7 @@ function AuthDialog({ open, mode, onClose, onSwitchMode }) {
           sx: {
             p: 0,
             overflow: 'hidden',
-            borderRadius: '20px',
+            borderRadius: 'var(--app-radius)',
             borderColor: alpha(theme.palette.common.white, 0.12),
             backgroundImage: 'none',
             marginBottom: 0,
@@ -336,7 +336,7 @@ function AuthDialog({ open, mode, onClose, onSwitchMode }) {
                 onClick={handleSubmit}
                 disabled={isLoginLoading}
                 size="large"
-                sx={{ fontWeight: 900, borderRadius: '16px', py: 1.2 }}
+                sx={{ fontWeight: 900, borderRadius: 'var(--app-radius)', py: 1.2 }}
               >
                 {isLoginLoading ? 'Logging in...' : 'Log In'}
               </Button>
@@ -472,7 +472,7 @@ function AuthDialog({ open, mode, onClose, onSwitchMode }) {
                 onClick={handleSubmit}
                 disabled={isRegisterLoading}
                 size="large"
-                sx={{ fontWeight: 900, borderRadius: '16px', py: 1.2 }}
+                sx={{ fontWeight: 900, borderRadius: 'var(--app-radius)', py: 1.2 }}
               >
                 {isRegisterLoading ? 'Registering...' : 'Register'}
               </Button>
@@ -492,7 +492,7 @@ function AuthDialog({ open, mode, onClose, onSwitchMode }) {
                 variant="outlined"
                 sx={{
                   fontWeight: 900,
-                  borderRadius: '16px',
+                  borderRadius: 'var(--app-radius)',
                   borderColor: alpha(theme.palette.common.white, 0.2),
                 }}
               >

@@ -94,7 +94,7 @@ function SymbolCell({ symbol }) {
       sx={{
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'center',
+        justifyContent: 'flex-start',
         gap: 1,
         minWidth: 0,
         width: '100%',
@@ -125,7 +125,7 @@ function SymbolCell({ symbol }) {
 const STARTER_TICKERS = ['TSLA', 'NVDA', 'AAPL', 'MSFT', 'AMZN', 'META', 'PLTR', 'QQQ'];
 const FIRST_TICKER_WELCOME_STORAGE_KEY = 'watchlist:first-ticker-welcome-shown:v1';
 
-function WatchlistHeroGraphic() {
+function WatchlistHeroGraphic({ variant = 'locked' }) {
   const theme = useTheme();
 
   return (
@@ -133,7 +133,7 @@ function WatchlistHeroGraphic() {
       sx={{
         width: 168,
         height: 168,
-        borderRadius: 4,
+        borderRadius: 'var(--app-radius)',
         position: 'relative',
         overflow: 'hidden',
         background: `radial-gradient(120px 120px at 30% 30%, ${alpha(
@@ -210,7 +210,11 @@ function WatchlistHeroGraphic() {
             position: 'relative',
           }}
         >
-          <LockRoundedIcon sx={{ fontSize: 36, color: theme.palette.common.white }} />
+          {variant === 'locked' ? (
+            <LockRoundedIcon sx={{ fontSize: 36, color: theme.palette.common.white }} />
+          ) : (
+            <EmojiEventsRoundedIcon sx={{ fontSize: 38, color: theme.palette.common.white }} />
+          )}
           <AutoAwesomeRoundedIcon
             sx={{
               position: 'absolute',
@@ -278,6 +282,8 @@ function TickerList() {
   const [snackbar, setSnackbar] = useState({ open: false, severity: 'info', message: '' });
   const [firstTickerDialogOpen, setFirstTickerDialogOpen] = useState(false);
   const [firstTickerBurstId, setFirstTickerBurstId] = useState(0);
+  const addTickerInputRef = useRef(null);
+  const focusAddTickerInputOnCloseRef = useRef(false);
   const dragSelectRef = useRef({
     active: false,
     anchorIndex: null,
@@ -312,6 +318,15 @@ function TickerList() {
     window.addEventListener('mouseup', handleMouseUp);
     return () => window.removeEventListener('mouseup', handleMouseUp);
   }, []);
+
+  const focusAddTickerInput = () => {
+    const input = addTickerInputRef.current;
+    if (!input) return;
+    window.requestAnimationFrame(() => {
+      input.focus();
+      if (typeof input.select === 'function') input.select();
+    });
+  };
 
   useEffect(() => {
     const onRegistered = () => {
@@ -388,25 +403,52 @@ function TickerList() {
       const data = await response.json();
 
       const newRows = Object.entries(data)
-        .map(([symbol, priceArray]) => {
-          if (!priceArray || priceArray.length === 0) return null;
+        .map(([symbol, payload]) => {
+          const candles = Array.isArray(payload) ? payload : payload?.candles;
+          const summary = Array.isArray(payload) ? null : payload?.summary;
 
-          const closePrices = priceArray.map(r => r.close);
-          const firstClose = closePrices[0];
-          const lastClose = closePrices[closePrices.length - 1];
-          const dayHigh = Math.max(...closePrices);
-          const dayLow = Math.min(...closePrices);
-          const dayChange = lastClose - firstClose;
-          const percentageChange = ((lastClose - firstClose) / firstClose) * 100;
+          if (!candles || candles.length === 0) return null;
+
+          let closePrices = candles
+            .map((r) => Number(r.close))
+            .filter((value) => Number.isFinite(value));
+
+          const fallbackOpen = Number(candles?.[0]?.open ?? candles?.[0]?.close);
+          const fallbackClose = Number(candles?.[candles.length - 1]?.close ?? candles?.[candles.length - 1]?.open);
+
+          const openCandidate = Number.isFinite(Number(summary?.open)) ? Number(summary.open) : fallbackOpen;
+          const closeCandidate = Number.isFinite(Number(summary?.close)) ? Number(summary.close) : fallbackClose;
+          const open = Number.isFinite(openCandidate) ? openCandidate : null;
+          const close = Number.isFinite(closeCandidate) ? closeCandidate : null;
+          const change =
+            Number.isFinite(Number(summary?.change))
+              ? Number(summary.change)
+              : typeof open === 'number' && typeof close === 'number'
+              ? close - open
+              : null;
+          const percentageChange =
+            Number.isFinite(Number(summary?.percentageChange))
+              ? Number(summary.percentageChange)
+              : typeof open === 'number' && typeof close === 'number' && open !== 0
+              ? ((close - open) / open) * 100
+              : null;
+
+          if (closePrices.length < 2) {
+            if (typeof open === 'number' && typeof close === 'number') {
+              closePrices = [open, close];
+            } else if (closePrices.length === 1) {
+              closePrices = [closePrices[0], closePrices[0]];
+            }
+          }
 
           return {
             id: symbol,
             symbol,
             closePrices,
-            price: lastClose,
-            dayHigh,
-            dayLow,
-            dayChange,
+            price: close,
+            open,
+            close,
+            change,
             percentageChange,
           };
         })
@@ -623,16 +665,19 @@ function TickerList() {
     {
       field: 'symbol',
       headerName: 'Ticker',
-      flex: 1.1,
+      flex: 0.75,
+      minWidth: 180,
+      maxWidth: 240,
       sortable: true,
-      align: 'center',
-      headerAlign: 'center',
+      align: 'left',
+      headerAlign: 'left',
       renderCell: (params) => <SymbolCell symbol={params.value} />,
     },
     {
       field: 'price',
       headerName: 'Price',
       flex: 0.7,
+      minWidth: 110,
       sortable: true,
       type: 'number',
       align: 'center',
@@ -641,9 +686,10 @@ function TickerList() {
         typeof value === 'number' ? `$${value.toFixed(2)}` : '',
     },
     {
-      field: 'dayChange',
+      field: 'change',
       headerName: 'Change',
       flex: 0.7,
+      minWidth: 120,
       sortable: true,
       type: 'number',
       align: 'center',
@@ -675,9 +721,10 @@ function TickerList() {
       },
     },
     {
-      field: 'dayHigh',
-      headerName: 'High',
+      field: 'open',
+      headerName: 'Open',
       flex: 0.7,
+      minWidth: 110,
       sortable: true,
       type: 'number',
       align: 'center',
@@ -686,9 +733,10 @@ function TickerList() {
         typeof value === 'number' ? `$${value.toFixed(2)}` : '',
     },
     {
-      field: 'dayLow',
-      headerName: 'Low',
+      field: 'close',
+      headerName: 'Closed',
       flex: 0.7,
+      minWidth: 110,
       sortable: true,
       type: 'number',
       align: 'center',
@@ -700,6 +748,7 @@ function TickerList() {
       field: 'sparkline',
       headerName: 'Movement',
       flex: 1.1,
+      minWidth: 160,
       sortable: false,
       align: 'center',
       headerAlign: 'center',
@@ -707,8 +756,9 @@ function TickerList() {
     },
     {
       field: 'percentageChange',
-      headerName: '%',
+      headerName: 'percentageChange',
       flex: 0.7,
+      minWidth: 170,
       sortable: true,
       align: 'center',
       headerAlign: 'center',
@@ -791,7 +841,7 @@ function TickerList() {
             variant="outlined"
             sx={{
               p: 2.5,
-              borderRadius: 4,
+              borderRadius: 'var(--app-radius)',
               bgcolor: alpha(theme.palette.warning.main, 0.05),
               borderColor: alpha(theme.palette.warning.main, 0.18),
               position: 'relative',
@@ -922,7 +972,7 @@ function TickerList() {
                 variant="outlined"
                 sx={{
                   p: 2,
-                  borderRadius: 3,
+                  borderRadius: 'var(--app-radius)',
                   bgcolor: alpha(theme.palette.common.white, 0.03),
                   borderColor: alpha(theme.palette.common.white, 0.1),
                 }}
@@ -995,6 +1045,7 @@ function TickerList() {
               variant="outlined"
               size="small"
               label="Add a ticker"
+              inputRef={addTickerInputRef}
               value={newTicker}
               onChange={(e) => setNewTicker(e.target.value)}
               onKeyDown={(e) => {
@@ -1044,8 +1095,14 @@ function TickerList() {
                     borderBottom: `1px solid ${theme.palette.divider}`,
                     fontWeight: 800,
                   },
-                  '& .MuiDataGrid-columnHeaderTitleContainer': {
+                  '& .MuiDataGrid-columnHeader--alignCenter .MuiDataGrid-columnHeaderTitleContainer': {
                     justifyContent: 'center',
+                  },
+                  '& .MuiDataGrid-columnHeader--alignLeft .MuiDataGrid-columnHeaderTitleContainer': {
+                    justifyContent: 'flex-start',
+                  },
+                  '& .MuiDataGrid-columnHeader--alignRight .MuiDataGrid-columnHeaderTitleContainer': {
+                    justifyContent: 'flex-end',
                   },
                   '& .MuiDataGrid-footerContainer': {
                     bgcolor: 'transparent',
@@ -1053,7 +1110,15 @@ function TickerList() {
                   },
                   '& .MuiDataGrid-cell': {
                     borderBottom: `1px solid ${alpha(theme.palette.divider, 0.55)}`,
+                  },
+                  '& .MuiDataGrid-cell--textCenter': {
                     justifyContent: 'center',
+                  },
+                  '& .MuiDataGrid-cell--textLeft': {
+                    justifyContent: 'flex-start',
+                  },
+                  '& .MuiDataGrid-cell--textRight': {
+                    justifyContent: 'flex-end',
                   },
                   '& .MuiDataGrid-row:hover': {
                     bgcolor: alpha(theme.palette.primary.main, 0.08),
@@ -1094,44 +1159,162 @@ function TickerList() {
       <Dialog
         open={firstTickerDialogOpen}
         onClose={() => setFirstTickerDialogOpen(false)}
-        maxWidth="xs"
+        maxWidth="sm"
         fullWidth
         TransitionComponent={FirstTickerDialogTransition}
+        TransitionProps={{
+          onExited: () => {
+            if (!focusAddTickerInputOnCloseRef.current) return;
+            focusAddTickerInputOnCloseRef.current = false;
+            focusAddTickerInput();
+          },
+        }}
+        PaperProps={{
+          sx: {
+            borderRadius: 'var(--app-radius)',
+            overflow: 'hidden',
+          },
+        }}
       >
-        <DialogTitle sx={{ fontWeight: 950, letterSpacing: 0.2, pb: 1 }}>
-          Great start.
-        </DialogTitle>
-        <DialogContent sx={{ pt: 0 }}>
-          <Stack spacing={1.25}>
-            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-              Your first ticker is on your watch list. That’s momentum.
-            </Typography>
-            <Paper
-              variant="outlined"
+        <DialogTitle
+          sx={{
+            px: 3,
+            pt: 3,
+            pb: 2,
+            position: 'relative',
+          }}
+        >
+          <Box
+            aria-hidden="true"
+            sx={{
+              position: 'absolute',
+              inset: 0,
+              background: `radial-gradient(340px 220px at 20% 20%, ${alpha(
+                theme.palette.primary.main,
+                0.18
+              )}, transparent 60%),
+                radial-gradient(280px 220px at 90% 30%, ${alpha(
+                  theme.palette.secondary.main,
+                  0.16
+                )}, transparent 60%),
+                ${alpha(theme.palette.common.white, 0.02)}`,
+              pointerEvents: 'none',
+            }}
+          />
+          <Stack
+            direction="row"
+            spacing={1.5}
+            alignItems="center"
+            sx={{ position: 'relative' }}
+          >
+            <Box
               sx={{
-                p: 1.5,
-                borderRadius: 3,
-                bgcolor: alpha(theme.palette.common.white, 0.03),
-                borderColor: alpha(theme.palette.common.white, 0.12),
+                width: 44,
+                height: 44,
+                borderRadius: 'var(--app-radius)',
+                display: 'grid',
+                placeItems: 'center',
+                bgcolor: alpha(theme.palette.primary.main, 0.16),
+                border: `1px solid ${alpha(theme.palette.primary.main, 0.28)}`,
+                boxShadow: `0 0 0 1px ${alpha(theme.palette.common.black, 0.35)}`,
               }}
             >
+              <EmojiEventsRoundedIcon sx={{ color: theme.palette.secondary.main, fontSize: 22 }} />
+            </Box>
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Typography
+                variant="overline"
+                sx={{ color: 'text.secondary', fontWeight: 900, letterSpacing: 0.9, lineHeight: 1 }}
+              >
+                Watch list
+              </Typography>
+              <Typography variant="h6" sx={{ fontWeight: 950, letterSpacing: 0.2, mt: 0.2 }}>
+                Great start.
+              </Typography>
+            </Box>
+            <Chip
+              size="small"
+              icon={<AutoAwesomeRoundedIcon />}
+              label={`${rows.length}/5`}
+              sx={{
+                bgcolor: alpha(theme.palette.primary.main, 0.14),
+                border: `1px solid ${alpha(theme.palette.primary.main, 0.25)}`,
+                color: theme.palette.text.primary,
+                fontWeight: 900,
+              }}
+            />
+          </Stack>
+        </DialogTitle>
+        <DialogContent sx={{ px: 3, pb: 2.5, pt: 0 }}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2.25} alignItems="flex-start">
+            <Box sx={{ alignSelf: { xs: 'center', sm: 'flex-start' }, flexShrink: 0 }}>
+              <WatchlistHeroGraphic variant="firstTicker" />
+            </Box>
+            <Stack spacing={1.25} sx={{ flex: 1, minWidth: 0 }}>
+              <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                Your first ticker is on your watch list. That’s momentum.
+              </Typography>
+              <Paper
+                variant="outlined"
+                sx={{
+                  p: 2,
+                  borderRadius: 'var(--app-radius)',
+                  bgcolor: alpha(theme.palette.common.white, 0.03),
+                  borderColor: alpha(theme.palette.common.white, 0.12),
+                }}
+              >
+                <Stack spacing={0.9}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 900 }}>
+                    Next tiny wins
+                  </Typography>
+                  <QuestLine done={false} label="Add 2–3 more tickers to compare" />
+                  <QuestLine done={false} label="Check movement, not noise" />
+                  <QuestLine done={false} label="Stay consistent — we’re rooting for you" />
+                </Stack>
+              </Paper>
               <Stack spacing={0.75}>
-                <Typography variant="subtitle2" sx={{ fontWeight: 900 }}>
-                  Next tiny wins
-                </Typography>
-                <QuestLine done={false} label="Add 2–3 more tickers to compare" />
-                <QuestLine done={false} label="Check movement, not noise" />
-                <QuestLine done={false} label="Stay consistent — we’re rooting for you" />
+                <Stack direction="row" spacing={1} alignItems="baseline" justifyContent="space-between">
+                  <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 800 }}>
+                    Progress
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: 'text.secondaryBright', fontWeight: 900 }}>
+                    {rows.length}/5
+                  </Typography>
+                </Stack>
+                <LinearProgress
+                  variant="determinate"
+                  value={questProgress}
+                  sx={{
+                    height: 10,
+                    borderRadius: 'var(--app-radius)',
+                    bgcolor: alpha(theme.palette.common.white, 0.08),
+                    '& .MuiLinearProgress-bar': {
+                      borderRadius: 'var(--app-radius)',
+                      background: `linear-gradient(90deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+                    },
+                  }}
+                />
               </Stack>
-            </Paper>
-            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-              We can’t promise profits, but we can help you build a calmer, more consistent routine.
-            </Typography>
+              <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                We can’t promise profits, but we can help you build a calmer, more consistent routine.
+              </Typography>
+            </Stack>
           </Stack>
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
+        <DialogActions sx={{ px: 3, pb: 3, pt: 0 }}>
           <Button onClick={() => setFirstTickerDialogOpen(false)} sx={{ fontWeight: 800 }}>
             Keep going
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<AutoAwesomeRoundedIcon />}
+            onClick={() => {
+              focusAddTickerInputOnCloseRef.current = true;
+              setFirstTickerDialogOpen(false);
+            }}
+            sx={{ fontWeight: 900 }}
+          >
+            Add another ticker
           </Button>
         </DialogActions>
       </Dialog>

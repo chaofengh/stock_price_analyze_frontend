@@ -212,7 +212,7 @@ const WorldMarketMap = ({ summaryError }) => {
           width: '100%',
           height: '100%',
           minHeight: 0,
-          borderRadius: 0,
+          borderRadius: 'var(--app-radius)',
           overflow: 'hidden',
           background: 'linear-gradient(180deg, #111722 0%, #0b1018 60%, #0a0f16 100%)',
           boxShadow: 'none',
