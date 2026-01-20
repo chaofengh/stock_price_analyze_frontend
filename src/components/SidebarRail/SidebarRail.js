@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Box, Stack, ListItemButton, ListItemIcon, ListItemText } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import { Link as RouterLink, useLocation, matchPath } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import DashboardOutlinedIcon from '@mui/icons-material/DashboardOutlined';
 import AssessmentOutlinedIcon from '@mui/icons-material/AssessmentOutlined';
 import AutoGraphOutlinedIcon from '@mui/icons-material/AutoGraphOutlined';
@@ -9,9 +10,35 @@ import BookmarkBorderOutlinedIcon from '@mui/icons-material/BookmarkBorderOutlin
 import SwapHorizOutlinedIcon from '@mui/icons-material/SwapHorizOutlined';
 import ArticleOutlinedIcon from '@mui/icons-material/ArticleOutlined';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
+import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded';
+import ConfettiBurst from './ConfettiBurst';
 
 const SidebarRail = ({ summary, railWidth = 176 }) => {
   const location = useLocation();
+  const isLoggedIn = useSelector((state) => Boolean(state?.auth?.accessToken));
+  const [confettiActive, setConfettiActive] = useState(false);
+  const [confettiBurstId, setConfettiBurstId] = useState(0);
+
+  const triggerConfetti = useCallback(() => {
+    setConfettiBurstId((value) => value + 1);
+    setConfettiActive(true);
+  }, []);
+
+  useEffect(() => {
+    if (!confettiActive) return;
+    const timeout = setTimeout(() => setConfettiActive(false), 2200);
+    return () => clearTimeout(timeout);
+  }, [confettiActive]);
+
+  useEffect(() => {
+    const onRegistered = () => triggerConfetti();
+    window.addEventListener('auth:registered', onRegistered);
+    return () => window.removeEventListener('auth:registered', onRegistered);
+  }, [triggerConfetti]);
+
+  const showConfettiTestButton =
+    process.env.NODE_ENV !== 'production' ||
+    String(process.env.REACT_APP_SHOW_CONFETTI_TEST || '').toLowerCase() === 'true';
   const searchParams = new URLSearchParams(location.search);
   const searchSymbol = searchParams.get('symbol')?.trim().toUpperCase() || '';
   const analysisMatch = matchPath('/analysis/:symbol', location.pathname);
@@ -128,6 +155,7 @@ const SidebarRail = ({ summary, railWidth = 176 }) => {
         },
       })}
     >
+      <ConfettiBurst active={confettiActive} burstId={confettiBurstId} variant="signup" />
       <Stack spacing={0.25} width="100%" sx={{ flexGrow: 0 }}>
         <ListItemButton
           aria-label="Dashboard"
@@ -185,7 +213,84 @@ const SidebarRail = ({ summary, railWidth = 176 }) => {
           <ListItemIcon>
             <BookmarkBorderOutlinedIcon />
           </ListItemIcon>
-          <ListItemText primary="Watch List" primaryTypographyProps={{ noWrap: true }} />
+          <ListItemText
+            primary="Watch List"
+            primaryTypographyProps={{ noWrap: true }}
+            sx={(theme) => ({
+              minWidth: 0,
+              position: 'relative',
+              ...(isLoggedIn
+                ? null
+                : {
+                    isolation: 'isolate',
+                    '@keyframes watchlistMistBreathe': {
+                      '0%, 100%': {
+                        opacity: 0.45,
+                        transform: 'translateY(0px) translateX(0px) scale(1)',
+                      },
+                      '50%': {
+                        opacity: 0.85,
+                        transform: 'translateY(-0.6px) translateX(0.6px) scale(1.05)',
+                      },
+                    },
+                    '@keyframes watchlistSparkleFlicker': {
+                      '0%, 100%': { opacity: 0.18 },
+                      '50%': { opacity: 0.65 },
+                    },
+                    '@keyframes watchlistTextBreathe': {
+                      '0%, 100%': { opacity: 0.82 },
+                      '50%': { opacity: 1 },
+                    },
+                    '&::before': {
+                      content: '""',
+                      position: 'absolute',
+                      left: -18,
+                      right: -14,
+                      top: -14,
+                      bottom: -14,
+                      pointerEvents: 'none',
+                      background: `
+                        radial-gradient(130px 46px at 52% 58%, ${alpha('#F2C96D', 0.24)}, transparent 68%),
+                        radial-gradient(62px 24px at 34% 52%, ${alpha('#F2C96D', 0.42)}, transparent 72%),
+                        radial-gradient(64px 24px at 74% 64%, ${alpha('#F2C96D', 0.34)}, transparent 72%),
+                        radial-gradient(40px 20px at 18% 58%, ${alpha('#F2C96D', 0.22)}, transparent 74%),
+                        radial-gradient(42px 20px at 88% 46%, ${alpha('#F2C96D', 0.2)}, transparent 74%)
+                      `,
+                      filter: 'blur(14px)',
+                      opacity: 0.7,
+                      zIndex: 0,
+                      animation: 'watchlistMistBreathe 2.8s ease-in-out infinite',
+                    },
+                    '&::after': {
+                      content: '""',
+                      position: 'absolute',
+                      left: -10,
+                      right: -8,
+                      top: -10,
+                      bottom: -10,
+                      pointerEvents: 'none',
+                      background: `
+                        radial-gradient(2px 2px at 22% 46%, ${alpha('#FFF2C0', 0.9)} 0%, transparent 65%),
+                        radial-gradient(2px 2px at 32% 68%, ${alpha('#FFF2C0', 0.8)} 0%, transparent 65%),
+                        radial-gradient(2px 2px at 54% 44%, ${alpha('#FFF2C0', 0.9)} 0%, transparent 65%),
+                        radial-gradient(2px 2px at 72% 64%, ${alpha('#FFF2C0', 0.75)} 0%, transparent 65%),
+                        radial-gradient(2px 2px at 86% 48%, ${alpha('#FFF2C0', 0.9)} 0%, transparent 65%)
+                      `,
+                      filter: 'blur(0.2px)',
+                      opacity: 0.55,
+                      zIndex: 0,
+                      animation: 'watchlistSparkleFlicker 3.4s ease-in-out infinite',
+                    },
+                    '& .MuiListItemText-primary': {
+                      position: 'relative',
+                      zIndex: 1,
+                      color: alpha('#F2C96D', 0.9),
+                      textShadow: `0 0 14px ${alpha('#F2C96D', 0.22)}`,
+                      animation: 'watchlistTextBreathe 2.8s ease-in-out infinite',
+                    },
+                  }),
+            })}
+          />
         </ListItemButton>
 
         <ListItemButton
@@ -227,6 +332,20 @@ const SidebarRail = ({ summary, railWidth = 176 }) => {
           </ListItemIcon>
           <ListItemText primary="Settings" primaryTypographyProps={{ noWrap: true }} />
         </ListItemButton>
+
+        {showConfettiTestButton && (
+          <ListItemButton
+            aria-label="Trigger confetti effect"
+            onClick={triggerConfetti}
+            disableGutters
+            sx={(theme) => baseItemStyles(theme, false)}
+          >
+            <ListItemIcon>
+              <AutoAwesomeRoundedIcon />
+            </ListItemIcon>
+            <ListItemText primary="Confetti Test" primaryTypographyProps={{ noWrap: true }} />
+          </ListItemButton>
+        )}
       </Stack>
     </Box>
   );

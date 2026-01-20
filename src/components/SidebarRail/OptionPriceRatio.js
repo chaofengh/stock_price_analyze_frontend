@@ -1,5 +1,5 @@
 // OptionPriceRatio.js
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Box,
   Paper,
@@ -12,12 +12,30 @@ import { fetchSummary } from '../Redux/summarySlice';
 
 function OptionPriceRatio() {
   const dispatch = useDispatch();
-  const [data, setData] = useState([]);
+  const itemsRef = useRef(new Map());
+  const peRequestedRef = useRef(new Set());
+  const bumpTimerRef = useRef(null);
+  const [dataVersion, setDataVersion] = useState(0);
   const [loading, setLoading] = useState(false);
   const [fetchError, setFetchError] = useState(null);
+  const [paginationModel, setPaginationModel] = useState({ page: 0, pageSize: 5 });
 
   useEffect(() => {
-    const fetchOptionRatio = async () => {
+    const scheduleBump = () => {
+      if (bumpTimerRef.current) return;
+      bumpTimerRef.current = setTimeout(() => {
+        bumpTimerRef.current = null;
+        setDataVersion((v) => v + 1);
+      }, 50);
+    };
+
+    const reset = () => {
+      itemsRef.current = new Map();
+      peRequestedRef.current = new Set();
+      scheduleBump();
+    };
+
+    const fetchFallback = async () => {
       setLoading(true);
       setFetchError(null);
       try {
@@ -27,7 +45,11 @@ function OptionPriceRatio() {
           throw new Error(errData.error || 'Failed to fetch option price ratio.');
         }
         const result = await response.json();
-        setData(result);
+        reset();
+        result.forEach((item) => {
+          if (item && item.ticker) itemsRef.current.set(item.ticker, item);
+        });
+        scheduleBump();
       } catch (err) {
         console.error('Error fetching option price ratio:', err);
         setFetchError(err.message);
@@ -36,19 +58,101 @@ function OptionPriceRatio() {
       }
     };
 
-    fetchOptionRatio();
+    setLoading(true);
+    setFetchError(null);
+    reset();
+
+    const streamUrl = `${process.env.REACT_APP_summary_root_api}/option-price-ratio/stream`;
+    let es;
+    try {
+      es = new EventSource(streamUrl);
+    } catch (err) {
+      fetchFallback();
+      return () => {};
+    }
+
+    const onItem = (evt) => {
+      try {
+        const item = JSON.parse(evt.data);
+        if (item && item.ticker) {
+          itemsRef.current.set(item.ticker, item);
+          scheduleBump();
+        }
+      } catch (e) {
+        // ignore malformed events
+      }
+    };
+
+    const onDone = () => {
+      setLoading(false);
+      es.close();
+    };
+
+    es.addEventListener('item', onItem);
+    es.addEventListener('done', onDone);
+    es.onerror = () => {
+      es.close();
+      fetchFallback();
+    };
+
+    return () => {
+      es.close();
+      if (bumpTimerRef.current) {
+        clearTimeout(bumpTimerRef.current);
+        bumpTimerRef.current = null;
+      }
+    };
   }, []);
 
-  // Prepare rows for DataGrid, including trailingPE
-  const rows = data
-    .filter(item => !item.error)
-    .map((item, index) => ({
-      id: index,
-      ticker: item.ticker,
-      stockPrice: item.stock_price ? item.stock_price.toFixed(2) : null,
-      ratio: item.best_put_ratio ? item.best_put_ratio.toFixed(4) : null,
-      trailingPE: item.trailingPE ? item.trailingPE.toFixed(2) : null
-    }));
+  const data = useMemo(() => {
+    void dataVersion;
+    return Array.from(itemsRef.current.values());
+  }, [dataVersion]);
+
+  const rows = useMemo(() => {
+    return data
+      .filter((item) => !item.error)
+      .map((item) => ({
+        id: item.ticker,
+        ticker: item.ticker,
+        stockPrice: item.stock_price != null ? item.stock_price.toFixed(2) : null,
+        ratio: item.best_put_ratio != null ? item.best_put_ratio.toFixed(4) : null,
+        trailingPE: item.trailingPE != null ? item.trailingPE.toFixed(2) : null,
+      }));
+  }, [data]);
+
+  useEffect(() => {
+    if (!rows.length) return;
+
+    const start = paginationModel.page * paginationModel.pageSize;
+    const end = start + paginationModel.pageSize;
+    const pageRows = rows.slice(start, end);
+
+    const tickers = pageRows
+      .map((r) => r.ticker)
+      .filter((t) => t && !peRequestedRef.current.has(t));
+
+    if (!tickers.length) return;
+
+    tickers.forEach((t) => peRequestedRef.current.add(t));
+
+    const url = `${process.env.REACT_APP_summary_root_api}/option-price-ratio/trailing-pe?tickers=${encodeURIComponent(
+      tickers.join(',')
+    )}`;
+    fetch(url)
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error('Failed to fetch trailing PE'))))
+      .then((mapping) => {
+        if (!mapping || typeof mapping !== 'object') return;
+        Object.entries(mapping).forEach(([ticker, pe]) => {
+          const item = itemsRef.current.get(ticker);
+          if (item) item.trailingPE = pe;
+        });
+        setDataVersion((v) => v + 1);
+      })
+      .catch(() => {
+        // keep PE blank on failures
+      });
+  }, [rows, paginationModel]);
 
   const handleCellClick = (params) => {
     if (params.field === 'ticker') {
@@ -120,13 +224,14 @@ function OptionPriceRatio() {
         </Typography>
       )}
 
-      {!loading && !fetchError && rows.length > 0 && (
+      {!fetchError && rows.length > 0 && (
         <Box sx={{ width: '100%', mt: 2 }}>
           <DataGrid
             rows={rows}
             columns={columns}
-            pageSize={5}
-            rowsPerPageOptions={[5, 10, 25]}
+            paginationModel={paginationModel}
+            onPaginationModelChange={setPaginationModel}
+            pageSizeOptions={[5, 10, 25]}
             disableSelectionOnClick
             onCellClick={handleCellClick}
             sx={{
@@ -150,8 +255,8 @@ function OptionPriceRatio() {
           <Typography variant="subtitle1" color="error">
             Some tickers returned errors:
           </Typography>
-          {data.filter(item => item.error).map((item, idx) => (
-            <Typography key={idx} variant="body2" color="error">
+          {data.filter(item => item.error).map((item) => (
+            <Typography key={item.ticker} variant="body2" color="error">
               {item.ticker}: {item.error}
             </Typography>
           ))}

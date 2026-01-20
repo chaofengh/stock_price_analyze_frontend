@@ -1,17 +1,18 @@
 import { configureStore } from '@reduxjs/toolkit';
 import summaryReducer, { fetchSummary } from './summarySlice';
 import { fetchStockSummary } from '../../API/StockService';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
-jest.mock('../../API/StockService', () => ({
-  fetchStockSummary: jest.fn(),
-  fetchStockPeers: jest.fn(),
-  fetchStockFundamentals: jest.fn(),
-  fetchStockPeerAverages: jest.fn(),
+vi.mock('../../API/StockService', () => ({
+  fetchStockSummary: vi.fn(),
+  fetchStockPeers: vi.fn(),
+  fetchStockFundamentals: vi.fn(),
+  fetchStockPeerAverages: vi.fn(),
 }));
 
 describe('fetchSummary thunk', () => {
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('avoids duplicate requests while a symbol is already loading', async () => {

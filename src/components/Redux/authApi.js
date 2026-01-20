@@ -26,7 +26,7 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
       // Attempt to get new tokens using the refresh token endpoint
       const refreshResult = await baseQuery(
         {
-          url: '/api/refresh_token',
+          url: '/refresh_token',
           method: 'POST',
           body: { refreshToken },
         },

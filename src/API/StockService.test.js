@@ -1,4 +1,5 @@
 import { fetchStockSummary } from './StockService';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 describe('fetchStockSummary', () => {
   const originalFetch = global.fetch;
@@ -6,19 +7,19 @@ describe('fetchStockSummary', () => {
 
   beforeEach(() => {
     process.env.REACT_APP_summary_root_api = 'http://example.test';
-    global.fetch = jest.fn();
+    global.fetch = vi.fn();
   });
 
   afterEach(() => {
     process.env.REACT_APP_summary_root_api = originalEnv;
     global.fetch = originalFetch;
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('returns data and uses no-store cache', async () => {
     global.fetch.mockResolvedValue({
       ok: true,
-      json: jest.fn().mockResolvedValue({ symbol: 'AAPL' }),
+      json: vi.fn().mockResolvedValue({ symbol: 'AAPL' }),
     });
 
     const data = await fetchStockSummary('AAPL');
@@ -32,7 +33,7 @@ describe('fetchStockSummary', () => {
     global.fetch.mockResolvedValue({
       ok: false,
       statusText: 'INTERNAL SERVER ERROR',
-      json: jest.fn().mockResolvedValue({ error: 'boom' }),
+      json: vi.fn().mockResolvedValue({ error: 'boom' }),
     });
 
     await expect(fetchStockSummary('AAPL')).rejects.toThrow('Server error: boom');

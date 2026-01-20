@@ -5,7 +5,8 @@ import React, {
   useEffect,
   useCallback,
 } from 'react';
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
+import { logout } from '../Redux/authSlice';
 
 /**
  * Context shape
@@ -28,6 +29,7 @@ export const AlertsContext = createContext({
  * e.g., "http://localhost:5000/api" or "https://yourdomain.com/api".
  */
 export const AlertsProvider = ({ children, pollMs = 30 * 60 * 1000 }) => {
+  const dispatch = useDispatch();
   const [alerts, setAlerts] = useState([]);
   const [timestamp, setTimestamp] = useState(null);
   const [lastFetchedAt, setLastFetchedAt] = useState(null);
@@ -37,8 +39,7 @@ export const AlertsProvider = ({ children, pollMs = 30 * 60 * 1000 }) => {
   const stock_summary_api_key = process.env.REACT_APP_summary_root_api || '';
 
   // User from Redux (adjust selector to your store structure if needed)
-  const user = useSelector((state) => state?.auth?.user);
-  const userId = user?.id ?? null;
+  const accessToken = useSelector((state) => state?.auth?.accessToken);
 
   /**
    * Build the GET /api/alerts/latest URL, trimming trailing slashes on base.
@@ -47,9 +48,8 @@ export const AlertsProvider = ({ children, pollMs = 30 * 60 * 1000 }) => {
   const buildEndpoint = useCallback(() => {
     const base = stock_summary_api_key.replace(/\/+$/, '');
     const path = '/alerts/latest';
-    const query = userId ? `?user_id=${encodeURIComponent(userId)}` : '';
-    return `${base}${path}${query}`;
-  }, [stock_summary_api_key, userId]);
+    return `${base}${path}`;
+  }, [stock_summary_api_key]);
 
   /**
    * Fetch latest alerts once. Safe to call repeatedly.
@@ -60,11 +60,18 @@ export const AlertsProvider = ({ children, pollMs = 30 * 60 * 1000 }) => {
       setLoading(true);
       setError(null);
       try {
+        const headers = { Accept: 'application/json' };
+        if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+
         const res = await fetch(url, {
           method: 'GET',
-          headers: { Accept: 'application/json' },
+          headers,
           signal,
         });
+        if (res.status === 401) {
+          dispatch(logout());
+          return;
+        }
         if (!res.ok) {
           throw new Error(`HTTP ${res.status} ${res.statusText}`);
         }
@@ -81,7 +88,7 @@ export const AlertsProvider = ({ children, pollMs = 30 * 60 * 1000 }) => {
         setLoading(false);
       }
     },
-    [buildEndpoint]
+    [accessToken, buildEndpoint, dispatch]
   );
 
   /**
@@ -89,6 +96,16 @@ export const AlertsProvider = ({ children, pollMs = 30 * 60 * 1000 }) => {
    */
   useEffect(() => {
     const controller = new AbortController();
+    if (!accessToken) {
+      controller.abort();
+      setAlerts([]);
+      setTimestamp(null);
+      setLastFetchedAt(null);
+      setLoading(false);
+      setError(null);
+      return () => {};
+    }
+
     fetchLatest(controller.signal);
 
     const onVisibilityChange = () => {
@@ -108,7 +125,7 @@ export const AlertsProvider = ({ children, pollMs = 30 * 60 * 1000 }) => {
       document.removeEventListener('visibilitychange', onVisibilityChange);
       clearInterval(intervalId);
     };
-  }, [fetchLatest, pollMs]);
+  }, [accessToken, fetchLatest, pollMs]);
 
   /**
    * Clear alerts (e.g., "Mark as read")

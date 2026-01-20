@@ -6,6 +6,9 @@ import reportWebVitals from './reportWebVitals';
 import { store } from './components/Redux/store';
 import { Provider } from 'react-redux';
 import { PostHogProvider } from 'posthog-js/react';
+import { loadFromStorage } from './components/Redux/authSlice';
+
+store.dispatch(loadFromStorage());
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
