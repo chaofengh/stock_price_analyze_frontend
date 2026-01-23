@@ -1,37 +1,54 @@
 // OptionPriceRatio.js
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Avatar,
   Box,
+  Button,
+  CircularProgress,
   Paper,
   Typography,
-  CircularProgress
 } from '@mui/material';
+import { alpha, useTheme } from '@mui/material/styles';
 import { DataGrid } from '@mui/x-data-grid';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { fetchSummary } from '../Redux/summarySlice';
+import { logout } from '../Redux/authSlice';
 
 function OptionPriceRatio() {
   const dispatch = useDispatch();
+  const theme = useTheme();
+  const accessToken = useSelector((s) => s.auth.accessToken);
   const itemsRef = useRef(new Map());
-  const peRequestedRef = useRef(new Set());
   const bumpTimerRef = useRef(null);
   const [dataVersion, setDataVersion] = useState(0);
   const [loading, setLoading] = useState(false);
   const [fetchError, setFetchError] = useState(null);
-  const [paginationModel, setPaginationModel] = useState({ page: 0, pageSize: 5 });
+  const [paginationModel, setPaginationModel] = useState({ page: 0, pageSize: 25 });
+
+  const openAuthDialog = (mode = 'login') => {
+    window.dispatchEvent(new CustomEvent('auth:open', { detail: { mode } }));
+  };
+
+  const scheduleBump = () => {
+    if (bumpTimerRef.current) return;
+    bumpTimerRef.current = setTimeout(() => {
+      bumpTimerRef.current = null;
+      setDataVersion((v) => v + 1);
+    }, 50);
+  };
+
+  const resetItems = () => {
+    itemsRef.current = new Map();
+    scheduleBump();
+  };
 
   useEffect(() => {
-    const scheduleBump = () => {
-      if (bumpTimerRef.current) return;
-      bumpTimerRef.current = setTimeout(() => {
-        bumpTimerRef.current = null;
-        setDataVersion((v) => v + 1);
-      }, 50);
-    };
+    let isMounted = true;
+    const controller = new AbortController();
 
-    const reset = () => {
-      itemsRef.current = new Map();
-      peRequestedRef.current = new Set();
+    const applyItem = (item) => {
+      if (!isMounted || !item || !item.ticker) return;
+      itemsRef.current.set(item.ticker, item);
       scheduleBump();
     };
 
@@ -39,120 +56,199 @@ function OptionPriceRatio() {
       setLoading(true);
       setFetchError(null);
       try {
-        const response = await fetch(`${process.env.REACT_APP_summary_root_api}/option-price-ratio`);
-        if (!response.ok) {
-          const errData = await response.json();
-          throw new Error(errData.error || 'Failed to fetch option price ratio.');
-        }
-        const result = await response.json();
-        reset();
-        result.forEach((item) => {
-          if (item && item.ticker) itemsRef.current.set(item.ticker, item);
+        const response = await fetch(`${process.env.REACT_APP_summary_root_api}/option-price-ratio`, {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+          signal: controller.signal,
         });
-        scheduleBump();
+        if (!response.ok) {
+          if (response.status === 401 || response.status === 403) {
+            dispatch(logout());
+            throw new Error('Please sign in to view your watch list.');
+          }
+          let errPayload = null;
+          try {
+            errPayload = await response.json();
+          } catch (err) {
+            errPayload = null;
+          }
+          throw new Error(errPayload?.error || 'Failed to fetch option price ratio.');
+        }
+        const data = await response.json();
+        resetItems();
+        if (Array.isArray(data)) {
+          data.forEach((item) => applyItem(item));
+        }
       } catch (err) {
-        console.error('Error fetching option price ratio:', err);
+        if (!isMounted || controller.signal.aborted) return;
         setFetchError(err.message);
       } finally {
+        if (!isMounted || controller.signal.aborted) return;
         setLoading(false);
       }
     };
 
-    setLoading(true);
-    setFetchError(null);
-    reset();
-
-    const streamUrl = `${process.env.REACT_APP_summary_root_api}/option-price-ratio/stream`;
-    let es;
-    try {
-      es = new EventSource(streamUrl);
-    } catch (err) {
-      fetchFallback();
-      return () => {};
-    }
-
-    const onItem = (evt) => {
+    const runStream = async () => {
+      setLoading(true);
+      setFetchError(null);
+      resetItems();
       try {
-        const item = JSON.parse(evt.data);
-        if (item && item.ticker) {
-          itemsRef.current.set(item.ticker, item);
-          scheduleBump();
+        const response = await fetch(`${process.env.REACT_APP_summary_root_api}/option-price-ratio/stream`, {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+          signal: controller.signal,
+        });
+
+        if (!response.ok) {
+          if (response.status === 401 || response.status === 403) {
+            dispatch(logout());
+            throw new Error('Please sign in to view your watch list.');
+          }
+          let errPayload = null;
+          try {
+            errPayload = await response.json();
+          } catch (err) {
+            errPayload = null;
+          }
+          throw new Error(errPayload?.error || 'Failed to stream option price ratio.');
         }
-      } catch (e) {
-        // ignore malformed events
+
+        if (!response.body || !response.body.getReader) {
+          throw new Error('Streaming not supported.');
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder('utf-8');
+        let buffer = '';
+        let doneReceived = false;
+
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const chunks = buffer.split('\n\n');
+          buffer = chunks.pop() || '';
+          for (const chunk of chunks) {
+            const lines = chunk.split('\n');
+            let eventName = 'message';
+            let dataPayload = '';
+            for (const line of lines) {
+              if (!line || line.startsWith(':')) continue;
+              if (line.startsWith('event:')) {
+                eventName = line.slice(6).trim();
+                continue;
+              }
+              if (line.startsWith('data:')) {
+                const value = line.slice(5).trim();
+                dataPayload = dataPayload ? `${dataPayload}\n${value}` : value;
+              }
+            }
+            if (!dataPayload && eventName === 'message') {
+              continue;
+            }
+            let parsed = null;
+            if (dataPayload) {
+              try {
+                parsed = JSON.parse(dataPayload);
+              } catch (err) {
+                parsed = null;
+              }
+            }
+            if (eventName === 'item' && parsed) {
+              applyItem(parsed);
+              if (isMounted) setLoading(false);
+            } else if (eventName === 'pe' && parsed) {
+              if (!parsed.ticker) continue;
+              const existing = itemsRef.current.get(parsed.ticker) || { ticker: parsed.ticker };
+              existing.trailingPE = parsed.trailingPE;
+              itemsRef.current.set(parsed.ticker, existing);
+              scheduleBump();
+            } else if (eventName === 'ratio_done') {
+              if (isMounted) setLoading(false);
+            } else if (eventName === 'done') {
+              doneReceived = true;
+              if (isMounted) setLoading(false);
+            }
+          }
+          if (doneReceived) break;
+        }
+        if (isMounted) {
+          setLoading(false);
+        }
+      } catch (err) {
+        if (!isMounted || controller.signal.aborted) return;
+        await fetchFallback();
       }
     };
 
-    const onDone = () => {
+    if (!accessToken) {
+      resetItems();
+      setFetchError(null);
       setLoading(false);
-      es.close();
-    };
+      return () => {
+        isMounted = false;
+        controller.abort();
+        if (bumpTimerRef.current) {
+          clearTimeout(bumpTimerRef.current);
+          bumpTimerRef.current = null;
+        }
+      };
+    }
 
-    es.addEventListener('item', onItem);
-    es.addEventListener('done', onDone);
-    es.onerror = () => {
-      es.close();
-      fetchFallback();
-    };
+    runStream();
 
     return () => {
-      es.close();
+      isMounted = false;
+      controller.abort();
       if (bumpTimerRef.current) {
         clearTimeout(bumpTimerRef.current);
         bumpTimerRef.current = null;
       }
     };
-  }, []);
+  }, [accessToken, dispatch]);
 
-  const data = useMemo(() => {
+  const expirationLabel = useMemo(() => {
+    const item = Array.from(itemsRef.current.values()).find((entry) => entry && entry.expiration);
+    return item?.expiration || null;
+  }, [dataVersion]);
+
+  const items = useMemo(() => {
     void dataVersion;
     return Array.from(itemsRef.current.values());
   }, [dataVersion]);
 
+  const errorItems = useMemo(() => items.filter((item) => item?.error), [items]);
+
   const rows = useMemo(() => {
-    return data
-      .filter((item) => !item.error)
-      .map((item) => ({
-        id: item.ticker,
-        ticker: item.ticker,
-        stockPrice: item.stock_price != null ? item.stock_price.toFixed(2) : null,
-        ratio: item.best_put_ratio != null ? item.best_put_ratio.toFixed(4) : null,
-        trailingPE: item.trailingPE != null ? item.trailingPE.toFixed(2) : null,
-      }));
-  }, [data]);
+    const okItems = items.filter((item) => item && !item.error);
+    const sorted = [...okItems].sort((a, b) => {
+      const aRatio = Number.isFinite(a.best_put_ratio) ? a.best_put_ratio : -1;
+      const bRatio = Number.isFinite(b.best_put_ratio) ? b.best_put_ratio : -1;
+      return bRatio - aRatio;
+    });
 
-  useEffect(() => {
-    if (!rows.length) return;
+    const formatNumber = (value, digits) => {
+      const num = typeof value === 'number' ? value : Number(value);
+      return Number.isFinite(num) ? num.toFixed(digits) : null;
+    };
 
-    const start = paginationModel.page * paginationModel.pageSize;
-    const end = start + paginationModel.pageSize;
-    const pageRows = rows.slice(start, end);
+    return sorted.map((item) => ({
+      id: item.ticker,
+      ticker: item.ticker,
+      logoBase64: item.logo_base64,
+      stockPrice: formatNumber(item.stock_price, 2),
+      ratio: formatNumber(item.best_put_ratio, 4),
+      trailingPE: formatNumber(item.trailingPE, 2),
+    }));
+  }, [items]);
 
-    const tickers = pageRows
-      .map((r) => r.ticker)
-      .filter((t) => t && !peRequestedRef.current.has(t));
-
-    if (!tickers.length) return;
-
-    tickers.forEach((t) => peRequestedRef.current.add(t));
-
-    const url = `${process.env.REACT_APP_summary_root_api}/option-price-ratio/trailing-pe?tickers=${encodeURIComponent(
-      tickers.join(',')
-    )}`;
-    fetch(url)
-      .then((res) => (res.ok ? res.json() : Promise.reject(new Error('Failed to fetch trailing PE'))))
-      .then((mapping) => {
-        if (!mapping || typeof mapping !== 'object') return;
-        Object.entries(mapping).forEach(([ticker, pe]) => {
-          const item = itemsRef.current.get(ticker);
-          if (item) item.trailingPE = pe;
-        });
-        setDataVersion((v) => v + 1);
-      })
-      .catch(() => {
-        // keep PE blank on failures
-      });
-  }, [rows, paginationModel]);
+  const resolveLogoSrc = (logoBase64) => {
+    if (!logoBase64) return null;
+    if (logoBase64.startsWith('data:')) return logoBase64;
+    return `data:image/png;base64,${logoBase64}`;
+  };
 
   const handleCellClick = (params) => {
     if (params.field === 'ticker') {
@@ -165,8 +261,33 @@ function OptionPriceRatio() {
       field: 'ticker',
       headerName: 'Ticker',
       flex: 1,
-      align: 'center',
-      headerAlign: 'center',
+      align: 'left',
+      headerAlign: 'left',
+      renderCell: (params) => {
+        const src = resolveLogoSrc(params.row.logoBase64);
+        return (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Avatar
+              src={src || undefined}
+              alt={params.value}
+              sx={{
+                width: 28,
+                height: 28,
+                bgcolor: alpha(theme.palette.common.white, 0.08),
+                border: `1px solid ${alpha(theme.palette.common.white, 0.12)}`,
+              }}
+              variant="rounded"
+            >
+              <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 800 }}>
+                {params.value?.[0]?.toUpperCase() || '?'}
+              </Typography>
+            </Avatar>
+            <Typography variant="body2" sx={{ fontWeight: 800, letterSpacing: 0.2 }} noWrap>
+              {params.value}
+            </Typography>
+          </Box>
+        );
+      },
     },
     {
       field: 'stockPrice',
@@ -191,7 +312,7 @@ function OptionPriceRatio() {
       type: 'number',
       align: 'right',
       headerAlign: 'right',
-    }
+    },
   ];
 
   return (
@@ -206,6 +327,23 @@ function OptionPriceRatio() {
         Option-to-Price Ratio
       </Typography>
 
+      {expirationLabel && (
+        <Typography variant="body2" color="text.secondary">
+          Expiration: {expirationLabel}
+        </Typography>
+      )}
+
+      {!accessToken && (
+        <Box sx={{ mt: 2 }}>
+          <Typography variant="body2" sx={{ mb: 1 }}>
+            Sign in to view option-to-price ratios for your watch list.
+          </Typography>
+          <Button variant="contained" onClick={() => openAuthDialog('login')}>
+            Sign in
+          </Button>
+        </Box>
+      )}
+
       {loading && (
         <Box display="flex" justifyContent="center" py={2}>
           <CircularProgress />
@@ -218,7 +356,7 @@ function OptionPriceRatio() {
         </Typography>
       )}
 
-      {!loading && !fetchError && rows.length === 0 && (
+      {!loading && !fetchError && accessToken && rows.length === 0 && (
         <Typography variant="body2" sx={{ mt: 1 }}>
           No valid data found.
         </Typography>
@@ -231,7 +369,7 @@ function OptionPriceRatio() {
             columns={columns}
             paginationModel={paginationModel}
             onPaginationModelChange={setPaginationModel}
-            pageSizeOptions={[5, 10, 25]}
+            pageSizeOptions={[5, 10, 25, 50]}
             disableSelectionOnClick
             onCellClick={handleCellClick}
             sx={{
@@ -250,12 +388,12 @@ function OptionPriceRatio() {
         </Box>
       )}
 
-      {!loading && !fetchError && data.some(item => item.error) && (
+      {!loading && !fetchError && errorItems.length > 0 && (
         <Box sx={{ mt: 2 }}>
           <Typography variant="subtitle1" color="error">
             Some tickers returned errors:
           </Typography>
-          {data.filter(item => item.error).map((item) => (
+          {errorItems.map((item) => (
             <Typography key={item.ticker} variant="body2" color="error">
               {item.ticker}: {item.error}
             </Typography>

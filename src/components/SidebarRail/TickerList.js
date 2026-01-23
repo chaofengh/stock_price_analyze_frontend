@@ -80,7 +80,7 @@ function TrendCell({ closePrices }) {
   );
 }
 
-function SymbolCell({ symbol }) {
+function SymbolCell({ symbol, pending }) {
   const dispatch = useDispatch();
   const theme = useTheme();
   const logoUrl = useSelector((state) => selectLogoUrlBySymbol(state, symbol));
@@ -118,12 +118,33 @@ function SymbolCell({ symbol }) {
       <Typography variant="body2" sx={{ fontWeight: 800, letterSpacing: 0.2 }} noWrap>
         {symbol}
       </Typography>
+      {pending && (
+        <Chip
+          size="small"
+          label="Pending"
+          sx={{
+            height: 20,
+            fontWeight: 800,
+            borderRadius: 999,
+            bgcolor: alpha(theme.palette.warning.main, 0.16),
+            color: theme.palette.warning.light,
+            border: `1px solid ${alpha(theme.palette.warning.main, 0.35)}`,
+          }}
+        />
+      )}
     </Box>
   );
 }
 
 const STARTER_TICKERS = ['TSLA', 'NVDA', 'AAPL', 'MSFT', 'AMZN', 'META', 'PLTR', 'QQQ'];
 const FIRST_TICKER_WELCOME_STORAGE_KEY = 'watchlist:first-ticker-welcome-shown:v1';
+const compactNumberFormatter = new Intl.NumberFormat('en-US', {
+  notation: 'compact',
+  maximumFractionDigits: 2,
+});
+const formatPrice = (value) => (typeof value === 'number' ? `$${value.toFixed(2)}` : '');
+const formatCompactNumber = (value) =>
+  typeof value === 'number' && Number.isFinite(value) ? compactNumberFormatter.format(value) : '';
 
 function WatchlistHeroGraphic({ variant = 'locked' }) {
   const theme = useTheme();
@@ -407,34 +428,92 @@ function TickerList() {
           const candles = Array.isArray(payload) ? payload : payload?.candles;
           const summary = Array.isArray(payload) ? null : payload?.summary;
 
-          if (!candles || candles.length === 0) return null;
+          if (!candles || candles.length === 0) {
+            return {
+              id: symbol,
+              symbol,
+              closePrices: [],
+              price: null,
+              open: null,
+              close: null,
+              prevClose: null,
+              volume: null,
+              change: null,
+              percentageChange: null,
+              pending: true,
+            };
+          }
 
-          let closePrices = candles
-            .map((r) => Number(r.close))
+          const normalizedCandles = candles.map((row) => ({
+            ...row,
+            open: Number(row?.open),
+            close: Number(row?.close),
+            volume: Number(row?.volume),
+          }));
+
+          let closePrices = normalizedCandles
+            .map((row) => row.close)
             .filter((value) => Number.isFinite(value));
 
-          const fallbackOpen = Number(candles?.[0]?.open ?? candles?.[0]?.close);
-          const fallbackClose = Number(candles?.[candles.length - 1]?.close ?? candles?.[candles.length - 1]?.open);
+          const summaryOpen = Number.isFinite(Number(summary?.open)) ? Number(summary.open) : null;
+          const summaryClose = Number.isFinite(Number(summary?.close)) ? Number(summary.close) : null;
+          const summaryPrevClose = Number.isFinite(Number(summary?.previousClose))
+            ? Number(summary.previousClose)
+            : Number.isFinite(Number(summary?.prevClose))
+            ? Number(summary.prevClose)
+            : null;
 
-          const openCandidate = Number.isFinite(Number(summary?.open)) ? Number(summary.open) : fallbackOpen;
-          const closeCandidate = Number.isFinite(Number(summary?.close)) ? Number(summary.close) : fallbackClose;
-          const open = Number.isFinite(openCandidate) ? openCandidate : null;
-          const close = Number.isFinite(closeCandidate) ? closeCandidate : null;
+          let open = null;
+          for (const candle of normalizedCandles) {
+            if (Number.isFinite(candle.open)) {
+              open = candle.open;
+              break;
+            }
+            if (Number.isFinite(candle.close)) {
+              open = candle.close;
+              break;
+            }
+          }
+          if (!Number.isFinite(open)) {
+            open = summaryOpen;
+          }
+
+          let close = null;
+          for (let i = normalizedCandles.length - 1; i >= 0; i -= 1) {
+            const candle = normalizedCandles[i];
+            if (Number.isFinite(candle.close)) {
+              close = candle.close;
+              break;
+            }
+            if (Number.isFinite(candle.open)) {
+              close = candle.open;
+              break;
+            }
+          }
+          if (!Number.isFinite(close)) {
+            close = summaryClose;
+          }
+
+          const previousClose = summaryPrevClose;
+
+          const volumeValues = normalizedCandles
+            .map((row) => row.volume)
+            .filter((value) => Number.isFinite(value));
+          const volume = volumeValues.length
+            ? volumeValues.reduce((sum, value) => sum + value, 0)
+            : null;
+
           const change =
-            Number.isFinite(Number(summary?.change))
-              ? Number(summary.change)
-              : typeof open === 'number' && typeof close === 'number'
-              ? close - open
+            Number.isFinite(previousClose) && Number.isFinite(close)
+              ? close - previousClose
               : null;
           const percentageChange =
-            Number.isFinite(Number(summary?.percentageChange))
-              ? Number(summary.percentageChange)
-              : typeof open === 'number' && typeof close === 'number' && open !== 0
-              ? ((close - open) / open) * 100
+            Number.isFinite(previousClose) && Number.isFinite(close) && previousClose !== 0
+              ? ((close - previousClose) / previousClose) * 100
               : null;
 
           if (closePrices.length < 2) {
-            if (typeof open === 'number' && typeof close === 'number') {
+            if (Number.isFinite(open) && Number.isFinite(close)) {
               closePrices = [open, close];
             } else if (closePrices.length === 1) {
               closePrices = [closePrices[0], closePrices[0]];
@@ -445,11 +524,14 @@ function TickerList() {
             id: symbol,
             symbol,
             closePrices,
-            price: close,
-            open,
-            close,
+            price: Number.isFinite(close) ? close : null,
+            open: Number.isFinite(open) ? open : null,
+            close: Number.isFinite(close) ? close : null,
+            prevClose: Number.isFinite(previousClose) ? previousClose : null,
+            volume: Number.isFinite(volume) ? volume : null,
             change,
             percentageChange,
+            pending: false,
           };
         })
         .filter(Boolean);
@@ -660,6 +742,7 @@ function TickerList() {
 
   const selectedSymbols = rowSelectionModel.map(String);
   const canAnalyze = selectedSymbols.length === 1;
+  const pendingCount = rows.filter((row) => row.pending).length;
 
   const columns = [
     {
@@ -671,19 +754,18 @@ function TickerList() {
       sortable: true,
       align: 'left',
       headerAlign: 'left',
-      renderCell: (params) => <SymbolCell symbol={params.value} />,
+      renderCell: (params) => <SymbolCell symbol={params.value} pending={params.row.pending} />,
     },
     {
       field: 'price',
-      headerName: 'Price',
+      headerName: 'Last',
       flex: 0.7,
       minWidth: 110,
       sortable: true,
       type: 'number',
       align: 'center',
       headerAlign: 'center',
-      valueFormatter: (value) =>
-        typeof value === 'number' ? `$${value.toFixed(2)}` : '',
+      valueFormatter: (value) => formatPrice(value),
     },
     {
       field: 'change',
@@ -721,45 +803,12 @@ function TickerList() {
       },
     },
     {
-      field: 'open',
-      headerName: 'Open',
-      flex: 0.7,
-      minWidth: 110,
-      sortable: true,
-      type: 'number',
-      align: 'center',
-      headerAlign: 'center',
-      valueFormatter: (value) =>
-        typeof value === 'number' ? `$${value.toFixed(2)}` : '',
-    },
-    {
-      field: 'close',
-      headerName: 'Closed',
-      flex: 0.7,
-      minWidth: 110,
-      sortable: true,
-      type: 'number',
-      align: 'center',
-      headerAlign: 'center',
-      valueFormatter: (value) =>
-        typeof value === 'number' ? `$${value.toFixed(2)}` : '',
-    },
-    {
-      field: 'sparkline',
-      headerName: 'Movement',
-      flex: 1.1,
-      minWidth: 160,
-      sortable: false,
-      align: 'center',
-      headerAlign: 'center',
-      renderCell: (params) => <TrendCell closePrices={params.row.closePrices} />,
-    },
-    {
       field: 'percentageChange',
-      headerName: 'percentageChange',
+      headerName: 'Change %',
       flex: 0.7,
-      minWidth: 170,
+      minWidth: 120,
       sortable: true,
+      type: 'number',
       align: 'center',
       headerAlign: 'center',
       renderCell: (params) => {
@@ -784,6 +833,49 @@ function TickerList() {
           </Box>
         );
       },
+    },
+    {
+      field: 'prevClose',
+      headerName: 'Prev Close',
+      flex: 0.7,
+      minWidth: 120,
+      sortable: true,
+      type: 'number',
+      align: 'center',
+      headerAlign: 'center',
+      valueFormatter: (value) => formatPrice(value),
+    },
+    {
+      field: 'open',
+      headerName: 'Open',
+      flex: 0.7,
+      minWidth: 110,
+      sortable: true,
+      type: 'number',
+      align: 'center',
+      headerAlign: 'center',
+      valueFormatter: (value) => formatPrice(value),
+    },
+    {
+      field: 'volume',
+      headerName: 'Volume',
+      flex: 0.8,
+      minWidth: 120,
+      sortable: true,
+      type: 'number',
+      align: 'center',
+      headerAlign: 'center',
+      valueFormatter: (value) => formatCompactNumber(value),
+    },
+    {
+      field: 'sparkline',
+      headerName: 'Movement',
+      flex: 1.1,
+      minWidth: 160,
+      sortable: false,
+      align: 'center',
+      headerAlign: 'center',
+      renderCell: (params) => <TrendCell closePrices={params.row.closePrices} />,
     },
     {
       field: 'actions',
@@ -917,7 +1009,21 @@ function TickerList() {
       ) : (
         <>
           <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
-            <Typography variant="h6">Watch List</Typography>
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Typography variant="h6">Watch List</Typography>
+              {pendingCount > 0 && (
+                <Chip
+                  size="small"
+                  label={`Pending data: ${pendingCount}`}
+                  sx={{
+                    fontWeight: 800,
+                    bgcolor: alpha(theme.palette.warning.main, 0.16),
+                    color: theme.palette.warning.light,
+                    border: `1px solid ${alpha(theme.palette.warning.main, 0.35)}`,
+                  }}
+                />
+              )}
+            </Stack>
             <Stack direction="row" spacing={1} alignItems="center">
               <Button
                 variant="outlined"

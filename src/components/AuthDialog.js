@@ -276,208 +276,210 @@ function AuthDialog({ open, mode, onClose, onSwitchMode }) {
           </Box>
         </DialogTitle>
 
-        <DialogContent sx={{ pt: 3.25, pb: 3, px: 3 }}>
-          {mode === 'login' ? (
-            <Stack spacing={2.25}>
-              {localError && <Alert severity="error">{localError}</Alert>}
-              <Stack spacing={1.25} sx={{ mt: 1 }}>
-                <Typography
-                  component="div"
-                  id={`${fieldIdPrefix}-emailOrUsername-label`}
-                  variant="body2"
-                  sx={{ ...fieldLabelSx, pt: 5.25 }}
+        <DialogContent sx={{ pb: 3, px: 3 }}>
+          <Box sx={{ pt: 3.25 }}>
+            {mode === 'login' ? (
+              <Stack spacing={2.25}>
+                {localError && <Alert severity="error">{localError}</Alert>}
+                <Stack spacing={1.25} sx={{ mt: 1 }}>
+                  <Typography
+                    component="div"
+                    id={`${fieldIdPrefix}-emailOrUsername-label`}
+                    variant="body2"
+                    sx={fieldLabelSx}
+                  >
+                    Email or username
+                  </Typography>
+                  <TextField
+                    id={`${fieldIdPrefix}-emailOrUsername`}
+                    placeholder="Email or username"
+                    fullWidth
+                    variant="outlined"
+                    value={emailOrUsername}
+                    onChange={(e) => setEmailOrUsername(e.target.value)}
+                    autoComplete="username"
+                    inputProps={{ 'aria-labelledby': `${fieldIdPrefix}-emailOrUsername-label` }}
+                    sx={textFieldSx}
+                  />
+                </Stack>
+                <Stack spacing={1.25}>
+                  <Typography
+                    component="div"
+                    id={`${fieldIdPrefix}-password-label`}
+                    variant="body2"
+                    sx={fieldLabelSx}
+                  >
+                    Password
+                  </Typography>
+                  <TextField
+                    id={`${fieldIdPrefix}-password`}
+                    placeholder="Password"
+                    type="password"
+                    fullWidth
+                    variant="outlined"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    autoComplete="current-password"
+                    inputProps={{ 'aria-labelledby': `${fieldIdPrefix}-password-label` }}
+                    sx={textFieldSx}
+                  />
+                </Stack>
+                {/* Hidden honey trap */}
+                <input
+                  type="text"
+                  value={honeyTrap}
+                  onChange={(e) => setHoneyTrap(e.target.value)}
+                  style={{ display: 'none' }}
+                />
+                <Button
+                  variant="contained"
+                  fullWidth
+                  onClick={handleSubmit}
+                  disabled={isLoginLoading}
+                  size="large"
+                  sx={{ fontWeight: 900, borderRadius: 'var(--app-radius)', py: 1.2 }}
                 >
-                  Email or username
-                </Typography>
+                  {isLoginLoading ? 'Logging in...' : 'Log In'}
+                </Button>
+                <Link
+                  component="button"
+                  variant="body2"
+                  onClick={() => setForgotPasswordOpen(true)}
+                  underline="hover"
+                  align="center"
+                  sx={{ color: 'text.secondaryBright', fontWeight: 700 }}
+                >
+                  Forgot Password?
+                </Link>
+              </Stack>
+            ) : (
+              <Stack spacing={2.25}>
+                {localError && <Alert severity="error">{localError}</Alert>}
                 <TextField
-                  id={`${fieldIdPrefix}-emailOrUsername`}
-                  placeholder="Email or username"
+                  label="Email"
                   fullWidth
                   variant="outlined"
-                  value={emailOrUsername}
-                  onChange={(e) => setEmailOrUsername(e.target.value)}
-                  autoComplete="username"
-                  inputProps={{ 'aria-labelledby': `${fieldIdPrefix}-emailOrUsername-label` }}
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  InputLabelProps={{ shrink: true }}
                   sx={textFieldSx}
                 />
-              </Stack>
-              <Stack spacing={1.25}>
-                <Typography
-                  component="div"
-                  id={`${fieldIdPrefix}-password-label`}
-                  variant="body2"
-                  sx={fieldLabelSx}
-                >
-                  Password
-                </Typography>
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                  <TextField
+                    label="First name"
+                    fullWidth
+                    variant="outlined"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    InputLabelProps={{ shrink: true }}
+                    sx={textFieldSx}
+                  />
+                  <TextField
+                    label="Last name"
+                    fullWidth
+                    variant="outlined"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    InputLabelProps={{ shrink: true }}
+                    sx={textFieldSx}
+                  />
+                </Stack>
                 <TextField
-                  id={`${fieldIdPrefix}-password`}
-                  placeholder="Password"
+                  label="Username"
+                  fullWidth
+                  variant="outlined"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  InputLabelProps={{ shrink: true }}
+                  sx={textFieldSx}
+                />
+                <TextField
+                  label="Password"
                   type="password"
                   fullWidth
                   variant="outlined"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  autoComplete="current-password"
-                  inputProps={{ 'aria-labelledby': `${fieldIdPrefix}-password-label` }}
-                  sx={textFieldSx}
-                />
-              </Stack>
-              {/* Hidden honey trap */}
-              <input
-                type="text"
-                value={honeyTrap}
-                onChange={(e) => setHoneyTrap(e.target.value)}
-                style={{ display: 'none' }}
-              />
-              <Button
-                variant="contained"
-                fullWidth
-                onClick={handleSubmit}
-                disabled={isLoginLoading}
-                size="large"
-                sx={{ fontWeight: 900, borderRadius: 'var(--app-radius)', py: 1.2 }}
-              >
-                {isLoginLoading ? 'Logging in...' : 'Log In'}
-              </Button>
-              <Link
-                component="button"
-                variant="body2"
-                onClick={() => setForgotPasswordOpen(true)}
-                underline="hover"
-                align="center"
-                sx={{ color: 'text.secondaryBright', fontWeight: 700 }}
-              >
-                Forgot Password?
-              </Link>
-            </Stack>
-          ) : (
-            <Stack spacing={2.25}>
-              {localError && <Alert severity="error">{localError}</Alert>}
-              <TextField
-                label="Email"
-                fullWidth
-                variant="outlined"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                InputLabelProps={{ shrink: true }}
-                sx={textFieldSx}
-              />
-              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-                <TextField
-                  label="First name"
-                  fullWidth
-                  variant="outlined"
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
                   InputLabelProps={{ shrink: true }}
                   sx={textFieldSx}
                 />
                 <TextField
-                  label="Last name"
+                  label="Confirm password"
+                  type="password"
                   fullWidth
                   variant="outlined"
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                  InputLabelProps={{ shrink: true }}
-                  sx={textFieldSx}
-                />
-              </Stack>
-              <TextField
-                label="Username"
-                fullWidth
-                variant="outlined"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                InputLabelProps={{ shrink: true }}
-                sx={textFieldSx}
-              />
-              <TextField
-                label="Password"
-                type="password"
-                fullWidth
-                variant="outlined"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                InputLabelProps={{ shrink: true }}
-                sx={textFieldSx}
-              />
-              <TextField
-                label="Confirm password"
-                type="password"
-                fullWidth
-                variant="outlined"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                InputLabelProps={{ shrink: true }}
-                sx={textFieldSx}
-              />
-              <TextField
-                label="Phone (optional)"
-                fullWidth
-                variant="outlined"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                InputLabelProps={{ shrink: true }}
-                sx={textFieldSx}
-              />
-              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-                <TextField
-                  label="Country (optional)"
-                  fullWidth
-                  variant="outlined"
-                  value={country}
-                  onChange={(e) => setCountry(e.target.value)}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
                   InputLabelProps={{ shrink: true }}
                   sx={textFieldSx}
                 />
                 <TextField
-                  label="Time zone (optional)"
+                  label="Phone (optional)"
                   fullWidth
                   variant="outlined"
-                  value={timezone}
-                  onChange={(e) => setTimezone(e.target.value)}
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
                   InputLabelProps={{ shrink: true }}
                   sx={textFieldSx}
                 />
-              </Stack>
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={marketingOptIn}
-                    onChange={(e) => setMarketingOptIn(e.target.checked)}
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                  <TextField
+                    label="Country (optional)"
+                    fullWidth
+                    variant="outlined"
+                    value={country}
+                    onChange={(e) => setCountry(e.target.value)}
+                    InputLabelProps={{ shrink: true }}
+                    sx={textFieldSx}
                   />
-                }
-                label="Email me product updates (optional)"
-              />
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={acceptTerms}
-                    onChange={(e) => setAcceptTerms(e.target.checked)}
+                  <TextField
+                    label="Time zone (optional)"
+                    fullWidth
+                    variant="outlined"
+                    value={timezone}
+                    onChange={(e) => setTimezone(e.target.value)}
+                    InputLabelProps={{ shrink: true }}
+                    sx={textFieldSx}
                   />
-                }
-                label="I agree to the Terms & Privacy Policy"
-              />
-              {/* Hidden honey trap */}
-              <input
-                type="text"
-                value={honeyTrap}
-                onChange={(e) => setHoneyTrap(e.target.value)}
-                style={{ display: 'none' }}
-              />
-              <Button
-                variant="contained"
-                fullWidth
-                onClick={handleSubmit}
-                disabled={isRegisterLoading}
-                size="large"
-                sx={{ fontWeight: 900, borderRadius: 'var(--app-radius)', py: 1.2 }}
-              >
-                {isRegisterLoading ? 'Registering...' : 'Register'}
-              </Button>
-            </Stack>
-          )}
+                </Stack>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={marketingOptIn}
+                      onChange={(e) => setMarketingOptIn(e.target.checked)}
+                    />
+                  }
+                  label="Email me product updates (optional)"
+                />
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={acceptTerms}
+                      onChange={(e) => setAcceptTerms(e.target.checked)}
+                    />
+                  }
+                  label="I agree to the Terms & Privacy Policy"
+                />
+                {/* Hidden honey trap */}
+                <input
+                  type="text"
+                  value={honeyTrap}
+                  onChange={(e) => setHoneyTrap(e.target.value)}
+                  style={{ display: 'none' }}
+                />
+                <Button
+                  variant="contained"
+                  fullWidth
+                  onClick={handleSubmit}
+                  disabled={isRegisterLoading}
+                  size="large"
+                  sx={{ fontWeight: 900, borderRadius: 'var(--app-radius)', py: 1.2 }}
+                >
+                  {isRegisterLoading ? 'Registering...' : 'Register'}
+                </Button>
+              </Stack>
+            )}
+          </Box>
         </DialogContent>
 
         <Divider />

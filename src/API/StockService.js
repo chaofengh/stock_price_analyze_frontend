@@ -80,7 +80,6 @@ export async function fetchWorldMarketMoves({ refresh = true } = {}) {
     : `${stock_summary_api_key}/world-markets`;
   const response = await fetch(endpoint, {
     cache: 'no-store',
-    headers: { 'Cache-Control': 'no-cache' },
   });
   if (!response.ok) {
     throw new Error(`Server error: ${response.statusText}`);
