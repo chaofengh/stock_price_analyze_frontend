@@ -266,7 +266,7 @@ function OptionPriceRatio() {
       renderCell: (params) => {
         const src = resolveLogoSrc(params.row.logoBase64);
         return (
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, height: '100%' }}>
             <Avatar
               src={src || undefined}
               alt={params.value}
@@ -373,16 +373,41 @@ function OptionPriceRatio() {
             disableSelectionOnClick
             onCellClick={handleCellClick}
             sx={{
+              border: 'none',
+              bgcolor: 'transparent',
+              '& .MuiDataGrid-main, & .MuiDataGrid-virtualScroller, & .MuiDataGrid-overlayWrapper': {
+                bgcolor: 'transparent',
+              },
               '& .MuiDataGrid-columnHeaders': {
-                backgroundColor: '#f5f5f5',
-                fontWeight: 'bold',
+                bgcolor: alpha(theme.palette.common.white, 0.04),
+                borderBottom: `1px solid ${theme.palette.divider}`,
+                fontWeight: 800,
               },
               '& .MuiDataGrid-footerContainer': {
-                backgroundColor: '#f5f5f5',
+                bgcolor: 'transparent',
+                borderTop: `1px solid ${theme.palette.divider}`,
               },
               '& .MuiDataGrid-row:hover': {
-                backgroundColor: 'rgba(0,0,0,0.04)',
+                bgcolor: alpha(theme.palette.primary.main, 0.08),
               },
+              '& .MuiDataGrid-cell': {
+                borderBottom: `1px solid ${alpha(theme.palette.divider, 0.55)}`,
+                alignItems: 'center',
+              },
+              '& .MuiDataGrid-cell--textCenter': {
+                justifyContent: 'center',
+              },
+              '& .MuiDataGrid-cell--textLeft': {
+                justifyContent: 'flex-start',
+              },
+              '& .MuiDataGrid-cell--textRight': {
+                justifyContent: 'flex-end',
+              },
+              '& .MuiDataGrid-columnHeader': {
+                alignItems: 'center',
+              },
+              '& .MuiDataGrid-cell:focus, & .MuiDataGrid-columnHeader:focus': { outline: 'none' },
+              '& .MuiTablePagination-root': { color: theme.palette.text.secondaryBright },
             }}
           />
         </Box>

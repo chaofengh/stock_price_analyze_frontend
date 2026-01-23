@@ -96,6 +96,7 @@ function SymbolCell({ symbol, pending }) {
         alignItems: 'center',
         justifyContent: 'flex-start',
         gap: 1,
+        height: '100%',
         minWidth: 0,
         width: '100%',
       }}
@@ -1216,6 +1217,7 @@ function TickerList() {
                   },
                   '& .MuiDataGrid-cell': {
                     borderBottom: `1px solid ${alpha(theme.palette.divider, 0.55)}`,
+                    alignItems: 'center',
                   },
                   '& .MuiDataGrid-cell--textCenter': {
                     justifyContent: 'center',
@@ -1228,6 +1230,9 @@ function TickerList() {
                   },
                   '& .MuiDataGrid-row:hover': {
                     bgcolor: alpha(theme.palette.primary.main, 0.08),
+                  },
+                  '& .MuiDataGrid-columnHeader, & .MuiDataGrid-cellCheckbox': {
+                    alignItems: 'center',
                   },
                   '& .MuiCheckbox-root': { color: alpha(theme.palette.common.white, 0.55) },
                   '& .MuiCheckbox-root.Mui-checked': { color: theme.palette.primary.main },
