@@ -4,8 +4,10 @@ import React, {
   useState,
   useEffect,
   useCallback,
+  useRef,
 } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { usePostHog } from 'posthog-js/react';
 import { logout } from '../Redux/authSlice';
 
 /**
@@ -21,6 +23,20 @@ export const AlertsContext = createContext({
   clearAlerts: () => {},
 });
 
+const normalizeSymbol = (value) =>
+  typeof value === 'string' ? value.trim().toUpperCase() : '';
+
+const buildAlertId = (alert, timestamp) => {
+  const symbol = normalizeSymbol(alert?.symbol || alert?.ticker);
+  const side = typeof alert?.touched_side === 'string' ? alert.touched_side : '';
+  const ts = typeof timestamp === 'string' ? timestamp : '';
+  const parts = [];
+  if (ts) parts.push(ts);
+  if (symbol) parts.push(symbol);
+  if (side) parts.push(side);
+  return parts.join('|');
+};
+
 /**
  * Provider
  * @param {number} pollMs - how often to auto-refresh while tab is open (default: 30 minutes)
@@ -30,11 +46,14 @@ export const AlertsContext = createContext({
  */
 export const AlertsProvider = ({ children, pollMs = 30 * 60 * 1000 }) => {
   const dispatch = useDispatch();
+  const posthog = usePostHog();
   const [alerts, setAlerts] = useState([]);
   const [timestamp, setTimestamp] = useState(null);
   const [lastFetchedAt, setLastFetchedAt] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const alertReceiptRef = useRef(new Map());
+  const lastNotificationRef = useRef({ timestamp: null, alertCount: null });
 
   const stock_summary_api_key = process.env.REACT_APP_summary_root_api || '';
 
@@ -76,9 +95,40 @@ export const AlertsProvider = ({ children, pollMs = 30 * 60 * 1000 }) => {
           throw new Error(`HTTP ${res.status} ${res.statusText}`);
         }
         const data = await res.json();
-        setAlerts(Array.isArray(data?.alerts) ? data.alerts : []);
-        setTimestamp(data?.timestamp ?? null);
+        const payloadTimestamp = data?.timestamp ?? null;
+        const rawAlerts = Array.isArray(data?.alerts) ? data.alerts : [];
+        const now = Date.now();
+        const enrichedAlerts = rawAlerts.map((alert, index) => {
+          const baseId = buildAlertId(alert, payloadTimestamp);
+          const alertId = baseId || `alert:${index}`;
+          const existing = alertReceiptRef.current.get(alertId);
+          const receivedAt = existing?.receivedAt ?? now;
+          return {
+            ...alert,
+            _alert_id: alertId,
+            _received_at: receivedAt,
+            _timestamp: payloadTimestamp,
+          };
+        });
+        alertReceiptRef.current = new Map(
+          enrichedAlerts.map((alert) => [alert._alert_id, { receivedAt: alert._received_at }])
+        );
+        setAlerts(enrichedAlerts);
+        setTimestamp(payloadTimestamp);
         setLastFetchedAt(Date.now());
+        const alertCount = enrichedAlerts.length;
+        const lastNotification = lastNotificationRef.current;
+        const shouldNotify =
+          alertCount > 0 &&
+          (lastNotification.timestamp !== payloadTimestamp ||
+            lastNotification.alertCount !== alertCount);
+        if (shouldNotify) {
+          posthog?.capture('notification_received', {
+            alert_count: alertCount,
+            timestamp: payloadTimestamp,
+          });
+        }
+        lastNotificationRef.current = { timestamp: payloadTimestamp, alertCount };
       } catch (err) {
         // Ignore aborts; capture real errors
         if (err?.name !== 'AbortError') {
@@ -88,7 +138,7 @@ export const AlertsProvider = ({ children, pollMs = 30 * 60 * 1000 }) => {
         setLoading(false);
       }
     },
-    [accessToken, buildEndpoint, dispatch]
+    [accessToken, buildEndpoint, dispatch, posthog]
   );
 
   /**

@@ -1,8 +1,9 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Box, Stack, ListItemButton, ListItemIcon, ListItemText } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import { Link as RouterLink, useLocation, matchPath } from 'react-router-dom';
 import { useSelector } from 'react-redux';
+import { usePostHog } from 'posthog-js/react';
 import DashboardOutlinedIcon from '@mui/icons-material/DashboardOutlined';
 import AssessmentOutlinedIcon from '@mui/icons-material/AssessmentOutlined';
 import AutoGraphOutlinedIcon from '@mui/icons-material/AutoGraphOutlined';
@@ -12,16 +13,28 @@ import ArticleOutlinedIcon from '@mui/icons-material/ArticleOutlined';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded';
 import ConfettiBurst from './ConfettiBurst';
+import {
+  CONFETTI_EXPERIMENT_FLAGS,
+  captureFeatureFlagExposureWhenReady,
+  getFeatureFlagVariant,
+  shouldEnableConfetti,
+} from '../../analytics/experiments';
 
 const SidebarRail = ({ summary, railWidth = 176 }) => {
   const location = useLocation();
+  const posthog = usePostHog();
   const isLoggedIn = useSelector((state) => Boolean(state?.auth?.accessToken));
   const [confettiActive, setConfettiActive] = useState(false);
   const [confettiBurstId, setConfettiBurstId] = useState(0);
+  const confettiBurstIdRef = useRef(0);
+  const pendingSignupExposureRef = useRef(null);
 
   const triggerConfetti = useCallback(() => {
-    setConfettiBurstId((value) => value + 1);
+    const nextId = confettiBurstIdRef.current + 1;
+    confettiBurstIdRef.current = nextId;
+    setConfettiBurstId(nextId);
     setConfettiActive(true);
+    return nextId;
   }, []);
 
   useEffect(() => {
@@ -31,10 +44,30 @@ const SidebarRail = ({ summary, railWidth = 176 }) => {
   }, [confettiActive]);
 
   useEffect(() => {
-    const onRegistered = () => triggerConfetti();
+    const onRegistered = () => {
+      const flagKey = CONFETTI_EXPERIMENT_FLAGS.signupSuccess;
+      const flagValue = getFeatureFlagVariant(posthog, flagKey);
+      const shouldShow = shouldEnableConfetti(flagValue);
+      if (!shouldShow) {
+        captureFeatureFlagExposureWhenReady(posthog, flagKey);
+        return;
+      }
+      const burstId = triggerConfetti();
+      pendingSignupExposureRef.current = { burstId, flagKey };
+    };
     window.addEventListener('auth:registered', onRegistered);
     return () => window.removeEventListener('auth:registered', onRegistered);
-  }, [triggerConfetti]);
+  }, [posthog, triggerConfetti]);
+
+  const handleSignupConfettiFired = useCallback(
+    ({ burstId }) => {
+      const pending = pendingSignupExposureRef.current;
+      if (!pending || pending.burstId !== burstId) return;
+      pendingSignupExposureRef.current = null;
+      captureFeatureFlagExposureWhenReady(posthog, pending.flagKey);
+    },
+    [posthog]
+  );
 
   const showConfettiTestButton =
     process.env.NODE_ENV !== 'production' ||
@@ -155,7 +188,12 @@ const SidebarRail = ({ summary, railWidth = 176 }) => {
         },
       })}
     >
-      <ConfettiBurst active={confettiActive} burstId={confettiBurstId} variant="signup" />
+      <ConfettiBurst
+        active={confettiActive}
+        burstId={confettiBurstId}
+        variant="signup"
+        onFired={handleSignupConfettiFired}
+      />
       <Stack spacing={0.25} width="100%" sx={{ flexGrow: 0 }}>
         <ListItemButton
           aria-label="Dashboard"
@@ -207,6 +245,7 @@ const SidebarRail = ({ summary, railWidth = 176 }) => {
           aria-current={isWatchListActive ? 'page' : undefined}
           component={RouterLink}
           to="/watchlist"
+          state={{ source: 'nav' }}
           disableGutters
           sx={(theme) => baseItemStyles(theme, isWatchListActive)}
         >

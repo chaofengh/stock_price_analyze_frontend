@@ -1,10 +1,12 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { Grid, Box, CircularProgress } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import Sidebar from './SideBar/Sidebar';
 import MainContent from './MainContent';
 import WorldMarketMap from './WorldMarketMap';
 import { useSelector } from 'react-redux';
+import { useLocation } from 'react-router-dom';
+import { usePostHog } from 'posthog-js/react';
 
 const StockDashboard = () => {
   /* -------------------------------- Redux state ------------------------------- */
@@ -14,16 +16,71 @@ const StockDashboard = () => {
     error,
     currentSymbol,
   } = useSelector((state) => state.summary);
+  const location = useLocation();
+  const posthog = usePostHog();
+  const lastViewedRef = useRef(null);
+  const lastSearchedRef = useRef(null);
   const activeSymbol = summary?.symbol || currentSymbol;
   const hasSymbol = Boolean(activeSymbol);
   const showLoading = loading && !error;
   const [chartRange, setChartRange] = useState('3M');
+  const viewSource = location.state?.source;
+  const fromAlertId = viewSource === 'alert' ? location.state?.from_alert_id : null;
+  const resolvedSource = viewSource || 'search';
 
   useEffect(() => {
     if (summary?.symbol) {
       setChartRange('3M');
     }
   }, [summary?.symbol]);
+
+  useEffect(() => {
+    if (!summary?.symbol || loading || error) return;
+    const symbol = summary.symbol.trim().toUpperCase();
+    if (!symbol) return;
+    const captureKey = `${location.key || symbol}:${symbol}:${resolvedSource}:${fromAlertId || ''}`;
+    if (lastViewedRef.current === captureKey) return;
+    lastViewedRef.current = captureKey;
+    posthog?.capture('ticker_viewed', {
+      symbol,
+      source: resolvedSource,
+      from_alert_id: fromAlertId || null,
+    });
+  }, [error, fromAlertId, loading, location.key, posthog, resolvedSource, summary?.symbol]);
+
+  useEffect(() => {
+    if (!summary?.symbol || loading || error) return;
+    if (!location.state?.capture_ticker_searched) return;
+
+    const symbol = summary.symbol.trim().toUpperCase();
+    if (!symbol) return;
+
+    const captureKey = `${location.key || symbol}:${symbol}`;
+    if (lastSearchedRef.current === captureKey) return;
+    lastSearchedRef.current = captureKey;
+
+    const startedAt = Number(location.state?.search_started_at);
+    const latencyMs = Number.isFinite(startedAt) ? Date.now() - startedAt : null;
+    const rawQuery = location.state?.query;
+    const query = typeof rawQuery === 'string' && rawQuery.trim() ? rawQuery.trim() : symbol;
+
+    posthog?.capture('ticker_searched', {
+      query,
+      symbol_normalized: symbol,
+      source: 'alert',
+      results_count: 1,
+      latency_ms: Number.isFinite(latencyMs) ? latencyMs : null,
+    });
+  }, [
+    error,
+    loading,
+    location.key,
+    location.state?.capture_ticker_searched,
+    location.state?.query,
+    location.state?.search_started_at,
+    posthog,
+    summary?.symbol,
+  ]);
 
   /* -------------- Build eventMap for StockChart from window_5 data ------------ */
   const eventMap = useMemo(() => {

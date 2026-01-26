@@ -1,5 +1,5 @@
 // TickerList.js
-import React, { useEffect, useRef, useState, useId } from 'react';
+import React, { useCallback, useEffect, useRef, useState, useId } from 'react';
 import {
   Box,
   Typography,
@@ -32,9 +32,16 @@ import { Area, AreaChart } from 'recharts';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchSummary } from '../Redux/summarySlice';
 import { ensureLogoForSymbol, selectLogoUrlBySymbol } from '../Redux/logosSlice';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { usePostHog } from 'posthog-js/react';
 import { logout } from '../Redux/authSlice';
 import ConfettiBurst from './ConfettiBurst';
+import {
+  CONFETTI_EXPERIMENT_FLAGS,
+  captureFeatureFlagExposureWhenReady,
+  getFeatureFlagVariant,
+  shouldEnableConfetti,
+} from '../../analytics/experiments';
 
 function TrendCell({ closePrices }) {
   const theme = useTheme();
@@ -289,8 +296,10 @@ const FirstTickerDialogTransition = React.forwardRef(function FirstTickerDialogT
 function TickerList() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
   const theme = useTheme();
   const apiRef = useGridApiRef();
+  const posthog = usePostHog();
   const { accessToken } = useSelector((state) => state.auth);
   const isLoggedIn = Boolean(accessToken);
   const showFirstTickerPreviewButton =
@@ -301,11 +310,16 @@ function TickerList() {
   const [mutating, setMutating] = useState(false);
   const [newTicker, setNewTicker] = useState('');
   const [rowSelectionModel, setRowSelectionModel] = useState([]);
+  const [hasFetched, setHasFetched] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, severity: 'info', message: '' });
   const [firstTickerDialogOpen, setFirstTickerDialogOpen] = useState(false);
   const [firstTickerBurstId, setFirstTickerBurstId] = useState(0);
+  const [firstTickerConfettiEnabled, setFirstTickerConfettiEnabled] = useState(true);
+  const firstTickerBurstIdRef = useRef(0);
+  const pendingFirstTickerExposureRef = useRef(null);
   const addTickerInputRef = useRef(null);
   const focusAddTickerInputOnCloseRef = useRef(false);
+  const lastWatchlistViewKeyRef = useRef(null);
   const dragSelectRef = useRef({
     active: false,
     anchorIndex: null,
@@ -319,6 +333,11 @@ function TickerList() {
       setRows([]);
       setRowSelectionModel([]);
       setFirstTickerDialogOpen(false);
+      setFirstTickerConfettiEnabled(true);
+      setFirstTickerBurstId(0);
+      firstTickerBurstIdRef.current = 0;
+      pendingFirstTickerExposureRef.current = null;
+      setHasFetched(false);
       return;
     }
     fetchData();
@@ -340,6 +359,30 @@ function TickerList() {
     window.addEventListener('mouseup', handleMouseUp);
     return () => window.removeEventListener('mouseup', handleMouseUp);
   }, []);
+
+  useEffect(() => {
+    if (location.pathname !== '/watchlist') return;
+    if (!isLoggedIn && loading) return;
+    if (isLoggedIn && (!hasFetched || loading)) return;
+    const routeSource = location.state?.source;
+    const source = routeSource || (!isLoggedIn ? 'redirect_login' : 'nav');
+    const viewKey = `${location.key || 'watchlist'}:${source}`;
+    if (lastWatchlistViewKeyRef.current === viewKey) return;
+    lastWatchlistViewKeyRef.current = viewKey;
+    posthog?.capture('watchlist_viewed', {
+      source,
+      watchlist_count: Number.isFinite(rows.length) ? rows.length : 0,
+    });
+  }, [
+    hasFetched,
+    isLoggedIn,
+    loading,
+    location.key,
+    location.pathname,
+    location.state?.source,
+    posthog,
+    rows.length,
+  ]);
 
   const focusAddTickerInput = () => {
     const input = addTickerInputRef.current;
@@ -384,7 +427,7 @@ function TickerList() {
     }
   };
 
-  const openFirstTickerDialog = ({ persist = false } = {}) => {
+  const openFirstTickerDialog = ({ persist = false, confettiEnabled = true } = {}) => {
     if (persist) {
       try {
         window.localStorage.setItem(FIRST_TICKER_WELCOME_STORAGE_KEY, '1');
@@ -392,9 +435,29 @@ function TickerList() {
         // ignore
       }
     }
+    setFirstTickerConfettiEnabled(Boolean(confettiEnabled));
     setFirstTickerDialogOpen(true);
-    setFirstTickerBurstId((id) => id + 1);
+    if (!confettiEnabled) return null;
+    const nextId = firstTickerBurstIdRef.current + 1;
+    firstTickerBurstIdRef.current = nextId;
+    setFirstTickerBurstId(nextId);
+    return nextId;
   };
+
+  useEffect(() => {
+    if (firstTickerDialogOpen) return;
+    pendingFirstTickerExposureRef.current = null;
+  }, [firstTickerDialogOpen]);
+
+  const handleFirstTickerConfettiFired = useCallback(
+    ({ burstId }) => {
+      const pending = pendingFirstTickerExposureRef.current;
+      if (!pending || pending.burstId !== burstId) return;
+      pendingFirstTickerExposureRef.current = null;
+      captureFeatureFlagExposureWhenReady(posthog, pending.flagKey);
+    },
+    [posthog]
+  );
 
   const fetchData = async () => {
     if (!accessToken) {
@@ -544,10 +607,12 @@ function TickerList() {
       return [];
     } finally {
       setLoading(false);
+      setHasFetched(true);
     }
   };
 
-  const handleAddTicker = async (tickerOverride) => {
+  const handleAddTicker = async (tickerOverride, options = {}) => {
+    const { method = 'button' } = options;
     const symbol = (tickerOverride ?? newTicker).trim().toUpperCase();
     if (!symbol) return;
     if (!requireLogin('Sign in to add tickers to your watch list.')) return;
@@ -575,6 +640,12 @@ function TickerList() {
       const nextCount = Array.isArray(newRows) ? newRows.length : rows.length;
       const unlockedFirst = previousCount === 0 && nextCount >= 1;
       const unlockedThree = previousCount < 3 && nextCount >= 3;
+      posthog?.capture('watchlist_ticker_added', {
+        symbol,
+        method,
+        is_first_watchlist_ticker: unlockedFirst,
+        watchlist_count_after: nextCount,
+      });
       setSnackbar({
         open: true,
         severity: 'success',
@@ -586,7 +657,18 @@ function TickerList() {
       });
 
       if (unlockedFirst && !hasCelebratedFirstTicker()) {
-        openFirstTickerDialog({ persist: true });
+        const flagKey = CONFETTI_EXPERIMENT_FLAGS.firstWatchlistAdd;
+        const flagValue = getFeatureFlagVariant(posthog, flagKey);
+        const confettiEnabled = shouldEnableConfetti(flagValue);
+        if (!confettiEnabled) {
+          captureFeatureFlagExposureWhenReady(posthog, flagKey);
+          openFirstTickerDialog({ persist: true, confettiEnabled: false });
+        } else {
+          const burstId = openFirstTickerDialog({ persist: true, confettiEnabled: true });
+          if (burstId) {
+            pendingFirstTickerExposureRef.current = { burstId, flagKey };
+          }
+        }
       }
     } catch (error) {
       console.error('Error adding ticker:', error);
@@ -1032,7 +1114,7 @@ function TickerList() {
                 onClick={() => {
                   if (!canAnalyze) return;
                   const symbol = selectedSymbols[0];
-                  navigate(`/?symbol=${encodeURIComponent(symbol)}`);
+                  navigate(`/?symbol=${encodeURIComponent(symbol)}`, { state: { source: 'watchlist' } });
                 }}
                 disabled={!canAnalyze}
               >
@@ -1132,7 +1214,7 @@ function TickerList() {
                         key={symbol}
                         label={symbol}
                         size="small"
-                        onClick={() => handleAddTicker(symbol)}
+                        onClick={() => handleAddTicker(symbol, { method: 'suggested' })}
                         disabled={mutating}
                         sx={{
                           bgcolor: alpha(theme.palette.common.white, 0.06),
@@ -1156,11 +1238,15 @@ function TickerList() {
               value={newTicker}
               onChange={(e) => setNewTicker(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') handleAddTicker();
+                if (e.key === 'Enter') handleAddTicker(undefined, { method: 'button' });
               }}
               sx={{ flexGrow: 1 }}
             />
-            <Button variant="contained" onClick={() => handleAddTicker()} disabled={loading || mutating}>
+            <Button
+              variant="contained"
+              onClick={() => handleAddTicker(undefined, { method: 'button' })}
+              disabled={loading || mutating}
+            >
               ADD
             </Button>
           </Box>
@@ -1430,9 +1516,10 @@ function TickerList() {
         </DialogActions>
       </Dialog>
       <ConfettiBurst
-        active={firstTickerDialogOpen}
+        active={firstTickerDialogOpen && firstTickerConfettiEnabled}
         burstId={firstTickerBurstId}
         variant="firstTicker"
+        onFired={handleFirstTickerConfettiFired}
       />
     </Paper>
   );

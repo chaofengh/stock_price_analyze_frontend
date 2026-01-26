@@ -1,5 +1,5 @@
 // App.js
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   ThemeProvider,
   CssBaseline,
@@ -19,6 +19,7 @@ import {
 } from 'react-router-dom';
 import { alpha } from '@mui/material/styles';
 import { useDispatch, useSelector } from 'react-redux';
+import { usePostHog } from 'posthog-js/react';
 import { AlertsProvider } from './components/Notification/AlertContext';
 import StockDashboard from './components/StockDashboard';
 import SidebarRail from './components/SidebarRail/SidebarRail';
@@ -43,15 +44,43 @@ function AppShell() {
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useDispatch();
+  const posthog = usePostHog();
   const summary = useSelector((state) => state.summary.data);
+  const { accessToken } = useSelector((state) => state.auth);
+  const isLoggedIn = Boolean(accessToken);
   const isDashboardRoute = location.pathname === '/';
+  const searchSource = (() => {
+    if (location.pathname === '/watchlist') return 'watchlist';
+    if (location.pathname === '/' && location.state?.source === 'alert') return 'alert';
+    if (location.pathname === '/') return 'home';
+    return 'navbar';
+  })();
+  const lastHomeViewKeyRef = useRef(null);
+  const previousLocationRef = useRef(document.referrer || null);
 
   /* ───────── Symbol search handler ───────── */
   const handleSelectSymbol = (sym) => {
     const normalized = sym?.trim().toUpperCase();
     if (!normalized) return;
-    navigate(`/?symbol=${encodeURIComponent(normalized)}`);
+    navigate(`/?symbol=${encodeURIComponent(normalized)}`, { state: { source: 'search' } });
   };
+
+  useEffect(() => {
+    const currentPath = `${location.pathname}${location.search}`;
+    const referrer = previousLocationRef.current || null;
+    if (location.pathname === '/') {
+      const captureKey = location.key || currentPath;
+      if (lastHomeViewKeyRef.current !== captureKey) {
+        lastHomeViewKeyRef.current = captureKey;
+        posthog?.capture('home_viewed', {
+          route: '/',
+          referrer,
+          is_logged_in: isLoggedIn,
+        });
+      }
+    }
+    previousLocationRef.current = currentPath;
+  }, [isLoggedIn, location.key, location.pathname, location.search, posthog]);
 
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
@@ -170,6 +199,7 @@ function AppShell() {
                   <SymbolSearch
                     placeholder="Search symbol…"
                     onSelectSymbol={handleSelectSymbol}
+                    source={searchSource}
                     hideButton
                   />
                 </Box>

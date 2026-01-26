@@ -81,9 +81,16 @@ function fireFirstTickerConfetti(instance) {
   };
 }
 
-export default function ConfettiBurst({ active, burstId = 0, zIndex = 1400, variant = 'signup' }) {
+export default function ConfettiBurst({
+  active,
+  burstId = 0,
+  zIndex = 1400,
+  variant = 'signup',
+  onFired,
+}) {
   const canvasRef = useRef(null);
   const instanceRef = useRef(null);
+  const onFiredRef = useRef(onFired);
 
   useEffect(() => {
     if (!canvasRef.current) return undefined;
@@ -92,6 +99,10 @@ export default function ConfettiBurst({ active, burstId = 0, zIndex = 1400, vari
       instanceRef.current = null;
     };
   }, []);
+
+  useEffect(() => {
+    onFiredRef.current = onFired;
+  }, [onFired]);
 
   useEffect(() => {
     if (!active) return;
@@ -104,7 +115,16 @@ export default function ConfettiBurst({ active, burstId = 0, zIndex = 1400, vari
         ? fireFirstTickerConfetti
         : fireSignupConfetti;
 
-    return fire(instance);
+    try {
+      const cleanup = fire(instance);
+      if (typeof onFiredRef.current === 'function') {
+        onFiredRef.current({ burstId, confettiVariant: variant });
+      }
+      return cleanup;
+    } catch (error) {
+      console.error('Confetti burst failed:', error);
+      return undefined;
+    }
   }, [active, burstId, variant]);
 
   return (

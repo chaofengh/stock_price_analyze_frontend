@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useId } from 'react';
+import React, { useState, useEffect, useId, useRef } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -17,6 +17,7 @@ import {
 } from '@mui/material';
 import { alpha, useTheme } from '@mui/material/styles';
 import { useLoginMutation, useRegisterMutation } from './Redux/authApi';
+import { usePostHog } from 'posthog-js/react';
 import * as Yup from 'yup';
 import ForgotPasswordDialog from './ForgotPasswordDialog';
 
@@ -43,6 +44,7 @@ const registerSchema = Yup.object().shape({
 
 function AuthDialog({ open, mode, onClose, onSwitchMode }) {
   const theme = useTheme();
+  const posthog = usePostHog();
   const fieldIdPrefix = useId().replace(/:/g, '');
   const [login, { isLoading: isLoginLoading }] = useLoginMutation();
   const [registerUser, { isLoading: isRegisterLoading }] = useRegisterMutation();
@@ -62,6 +64,7 @@ function AuthDialog({ open, mode, onClose, onSwitchMode }) {
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [honeyTrap, setHoneyTrap] = useState('');
   const [formStartTime, setFormStartTime] = useState(null);
+  const signupStartedRef = useRef(false);
 
   // State for ForgotPasswordDialog visibility
   const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
@@ -89,6 +92,21 @@ function AuthDialog({ open, mode, onClose, onSwitchMode }) {
       }
     }
   }, [open]);
+
+  useEffect(() => {
+    if (!open) {
+      signupStartedRef.current = false;
+      return;
+    }
+    if (mode !== 'register') {
+      signupStartedRef.current = false;
+      return;
+    }
+    if (!signupStartedRef.current) {
+      posthog?.capture('signup_started', { method: 'email' });
+      signupStartedRef.current = true;
+    }
+  }, [mode, open, posthog]);
 
   const handleSwitchMode = () => {
     setLocalError('');
@@ -119,6 +137,7 @@ function AuthDialog({ open, mode, onClose, onSwitchMode }) {
   };
 
   const handleSubmit = async () => {
+    let requestStartedAt = null;
     try {
       if (mode === 'login') {
         await loginSchema.validate({ email_or_username: emailOrUsername, password });
@@ -150,13 +169,19 @@ function AuthDialog({ open, mode, onClose, onSwitchMode }) {
 
       let result;
       if (mode === 'login') {
+        requestStartedAt = Date.now();
         result = await login({
           email_or_username: emailOrUsername,
           password,
           honey_trap: honeyTrap,
           form_time: elapsed,
         }).unwrap();
+        const latencyMs = Date.now() - requestStartedAt;
+        const userId = result?.user?.id ?? result?.user?.user_id ?? result?.user_id;
+        if (userId) posthog?.identify(String(userId));
+        posthog?.capture('login_completed', { method: 'email', latency_ms: latencyMs });
       } else {
+        requestStartedAt = Date.now();
         result = await registerUser({
           email,
           username,
@@ -170,12 +195,26 @@ function AuthDialog({ open, mode, onClose, onSwitchMode }) {
           honey_trap: honeyTrap,
           form_time: elapsed,
         }).unwrap();
+        const latencyMs = Date.now() - requestStartedAt;
+        const userId = result?.user?.id ?? result?.user?.user_id ?? result?.user_id;
+        if (userId) posthog?.identify(String(userId));
+        posthog?.capture('signup_completed', { method: 'email', latency_ms: latencyMs });
         window.dispatchEvent(
           new CustomEvent('auth:registered', { detail: { user: result?.user || null } })
         );
       }
       onClose();
     } catch (err) {
+      const latencyMs = requestStartedAt ? Date.now() - requestStartedAt : null;
+      const isValidationError = err?.name === 'ValidationError';
+      if (mode === 'login' && !isValidationError) {
+        const reason = err?.data?.error || err?.error || err?.message || 'Login failed';
+        posthog?.capture('login_failed', {
+          method: 'email',
+          latency_ms: Number.isFinite(latencyMs) ? latencyMs : null,
+          reason,
+        });
+      }
       if (err.name === 'ValidationError') {
         setLocalError(err.message);
       } else if (err.data && err.data.error) {

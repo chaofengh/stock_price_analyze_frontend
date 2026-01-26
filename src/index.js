@@ -10,11 +10,14 @@ import { loadFromStorage } from './components/Redux/authSlice';
 
 store.dispatch(loadFromStorage());
 
+const posthogApiKey =
+  process.env.REACT_APP_POSTHOG_KEY || process.env.REACT_APP_POSTHOG_API_KEY;
+
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
     <PostHogProvider
-      apiKey={process.env.REACT_APP_POSTHOG_KEY}
+      apiKey={posthogApiKey}
       options={{
         api_host: process.env.REACT_APP_POSTHOG_HOST,
         defaults: '2025-05-24',

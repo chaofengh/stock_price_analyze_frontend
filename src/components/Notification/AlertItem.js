@@ -228,7 +228,7 @@ const AlertItem = ({
                 fontWeight: 700,
                 px: 1.5,
               }}
-              onClick={() => onViewDetails(symbol)}
+              onClick={() => onViewDetails(alert)}
             >
               View Details
             </Button>
