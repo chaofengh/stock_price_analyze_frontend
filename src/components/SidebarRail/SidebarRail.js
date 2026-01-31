@@ -1,9 +1,8 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React from 'react';
 import { Box, Stack, ListItemButton, ListItemIcon, ListItemText } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import { Link as RouterLink, useLocation, matchPath } from 'react-router-dom';
 import { useSelector } from 'react-redux';
-import { usePostHog } from 'posthog-js/react';
 import DashboardOutlinedIcon from '@mui/icons-material/DashboardOutlined';
 import AssessmentOutlinedIcon from '@mui/icons-material/AssessmentOutlined';
 import AutoGraphOutlinedIcon from '@mui/icons-material/AutoGraphOutlined';
@@ -11,67 +10,10 @@ import BookmarkBorderOutlinedIcon from '@mui/icons-material/BookmarkBorderOutlin
 import SwapHorizOutlinedIcon from '@mui/icons-material/SwapHorizOutlined';
 import ArticleOutlinedIcon from '@mui/icons-material/ArticleOutlined';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
-import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded';
-import ConfettiBurst from './ConfettiBurst';
-import {
-  CONFETTI_EXPERIMENT_FLAGS,
-  captureFeatureFlagExposureWhenReady,
-  getFeatureFlagVariant,
-  shouldEnableConfetti,
-} from '../../analytics/experiments';
 
 const SidebarRail = ({ summary, railWidth = 176 }) => {
   const location = useLocation();
-  const posthog = usePostHog();
   const isLoggedIn = useSelector((state) => Boolean(state?.auth?.accessToken));
-  const [confettiActive, setConfettiActive] = useState(false);
-  const [confettiBurstId, setConfettiBurstId] = useState(0);
-  const confettiBurstIdRef = useRef(0);
-  const pendingSignupExposureRef = useRef(null);
-
-  const triggerConfetti = useCallback(() => {
-    const nextId = confettiBurstIdRef.current + 1;
-    confettiBurstIdRef.current = nextId;
-    setConfettiBurstId(nextId);
-    setConfettiActive(true);
-    return nextId;
-  }, []);
-
-  useEffect(() => {
-    if (!confettiActive) return;
-    const timeout = setTimeout(() => setConfettiActive(false), 2200);
-    return () => clearTimeout(timeout);
-  }, [confettiActive]);
-
-  useEffect(() => {
-    const onRegistered = () => {
-      const flagKey = CONFETTI_EXPERIMENT_FLAGS.signupSuccess;
-      const flagValue = getFeatureFlagVariant(posthog, flagKey);
-      const shouldShow = shouldEnableConfetti(flagValue);
-      if (!shouldShow) {
-        captureFeatureFlagExposureWhenReady(posthog, flagKey);
-        return;
-      }
-      const burstId = triggerConfetti();
-      pendingSignupExposureRef.current = { burstId, flagKey };
-    };
-    window.addEventListener('auth:registered', onRegistered);
-    return () => window.removeEventListener('auth:registered', onRegistered);
-  }, [posthog, triggerConfetti]);
-
-  const handleSignupConfettiFired = useCallback(
-    ({ burstId }) => {
-      const pending = pendingSignupExposureRef.current;
-      if (!pending || pending.burstId !== burstId) return;
-      pendingSignupExposureRef.current = null;
-      captureFeatureFlagExposureWhenReady(posthog, pending.flagKey);
-    },
-    [posthog]
-  );
-
-  const showConfettiTestButton =
-    process.env.NODE_ENV !== 'production' ||
-    String(process.env.REACT_APP_SHOW_CONFETTI_TEST || '').toLowerCase() === 'true';
   const searchParams = new URLSearchParams(location.search);
   const searchSymbol = searchParams.get('symbol')?.trim().toUpperCase() || '';
   const analysisMatch = matchPath('/analysis/:symbol', location.pathname);
@@ -188,12 +130,6 @@ const SidebarRail = ({ summary, railWidth = 176 }) => {
         },
       })}
     >
-      <ConfettiBurst
-        active={confettiActive}
-        burstId={confettiBurstId}
-        variant="signup"
-        onFired={handleSignupConfettiFired}
-      />
       <Stack spacing={0.25} width="100%" sx={{ flexGrow: 0 }}>
         <ListItemButton
           aria-label="Dashboard"
@@ -372,19 +308,6 @@ const SidebarRail = ({ summary, railWidth = 176 }) => {
           <ListItemText primary="Settings" primaryTypographyProps={{ noWrap: true }} />
         </ListItemButton>
 
-        {showConfettiTestButton && (
-          <ListItemButton
-            aria-label="Trigger confetti effect"
-            onClick={triggerConfetti}
-            disableGutters
-            sx={(theme) => baseItemStyles(theme, false)}
-          >
-            <ListItemIcon>
-              <AutoAwesomeRoundedIcon />
-            </ListItemIcon>
-            <ListItemText primary="Confetti Test" primaryTypographyProps={{ noWrap: true }} />
-          </ListItemButton>
-        )}
       </Stack>
     </Box>
   );

@@ -8,7 +8,6 @@ import { Notifications } from '@mui/icons-material';
 import { AlertsContext } from './AlertContext';
 import { useTheme } from '@mui/system';
 import { useNavigate } from 'react-router-dom';
-import { usePostHog } from 'posthog-js/react';
 import GroupedAlerts from './GroupedAlerts';
 
 const Transition = React.forwardRef(function Transition(props, ref) {
@@ -20,7 +19,6 @@ const NotificationBell = () => {
   const [open, setOpen] = useState(false);
   const [sortOption, setSortOption] = useState('symbol');
   const theme = useTheme();
-  const posthog = usePostHog();
   const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
   const navigate = useNavigate();
 
@@ -36,7 +34,9 @@ const NotificationBell = () => {
     return map;
   }, [alerts, sortOption]);
 
-  const handleOpen = () => setOpen(true);
+  const handleOpen = () => {
+    setOpen(true);
+  };
   const handleClose = () => setOpen(false);
   const handleMarkAsRead = () => { clearAlerts(); handleClose(); };
   const handleViewDetailsAndClose = (alert) => {
@@ -44,33 +44,6 @@ const NotificationBell = () => {
     const normalized = typeof rawSymbol === 'string' ? rawSymbol.trim().toUpperCase() : '';
     if (!normalized) return;
     const alertId = alert?._alert_id || `${timestamp || ''}|${normalized}|${alert?.touched_side || ''}`;
-    const receivedAt = Number.isFinite(alert?._received_at) ? alert._received_at : null;
-    const timeToOpenSec =
-      receivedAt != null ? Math.max(0, Math.round((Date.now() - receivedAt) / 1000)) : null;
-    const touchedSide = alert?.touched_side;
-    const signalType =
-      alert?.signal_type ||
-      (touchedSide === 'Upper' ? 'sell' : touchedSide === 'Lower' ? 'buy' : null);
-    const parsedStrength = Number(alert?.signal_strength);
-    const signalStrength = Number.isFinite(parsedStrength) ? parsedStrength : null;
-    let isFirstAlertOpen = false;
-    try {
-      isFirstAlertOpen = window.localStorage.getItem('alerts:first-opened:v1') !== '1';
-      if (isFirstAlertOpen) {
-        window.localStorage.setItem('alerts:first-opened:v1', '1');
-      }
-    } catch {
-      isFirstAlertOpen = false;
-    }
-
-    posthog?.capture('alert_opened', {
-      alert_id: alertId,
-      symbol: normalized,
-      signal_type: signalType,
-      signal_strength: signalStrength,
-      is_first_alert_open: isFirstAlertOpen,
-      time_to_open_sec: timeToOpenSec,
-    });
 
     navigate(`/?symbol=${encodeURIComponent(normalized)}`, {
       state: {

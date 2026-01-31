@@ -7,15 +7,9 @@ import {
   TextField,
   Paper,
   IconButton,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  Slide,
   Snackbar,
   Alert,
   Stack,
-  Tooltip,
   Avatar,
   Chip,
   LinearProgress,
@@ -35,13 +29,13 @@ import { ensureLogoForSymbol, selectLogoUrlBySymbol } from '../Redux/logosSlice'
 import { useNavigate, useLocation } from 'react-router-dom';
 import { usePostHog } from 'posthog-js/react';
 import { logout } from '../Redux/authSlice';
-import ConfettiBurst from './ConfettiBurst';
 import {
-  CONFETTI_EXPERIMENT_FLAGS,
-  captureFeatureFlagExposureWhenReady,
-  getFeatureFlagVariant,
-  shouldEnableConfetti,
+  WATCHLIST_EXPERIMENT_FLAGS,
+  getFeatureFlagVariantWithWait,
+  isFlagVariantEnabled,
 } from '../../analytics/experiments';
+
+const DEFAULT_WATCHLIST_SUGGESTIONS = ['AAPL', 'MSFT', 'NVDA', 'AMZN', 'GOOGL', 'META'];
 
 function TrendCell({ closePrices }) {
   const theme = useTheme();
@@ -145,7 +139,6 @@ function SymbolCell({ symbol, pending }) {
 }
 
 const STARTER_TICKERS = ['TSLA', 'NVDA', 'AAPL', 'MSFT', 'AMZN', 'META', 'PLTR', 'QQQ'];
-const FIRST_TICKER_WELCOME_STORAGE_KEY = 'watchlist:first-ticker-welcome-shown:v1';
 const compactNumberFormatter = new Intl.NumberFormat('en-US', {
   notation: 'compact',
   maximumFractionDigits: 2,
@@ -289,10 +282,6 @@ function QuestLine({ done, label }) {
   );
 }
 
-const FirstTickerDialogTransition = React.forwardRef(function FirstTickerDialogTransition(props, ref) {
-  return <Slide direction="up" ref={ref} {...props} />;
-});
-
 function TickerList() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -302,8 +291,6 @@ function TickerList() {
   const posthog = usePostHog();
   const { accessToken } = useSelector((state) => state.auth);
   const isLoggedIn = Boolean(accessToken);
-  const showFirstTickerPreviewButton =
-    process.env.REACT_APP_SHOW_FIRST_TICKER_PREVIEW === 'true' || process.env.NODE_ENV !== 'production';
 
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -312,14 +299,11 @@ function TickerList() {
   const [rowSelectionModel, setRowSelectionModel] = useState([]);
   const [hasFetched, setHasFetched] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, severity: 'info', message: '' });
-  const [firstTickerDialogOpen, setFirstTickerDialogOpen] = useState(false);
-  const [firstTickerBurstId, setFirstTickerBurstId] = useState(0);
-  const [firstTickerConfettiEnabled, setFirstTickerConfettiEnabled] = useState(true);
-  const firstTickerBurstIdRef = useRef(0);
-  const pendingFirstTickerExposureRef = useRef(null);
+  const [watchlistSuggestionsEnabled, setWatchlistSuggestionsEnabled] = useState(false);
+  const rowsLengthRef = useRef(0);
+  const didCaptureEmptyStateRef = useRef(false);
+  const watchlistStartRef = useRef(null);
   const addTickerInputRef = useRef(null);
-  const focusAddTickerInputOnCloseRef = useRef(false);
-  const lastWatchlistViewKeyRef = useRef(null);
   const dragSelectRef = useRef({
     active: false,
     anchorIndex: null,
@@ -332,17 +316,86 @@ function TickerList() {
     if (!isLoggedIn) {
       setRows([]);
       setRowSelectionModel([]);
-      setFirstTickerDialogOpen(false);
-      setFirstTickerConfettiEnabled(true);
-      setFirstTickerBurstId(0);
-      firstTickerBurstIdRef.current = 0;
-      pendingFirstTickerExposureRef.current = null;
+      setWatchlistSuggestionsEnabled(false);
+      rowsLengthRef.current = 0;
+      didCaptureEmptyStateRef.current = false;
       setHasFetched(false);
       return;
     }
     fetchData();
     // eslint-disable-next-line
   }, [isLoggedIn, accessToken]);
+
+  useEffect(() => {
+    rowsLengthRef.current = Array.isArray(rows) ? rows.length : 0;
+  }, [rows]);
+
+  const WATCHLIST_BOUNCE_MS = Number(process.env.REACT_APP_WATCHLIST_BOUNCE_MS || 8000);
+  const recordWatchlistExit = useCallback(
+    (reason) => {
+      if (!watchlistStartRef.current) return;
+      const durationMs = Math.max(0, Date.now() - watchlistStartRef.current);
+      const watchlistLength = rowsLengthRef.current;
+      const isBounce = durationMs < WATCHLIST_BOUNCE_MS;
+      posthog?.capture('watchlist_session_ended', {
+        watchlist_length: Number.isFinite(watchlistLength) ? watchlistLength : null,
+        route: location.pathname,
+        duration_ms: durationMs,
+        is_bounce: isBounce,
+        exit_reason: reason || 'unknown',
+      });
+      watchlistStartRef.current = null;
+    },
+    [WATCHLIST_BOUNCE_MS, location.pathname, posthog]
+  );
+
+  useEffect(() => {
+    const onWatchlist = location.pathname === '/watchlist';
+    if (onWatchlist) {
+      if (!watchlistStartRef.current) {
+        watchlistStartRef.current = Date.now();
+      }
+      return;
+    }
+    if (watchlistStartRef.current) {
+      recordWatchlistExit('route_change');
+    }
+  }, [location.pathname, recordWatchlistExit]);
+
+  useEffect(() => () => {
+    if (watchlistStartRef.current) {
+      recordWatchlistExit('unmount');
+    }
+  }, [recordWatchlistExit]);
+
+  useEffect(() => {
+    const isEmptyState = isLoggedIn && hasFetched && !loading && rows.length === 0;
+    if (!isEmptyState) {
+      didCaptureEmptyStateRef.current = false;
+      setWatchlistSuggestionsEnabled(false);
+      return;
+    }
+
+    if (didCaptureEmptyStateRef.current) return;
+    didCaptureEmptyStateRef.current = true;
+
+    const flagKey = WATCHLIST_EXPERIMENT_FLAGS.suggestionsEmptyState;
+    (async () => {
+      // Best practice: explicitly evaluate the flag in the exact place the experiment runs.
+      // This triggers $feature_flag_called for the correct flag.
+      let flagValue = posthog?.getFeatureFlag?.(flagKey);
+      if (flagValue === undefined) {
+        flagValue = await getFeatureFlagVariantWithWait(posthog, flagKey, { timeoutMs: 2000 });
+      }
+      const enabled = isFlagVariantEnabled(flagValue, { defaultEnabled: false });
+      setWatchlistSuggestionsEnabled(Boolean(enabled));
+      posthog?.capture('watchlist_empty_state_viewed', {
+        flag_key: flagKey,
+        flag_value: flagValue ?? null,
+        suggestions_enabled: Boolean(enabled),
+      });
+    })();
+  }, [hasFetched, isLoggedIn, loading, posthog, rows.length]);
 
   useEffect(() => {
     const handleMouseUp = () => {
@@ -359,39 +412,6 @@ function TickerList() {
     window.addEventListener('mouseup', handleMouseUp);
     return () => window.removeEventListener('mouseup', handleMouseUp);
   }, []);
-
-  useEffect(() => {
-    if (location.pathname !== '/watchlist') return;
-    if (!isLoggedIn && loading) return;
-    if (isLoggedIn && (!hasFetched || loading)) return;
-    const routeSource = location.state?.source;
-    const source = routeSource || (!isLoggedIn ? 'redirect_login' : 'nav');
-    const viewKey = `${location.key || 'watchlist'}:${source}`;
-    if (lastWatchlistViewKeyRef.current === viewKey) return;
-    lastWatchlistViewKeyRef.current = viewKey;
-    posthog?.capture('watchlist_viewed', {
-      source,
-      watchlist_count: Number.isFinite(rows.length) ? rows.length : 0,
-    });
-  }, [
-    hasFetched,
-    isLoggedIn,
-    loading,
-    location.key,
-    location.pathname,
-    location.state?.source,
-    posthog,
-    rows.length,
-  ]);
-
-  const focusAddTickerInput = () => {
-    const input = addTickerInputRef.current;
-    if (!input) return;
-    window.requestAnimationFrame(() => {
-      input.focus();
-      if (typeof input.select === 'function') input.select();
-    });
-  };
 
   useEffect(() => {
     const onRegistered = () => {
@@ -418,46 +438,6 @@ function TickerList() {
     });
     return false;
   };
-
-  const hasCelebratedFirstTicker = () => {
-    try {
-      return window.localStorage.getItem(FIRST_TICKER_WELCOME_STORAGE_KEY) === '1';
-    } catch {
-      return false;
-    }
-  };
-
-  const openFirstTickerDialog = ({ persist = false, confettiEnabled = true } = {}) => {
-    if (persist) {
-      try {
-        window.localStorage.setItem(FIRST_TICKER_WELCOME_STORAGE_KEY, '1');
-      } catch {
-        // ignore
-      }
-    }
-    setFirstTickerConfettiEnabled(Boolean(confettiEnabled));
-    setFirstTickerDialogOpen(true);
-    if (!confettiEnabled) return null;
-    const nextId = firstTickerBurstIdRef.current + 1;
-    firstTickerBurstIdRef.current = nextId;
-    setFirstTickerBurstId(nextId);
-    return nextId;
-  };
-
-  useEffect(() => {
-    if (firstTickerDialogOpen) return;
-    pendingFirstTickerExposureRef.current = null;
-  }, [firstTickerDialogOpen]);
-
-  const handleFirstTickerConfettiFired = useCallback(
-    ({ burstId }) => {
-      const pending = pendingFirstTickerExposureRef.current;
-      if (!pending || pending.burstId !== burstId) return;
-      pendingFirstTickerExposureRef.current = null;
-      captureFeatureFlagExposureWhenReady(posthog, pending.flagKey);
-    },
-    [posthog]
-  );
 
   const fetchData = async () => {
     if (!accessToken) {
@@ -604,6 +584,10 @@ function TickerList() {
       return newRows;
     } catch (error) {
       console.error('Error fetching ticker data:', error);
+      posthog?.capture('watchlist_error', {
+        action: 'fetch',
+        message: error?.message || String(error),
+      });
       return [];
     } finally {
       setLoading(false);
@@ -656,22 +640,13 @@ function TickerList() {
           : `Added ${symbol} to your watch list.`,
       });
 
-      if (unlockedFirst && !hasCelebratedFirstTicker()) {
-        const flagKey = CONFETTI_EXPERIMENT_FLAGS.firstWatchlistAdd;
-        const flagValue = getFeatureFlagVariant(posthog, flagKey);
-        const confettiEnabled = shouldEnableConfetti(flagValue);
-        if (!confettiEnabled) {
-          captureFeatureFlagExposureWhenReady(posthog, flagKey);
-          openFirstTickerDialog({ persist: true, confettiEnabled: false });
-        } else {
-          const burstId = openFirstTickerDialog({ persist: true, confettiEnabled: true });
-          if (burstId) {
-            pendingFirstTickerExposureRef.current = { burstId, flagKey };
-          }
-        }
-      }
     } catch (error) {
       console.error('Error adding ticker:', error);
+      posthog?.capture('watchlist_error', {
+        action: 'add',
+        symbol,
+        message: error?.message || String(error),
+      });
       setSnackbar({ open: true, severity: 'error', message: 'Failed to add ticker. Please try again.' });
     } finally {
       setMutating(false);
@@ -701,6 +676,11 @@ function TickerList() {
       await fetchData();
     } catch (error) {
       console.error('Error deleting ticker:', error);
+      posthog?.capture('watchlist_error', {
+        action: 'remove',
+        symbol,
+        message: error?.message || String(error),
+      });
       setSnackbar({ open: true, severity: 'error', message: 'Failed to delete ticker. Please try again.' });
     } finally {
       setMutating(false);
@@ -1137,21 +1117,6 @@ function TickerList() {
               >
                 Clear
               </Button>
-              {showFirstTickerPreviewButton && (
-                <Tooltip title="Preview the first-ticker welcome popup">
-                  <span>
-                    <Button
-                      variant="text"
-                      size="small"
-                      startIcon={<AutoAwesomeRoundedIcon />}
-                      onClick={() => openFirstTickerDialog({ persist: false })}
-                      sx={{ fontWeight: 800 }}
-                    >
-                      Preview
-                    </Button>
-                  </span>
-                </Tooltip>
-              )}
             </Stack>
           </Stack>
 
@@ -1254,9 +1219,34 @@ function TickerList() {
           {loading && <Typography variant="body2">Loading...</Typography>}
           {!loading && rows.length === 0 && (
             <Box sx={{ flex: 1, minHeight: 0, display: 'grid', placeItems: 'center' }}>
-              <Typography variant="body2" sx={{ color: 'text.secondary', textAlign: 'center' }}>
-                Your watch list is empty. Add a ticker to get started.
-              </Typography>
+              {watchlistSuggestionsEnabled ? (
+                <Box sx={{ width: '100%', maxWidth: 360, textAlign: 'center' }}>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 1 }}>
+                    Start your watch list
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>
+                    Here are a few popular tickers to get you going.
+                  </Typography>
+                  <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" justifyContent="center">
+                    {DEFAULT_WATCHLIST_SUGGESTIONS.map((ticker) => (
+                      <Chip
+                        key={ticker}
+                        label={ticker}
+                        clickable
+                        onClick={() => {
+                          posthog?.capture('watchlist_suggestion_clicked', { symbol: ticker });
+                          handleAddTicker(ticker, { method: 'suggestion' });
+                        }}
+                        sx={{ fontWeight: 800 }}
+                      />
+                    ))}
+                  </Stack>
+                </Box>
+              ) : (
+                <Typography variant="body2" sx={{ color: 'text.secondary', textAlign: 'center' }}>
+                  Your watch list is empty. Add a ticker to get started.
+                </Typography>
+              )}
             </Box>
           )}
           {!loading && rows.length > 0 && (
@@ -1352,175 +1342,6 @@ function TickerList() {
           {snackbar.message}
         </Alert>
       </Snackbar>
-
-      <Dialog
-        open={firstTickerDialogOpen}
-        onClose={() => setFirstTickerDialogOpen(false)}
-        maxWidth="sm"
-        fullWidth
-        TransitionComponent={FirstTickerDialogTransition}
-        TransitionProps={{
-          onExited: () => {
-            if (!focusAddTickerInputOnCloseRef.current) return;
-            focusAddTickerInputOnCloseRef.current = false;
-            focusAddTickerInput();
-          },
-        }}
-        PaperProps={{
-          sx: {
-            borderRadius: 'var(--app-radius)',
-            overflow: 'hidden',
-          },
-        }}
-      >
-        <DialogTitle
-          sx={{
-            px: 3,
-            pt: 3,
-            pb: 2,
-            position: 'relative',
-          }}
-        >
-          <Box
-            aria-hidden="true"
-            sx={{
-              position: 'absolute',
-              inset: 0,
-              background: `radial-gradient(340px 220px at 20% 20%, ${alpha(
-                theme.palette.primary.main,
-                0.18
-              )}, transparent 60%),
-                radial-gradient(280px 220px at 90% 30%, ${alpha(
-                  theme.palette.secondary.main,
-                  0.16
-                )}, transparent 60%),
-                ${alpha(theme.palette.common.white, 0.02)}`,
-              pointerEvents: 'none',
-            }}
-          />
-          <Stack
-            direction="row"
-            spacing={1.5}
-            alignItems="center"
-            sx={{ position: 'relative' }}
-          >
-            <Box
-              sx={{
-                width: 44,
-                height: 44,
-                borderRadius: 'var(--app-radius)',
-                display: 'grid',
-                placeItems: 'center',
-                bgcolor: alpha(theme.palette.primary.main, 0.16),
-                border: `1px solid ${alpha(theme.palette.primary.main, 0.28)}`,
-                boxShadow: `0 0 0 1px ${alpha(theme.palette.common.black, 0.35)}`,
-              }}
-            >
-              <EmojiEventsRoundedIcon sx={{ color: theme.palette.secondary.main, fontSize: 22 }} />
-            </Box>
-            <Box sx={{ flex: 1, minWidth: 0 }}>
-              <Typography
-                variant="overline"
-                sx={{ color: 'text.secondary', fontWeight: 900, letterSpacing: 0.9, lineHeight: 1 }}
-              >
-                Watch list
-              </Typography>
-              <Typography variant="h6" sx={{ fontWeight: 950, letterSpacing: 0.2, mt: 0.2 }}>
-                Great start.
-              </Typography>
-            </Box>
-            <Chip
-              size="small"
-              icon={<AutoAwesomeRoundedIcon />}
-              label={`${rows.length}/5`}
-              sx={{
-                bgcolor: alpha(theme.palette.primary.main, 0.14),
-                border: `1px solid ${alpha(theme.palette.primary.main, 0.25)}`,
-                color: theme.palette.text.primary,
-                fontWeight: 900,
-              }}
-            />
-          </Stack>
-        </DialogTitle>
-        <DialogContent sx={{ px: 3, pb: 2.5, pt: 0 }}>
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2.25} alignItems="flex-start">
-            <Box sx={{ alignSelf: { xs: 'center', sm: 'flex-start' }, flexShrink: 0 }}>
-              <WatchlistHeroGraphic variant="firstTicker" />
-            </Box>
-            <Stack spacing={1.25} sx={{ flex: 1, minWidth: 0 }}>
-              <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                Your first ticker is on your watch list. That’s momentum.
-              </Typography>
-              <Paper
-                variant="outlined"
-                sx={{
-                  p: 2,
-                  borderRadius: 'var(--app-radius)',
-                  bgcolor: alpha(theme.palette.common.white, 0.03),
-                  borderColor: alpha(theme.palette.common.white, 0.12),
-                }}
-              >
-                <Stack spacing={0.9}>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 900 }}>
-                    Next tiny wins
-                  </Typography>
-                  <QuestLine done={false} label="Add 2–3 more tickers to compare" />
-                  <QuestLine done={false} label="Check movement, not noise" />
-                  <QuestLine done={false} label="Stay consistent — we’re rooting for you" />
-                </Stack>
-              </Paper>
-              <Stack spacing={0.75}>
-                <Stack direction="row" spacing={1} alignItems="baseline" justifyContent="space-between">
-                  <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 800 }}>
-                    Progress
-                  </Typography>
-                  <Typography variant="caption" sx={{ color: 'text.secondaryBright', fontWeight: 900 }}>
-                    {rows.length}/5
-                  </Typography>
-                </Stack>
-                <LinearProgress
-                  variant="determinate"
-                  value={questProgress}
-                  sx={{
-                    height: 10,
-                    borderRadius: 'var(--app-radius)',
-                    bgcolor: alpha(theme.palette.common.white, 0.08),
-                    '& .MuiLinearProgress-bar': {
-                      borderRadius: 'var(--app-radius)',
-                      background: `linear-gradient(90deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-                    },
-                  }}
-                />
-              </Stack>
-              <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                We can’t promise profits, but we can help you build a calmer, more consistent routine.
-              </Typography>
-            </Stack>
-          </Stack>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 3, pt: 0 }}>
-          <Button onClick={() => setFirstTickerDialogOpen(false)} sx={{ fontWeight: 800 }}>
-            Keep going
-          </Button>
-          <Button
-            variant="contained"
-            startIcon={<AutoAwesomeRoundedIcon />}
-            onClick={() => {
-              focusAddTickerInputOnCloseRef.current = true;
-              setFirstTickerDialogOpen(false);
-            }}
-            sx={{ fontWeight: 900 }}
-          >
-            Add another ticker
-          </Button>
-        </DialogActions>
-      </Dialog>
-      <ConfettiBurst
-        active={firstTickerDialogOpen && firstTickerConfettiEnabled}
-        burstId={firstTickerBurstId}
-        variant="firstTicker"
-        onFired={handleFirstTickerConfettiFired}
-      />
     </Paper>
   );
 }
