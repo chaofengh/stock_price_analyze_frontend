@@ -11,6 +11,7 @@ Lumina is the React + Vite frontend for **Stock_Price_Analyze**. It’s designed
 ## Key features
 
 ### 1) Bollinger-band signals + quantified P&L
+Buy - selling signal.png
 
 - Price chart overlays **Upper / Lower Bollinger Bands** and highlights band-touch signal days.
 - Signals are interpreted as:
