@@ -15,9 +15,16 @@ Lumina is the React + Vite frontend for **Stock_Price_Analyze**. It’s designed
 - Each signal includes **quantified outcomes** (dollars + percent), shown in:
   - An interactive hover tooltip with P&L micro-bars
   - A **Performance Blotter** listing entry/exit + P&L for 5-day and 10-day windows
-- Daily **Bollinger Alerts** group tickers crossing above/below bands and include an Overbought/Oversold breakout meter.
-- Demo Video
-  - Bollinger buy/sell signals + P&L: https://app.supademo.com/demo/cml2zwevw299izsadoiq8k834?utm_source=link
+
+#### Daily Bollinger Alerts
+
+- The header **notification bell** surfaces daily tickers that crossed above the **Upper** or below the **Lower** Bollinger Band.
+- Alerts are **grouped by side** (Upper/Lower), sortable, and deep-link into the dashboard so you can inspect the move and signals for that symbol.
+- Each alert includes an **Overbought/Oversold breakout meter** that visualizes how far price broke beyond the touched band.
+- Alerts auto-refresh while you’re logged in (polling interval configurable via `REACT_APP_ALERTS_POLL_MS`), and refresh when the tab regains focus.
+
+**Demo Video**
+- Bollinger buy/sell signals + P&L: https://app.supademo.com/demo/cml2zwevw299izsadoiq8k834?utm_source=link
 
 ### 2) Watch list + A/B testing for suggestions
 
@@ -25,8 +32,8 @@ Lumina is the React + Vite frontend for **Stock_Price_Analyze**. It’s designed
 - Authenticated watch list (add/remove tickers, bulk delete, multi-select).
 - Onboarding “Quest” card with starter-ticker suggestions to help users build an initial list.
 - Experiment support using **PostHog feature flags** for the watch list empty state (e.g., tracking `watchlist_empty_state_viewed`, `watchlist_suggestion_clicked`, and session bounce metrics).
-- Demo Video
-  - - A/B testing (watch list suggestions): https://app.supademo.com/demo/cml2z9hdv28x6zsadagiuzype?utm_source=link
+**Demo Video**
+- A/B testing (watch list suggestions): https://app.supademo.com/demo/cml2z9hdv28x6zsadagiuzype?utm_source=link
 
 ### 3) Financial reports (quarterly + annual trend views)
 
@@ -34,8 +41,8 @@ Lumina is the React + Vite frontend for **Stock_Price_Analyze**. It’s designed
 - Financial statements UI with **Income Statement**, **Balance Sheet**, and **Cash Flow** tabs.
 - Toggle between **quarterly** and **annual (or year-to-date)** views.
 - Visual trend exploration via charts and comparison tables.
-- Demo Video
-  -- Financial reports (quarterly + annual): https://app.supademo.com/demo/cml30j3li29hszsadnwity1r3?utm_source=link
+**Demo Video**
+- Financial reports (quarterly + annual): https://app.supademo.com/demo/cml30j3li29hszsadnwity1r3?utm_source=link
 
 ## Pages / routes
 
