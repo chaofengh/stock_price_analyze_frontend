@@ -2,12 +2,6 @@
 
 Lumina is the React + Vite frontend for **Stock_Price_Analyze**. It’s designed for fast stock exploration with Bollinger-band based signals, watch-list workflows, and financial statement trend visualizations.
 
-## Demo videos
-
-- A/B testing (watch list suggestions): https://app.supademo.com/demo/cml2z9hdv28x6zsadagiuzype?utm_source=link
-- Financial reports (quarterly + annual): https://app.supademo.com/demo/cml30j3li29hszsadnwity1r3?utm_source=link
-- Bollinger buy/sell signals + P&L: https://app.supademo.com/demo/cml2zwevw299izsadoiq8k834?utm_source=link
-
 ## Key features
 
 ### 1) Bollinger-band signals + quantified P&L
@@ -22,18 +16,26 @@ Lumina is the React + Vite frontend for **Stock_Price_Analyze**. It’s designed
   - An interactive hover tooltip with P&L micro-bars
   - A **Performance Blotter** listing entry/exit + P&L for 5-day and 10-day windows
 - Daily **Bollinger Alerts** group tickers crossing above/below bands and include an Overbought/Oversold breakout meter.
+- Demo Video
+  - Bollinger buy/sell signals + P&L: https://app.supademo.com/demo/cml2zwevw299izsadoiq8k834?utm_source=link
 
 ### 2) Watch list + A/B testing for suggestions
 
+![Image Alt](https://github.com/chaofengh/stock_price_analyze_frontend/blob/b6894648b40a41de87c5fd4150ac2b0c3968106e/watchlist.png)
 - Authenticated watch list (add/remove tickers, bulk delete, multi-select).
 - Onboarding “Quest” card with starter-ticker suggestions to help users build an initial list.
 - Experiment support using **PostHog feature flags** for the watch list empty state (e.g., tracking `watchlist_empty_state_viewed`, `watchlist_suggestion_clicked`, and session bounce metrics).
+- Demo Video
+  - - A/B testing (watch list suggestions): https://app.supademo.com/demo/cml2z9hdv28x6zsadagiuzype?utm_source=link
 
 ### 3) Financial reports (quarterly + annual trend views)
 
+![Image Alt](https://github.com/chaofengh/stock_price_analyze_frontend/blob/6340bfb0f459e1c6121f764ba523e6233ffe4a95/financial%20reports.png)
 - Financial statements UI with **Income Statement**, **Balance Sheet**, and **Cash Flow** tabs.
 - Toggle between **quarterly** and **annual (or year-to-date)** views.
 - Visual trend exploration via charts and comparison tables.
+- Demo Video
+  -- Financial reports (quarterly + annual): https://app.supademo.com/demo/cml30j3li29hszsadnwity1r3?utm_source=link
 
 ## Pages / routes
 
