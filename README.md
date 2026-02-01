@@ -16,7 +16,8 @@ Lumina is the React + Vite frontend for **Stock_Price_Analyze**. It’s designed
   - An interactive hover tooltip with P&L micro-bars
   - A **Performance Blotter** listing entry/exit + P&L for 5-day and 10-day windows
 
-#### Daily Bollinger Alerts
+#### 2)Daily Bollinger Alerts
+![Image Alt](https://github.com/chaofengh/stock_price_analyze_frontend/blob/a8ef87c025752a0c16144937393647794d5001ea/alert.png)
 
 - The header **notification bell** surfaces daily tickers that crossed above the **Upper** or below the **Lower** Bollinger Band.
 - Alerts are **grouped by side** (Upper/Lower), sortable, and deep-link into the dashboard so you can inspect the move and signals for that symbol.
@@ -26,7 +27,7 @@ Lumina is the React + Vite frontend for **Stock_Price_Analyze**. It’s designed
 **Demo Video**
 - Bollinger buy/sell signals + P&L: https://app.supademo.com/demo/cml2zwevw299izsadoiq8k834?utm_source=link
 
-### 2) Watch list + A/B testing for suggestions
+### 3) Watch list + A/B testing for suggestions
 
 ![Image Alt](https://github.com/chaofengh/stock_price_analyze_frontend/blob/b6894648b40a41de87c5fd4150ac2b0c3968106e/watchlist.png)
 - Authenticated watch list (add/remove tickers, bulk delete, multi-select).
@@ -35,7 +36,7 @@ Lumina is the React + Vite frontend for **Stock_Price_Analyze**. It’s designed
 **Demo Video**
 - A/B testing (watch list suggestions): https://app.supademo.com/demo/cml2z9hdv28x6zsadagiuzype?utm_source=link
 
-### 3) Financial reports (quarterly + annual trend views)
+### 4) Financial reports (quarterly + annual trend views)
 
 ![Image Alt](https://github.com/chaofengh/stock_price_analyze_frontend/blob/6340bfb0f459e1c6121f764ba523e6233ffe4a95/financial%20reports.png)
 - Financial statements UI with **Income Statement**, **Balance Sheet**, and **Cash Flow** tabs.
