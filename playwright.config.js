@@ -8,10 +8,18 @@ const useRealEnv = process.env.PLAYWRIGHT_USE_REAL_ENV === '1';
  * @param {NodeJS.ProcessEnv} env
  * @returns {{ [key: string]: string }}
  */
-const sanitizeEnv = (env) =>
-  Object.fromEntries(
-    Object.entries(env).filter(([, value]) => typeof value === 'string')
-  );
+const sanitizeEnv = (env) => {
+  /** @type {{ [key: string]: string }} */
+  const sanitized = {};
+
+  for (const [key, value] of Object.entries(env)) {
+    if (typeof value === 'string') {
+      sanitized[key] = value;
+    }
+  }
+
+  return sanitized;
+};
 const webEnv = sanitizeEnv(process.env);
 const baseURL = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000';
 

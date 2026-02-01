@@ -21,6 +21,10 @@ import { usePostHog } from 'posthog-js/react';
 import * as Yup from 'yup';
 import ForgotPasswordDialog from './ForgotPasswordDialog';
 
+export const openAuthDialog = (mode = 'login') => {
+  window.dispatchEvent(new CustomEvent('auth:open', { detail: { mode } }));
+};
+
 const loginSchema = Yup.object().shape({
   email_or_username: Yup.string().required('Email or Username is required'),
   password: Yup.string().min(8, 'Password must be at least 8 chars').required(),
