@@ -32,7 +32,22 @@ Lumina is the React + Vite frontend for **Stock_Price_Analyze**. It’s designed
 ![Image Alt](https://github.com/chaofengh/stock_price_analyze_frontend/blob/b6894648b40a41de87c5fd4150ac2b0c3968106e/watchlist.png)
 - Authenticated watch list (add/remove tickers, bulk delete, multi-select).
 - Onboarding “Quest” card with starter-ticker suggestions to help users build an initial list.
-- Experiment support using **PostHog feature flags** for the watch list empty state (e.g., tracking `watchlist_empty_state_viewed`, `watchlist_suggestion_clicked`, and session bounce metrics).
+- Experiment support using **PostHog feature flags + experiments** for the watch list empty state.
+  - **Experiment:** “Suggestions vs message → watchlist length” (Bayesian, 95% credibility interval)
+  - **Hypothesis:** Ticker suggestions will increase the length of users’ watchlists.
+  - **Variants:**
+    - `control`: show a simple empty-state message (“Your watch list is empty…”)
+    - `test`: show clickable starter-ticker suggestions (Quest card chips)
+  - **Exposure logging (important for clean A/B tests):**
+    - Exposure is counted when the empty state actually renders and the flag is evaluated (PostHog `$feature_flag_called`).
+    - A debug event `watchlist_empty_state_viewed` is also captured with `flag_key`, `flag_value`, and `suggestions_enabled` so the variant can be joined back to behavior.
+    - Client-side dedupe prevents double-counting exposures on re-renders.
+  - **Primary metric (success):**
+    - `watchlist_ticker_added` (mean), including `watchlist_count_after` to quantify watchlist-length lift after each add.
+  - **Guardrails / diagnostics:**
+    - `watchlist_session_ended` (mean), capturing `duration_ms`, `watchlist_length`, and `exit_reason` to ensure we don’t harm engagement.
+    - Bounce-rate ratio via `watchlist_session_ended` where `is_bounce=true` (bounce threshold configurable via `REACT_APP_WATCHLIST_BOUNCE_MS`).
+    - `$exception` and `watchlist_error` to ensure the experiment doesn’t increase crashes or API failure rates.
 **Demo Video**
 - A/B testing (watch list suggestions): https://app.supademo.com/demo/cml2z9hdv28x6zsadagiuzype?utm_source=link
 
