@@ -2,6 +2,43 @@
 
 Lumina is the React + Vite frontend for **Stock_Price_Analyze**. It’s designed for fast stock exploration with Bollinger-band based signals, watch-list workflows, and financial statement trend visualizations.
 
+## 2025 Trading Results (Live)
+
+These are my **calendar-year 2025** live trading results, summarized at the "strategy / campaign" level (a campaign can contain multiple trade legs).
+
+- **Starting capital:** $50,025.75
+- **Total return:** +24.86% (+$12,436.44)
+- **# strategies (campaigns):** 139
+- **Win rate:** 65.47% (91 wins / 48 losses)
+- **Typical risk per strategy (median losing campaign):** $891.51
+- **Worst single strategy:** -$15,334.56 (TSLA campaign; 11 legs)
+- **Max drawdown (realized campaign equity curve):** -$30,520.69 (56.64%)
+
+**Professional quality metrics**
+
+| Metric | Value |
+| --- | --- |
+| Profit factor (gross profit / gross loss) | 1.140 |
+| Payoff ratio (avg win / avg loss) | 0.601 |
+| Expectancy (per strategy) | +$89.47 |
+| Sharpe (realized-daily) | 1.222 |
+| Sortino (realized-daily) | 1.250 |
+| VaR(95) (per strategy) | -$3,180 |
+| CVaR(95) (per strategy) | -$6,527 |
+
+**Where PnL came from (concentration / diagnostics)**
+
+| Category | Symbol | Net PnL | Campaigns | Win rate |
+| --- | --- | ---: | ---: | ---: |
+| Top contributor | TQQQ | +$22,114 | 26 | 80.8% |
+| Top contributor | NVDL | +$11,255 | 13 | 100% |
+| Top contributor | NFLX | +$6,548 | 15 | 60.0% |
+| Biggest drag | TSLA | -$14,689 | 6 | - |
+| Biggest drag | QQQ | -$10,227 | 33 | - |
+| Biggest drag | META | -$5,763 | 28 | - |
+
+Full write-up: [CASE_STUDY_2025_TRADING.md](https://github.com/chaofengh/lumina-live-results-notes/blob/main/CASE_STUDY_2025_TRADING.md)
+
 ## Key features
 
 ### 1) Bollinger-band signals + quantified P&L
