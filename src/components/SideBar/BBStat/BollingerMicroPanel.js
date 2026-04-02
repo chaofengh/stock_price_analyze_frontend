@@ -80,6 +80,15 @@ const computeTouchAggregates = (results = {}) => {
   };
 };
 
+const getConsecutiveTouchMetric = (summary, range, band) => {
+  const byRange = summary?.avg_consecutive_touch_days;
+  if (!byRange || typeof byRange !== 'object') return null;
+  const rangeData = byRange[range];
+  if (!rangeData || typeof rangeData !== 'object') return null;
+  const value = rangeData[band];
+  return value == null || isNaN(value) ? null : Number(value);
+};
+
 const build = (a5, a10, cfg) =>
   cfg.map(({ key, lbl, tip, d = 2, pct, vis, flip }) => {
     let rawS = a5[key];
@@ -153,12 +162,36 @@ const BollingerMicroPanel = ({ summary, range = '3M' }) => {
   /* stable refs for a5 / a10 so ESLint is happy */
   const a5  = useMemo(() => computeTouchAggregates(rangeWindow5), [rangeWindow5]);
   const a10 = useMemo(() => computeTouchAggregates(rangeWindow10), [rangeWindow10]);
+  const rangeUpperConsecutiveTouchDays = useMemo(
+    () => getConsecutiveTouchMetric(summary, range, 'upper'),
+    [summary, range]
+  );
+  const rangeLowerConsecutiveTouchDays = useMemo(
+    () => getConsecutiveTouchMetric(summary, range, 'lower'),
+    [summary, range]
+  );
+  const panelA5 = useMemo(
+    () => ({
+      ...a5,
+      avg_upper_consecutive_touch_days: rangeUpperConsecutiveTouchDays,
+      avg_lower_consecutive_touch_days: rangeLowerConsecutiveTouchDays,
+    }),
+    [a5, rangeUpperConsecutiveTouchDays, rangeLowerConsecutiveTouchDays]
+  );
+  const panelA10 = useMemo(
+    () => ({
+      ...a10,
+      avg_upper_consecutive_touch_days: rangeUpperConsecutiveTouchDays,
+      avg_lower_consecutive_touch_days: rangeLowerConsecutiveTouchDays,
+    }),
+    [a10, rangeUpperConsecutiveTouchDays, rangeLowerConsecutiveTouchDays]
+  );
 
-  const [mode, setMode] = useState(() => pickInitialMode(a5, a10));
+  const [mode, setMode] = useState(() => pickInitialMode(panelA5, panelA10));
 
   useEffect(() => {
-    setMode(pickInitialMode(a5, a10));
-  }, [a5, a10]); // deps now stable, no more warning
+    setMode(pickInitialMode(panelA5, panelA10));
+  }, [panelA5, panelA10]); // deps now stable, no more warning
 
   /* guard AFTER hooks have run */
   if (!summary) return null;
@@ -169,6 +202,7 @@ const BollingerMicroPanel = ({ summary, range = '3M' }) => {
     { lbl: 'Expected Return',     tip: 'Expected % return after touching upper band', key: 'avg_upper_touch_drop', vis: 'vbar', flip: true },
     { lbl: 'Entry Opportunities', tip: 'Upper-band touch count',         key: 'upper_touch_count', d: 0, vis: 'single' },
     { lbl: 'Exit Day',            tip: 'Avg days until maximum drop',    key: 'avg_upper_touch_in_days', d: 1, vis: 'bar' },
+    { lbl: 'Avg Touch Streak', tip: 'Average trading-day streak touching the upper Bollinger band', key: 'avg_upper_consecutive_touch_days', d: 1, vis: 'single' },
   ];
 
   const supCfg = [
@@ -176,9 +210,10 @@ const BollingerMicroPanel = ({ summary, range = '3M' }) => {
     { lbl: 'Expected Return',     tip: 'Expected % return after touching lower band', key: 'avg_lower_touch_bounce', vis: 'vbar' },
     { lbl: 'Entry Opportunities', tip: 'Lower-band touch count',         key: 'lower_touch_count', d: 0, vis: 'single' },
     { lbl: 'Exit Day',            tip: 'Avg days until maximum bounce',  key: 'avg_lower_touch_bounce_in_days', d: 1, vis: 'bar' },
+    { lbl: 'Avg Touch Streak', tip: 'Average trading-day streak touching the lower Bollinger band', key: 'avg_lower_consecutive_touch_days', d: 1, vis: 'single' },
   ];
 
-  const rows = mode === 'res' ? build(a5, a10, resCfg) : build(a5, a10, supCfg);
+  const rows = mode === 'res' ? build(panelA5, panelA10, resCfg) : build(panelA5, panelA10, supCfg);
 
   return (
     <Paper>
