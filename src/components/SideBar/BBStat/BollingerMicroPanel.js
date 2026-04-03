@@ -121,18 +121,6 @@ const build = (a5, a10, cfg) =>
     };
   });
 
-const pickInitialMode = (a5, a10) => {
-  const avg = vals =>
-    vals.filter(v => v !== null && v !== undefined && !isNaN(v))
-        .reduce((s, v) => s + v, 0) /
-    (vals.filter(v => v !== null && v !== undefined && !isNaN(v)).length || 1);
-
-  const resWin = avg([a5.upper_touch_accuracy, a10.upper_touch_accuracy]);
-  const supWin = avg([a5.lower_touch_accuracy, a10.lower_touch_accuracy]);
-
-  return resWin > supWin ? 'res' : 'sup';
-};
-
 const BollingerMicroPanel = ({ summary, range = '3M' }) => {
   const chartPoints = useMemo(() => summary?.chart_data ?? [], [summary?.chart_data]);
   const latestTimestamp = useMemo(() => {
@@ -187,11 +175,11 @@ const BollingerMicroPanel = ({ summary, range = '3M' }) => {
     [a10, rangeUpperConsecutiveTouchDays, rangeLowerConsecutiveTouchDays]
   );
 
-  const [mode, setMode] = useState(() => pickInitialMode(panelA5, panelA10));
+  const [mode, setMode] = useState('sup');
 
   useEffect(() => {
-    setMode(pickInitialMode(panelA5, panelA10));
-  }, [panelA5, panelA10]); // deps now stable, no more warning
+    setMode('sup');
+  }, [summary?.symbol]);
 
   /* guard AFTER hooks have run */
   if (!summary) return null;

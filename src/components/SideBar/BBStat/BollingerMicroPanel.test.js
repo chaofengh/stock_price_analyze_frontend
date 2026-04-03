@@ -24,6 +24,21 @@ const summary = {
 };
 
 describe('BollingerMicroPanel consecutive touch days', () => {
+  test('defaults to LowerBB and does not auto-switch on price range changes', () => {
+    const { rerender } = render(<BollingerMicroPanel summary={summary} range="1M" />);
+
+    expect(screen.getByRole('button', { name: 'LowerBB' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByText('2.5')).toBeInTheDocument();
+
+    rerender(<BollingerMicroPanel summary={summary} range="3M" />);
+    expect(screen.getByRole('button', { name: 'LowerBB' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByText('4.2')).toBeInTheDocument();
+
+    rerender(<BollingerMicroPanel summary={summary} range="YTD" />);
+    expect(screen.getByRole('button', { name: 'LowerBB' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByText('6.3')).toBeInTheDocument();
+  });
+
   test('shows range-specific upper values from backend metric', () => {
     const { rerender } = render(<BollingerMicroPanel summary={summary} range="1M" />);
 
