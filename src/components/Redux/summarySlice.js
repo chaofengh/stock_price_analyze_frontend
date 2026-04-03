@@ -53,8 +53,12 @@ export const fetchSummary = createAsyncThunk(
 export const fetchSummaryPeers = createAsyncThunk(
   'summary/fetchSummaryPeers',
   async (symbol, { rejectWithValue }) => {
+    const normalizedSymbol = normalizeSymbol(symbol);
+    if (!normalizedSymbol) {
+      return rejectWithValue('Missing symbol');
+    }
     try {
-      return await fetchStockPeers(symbol);
+      return await fetchStockPeers(normalizedSymbol);
     } catch (err) {
       return rejectWithValue(err.message);
     }
@@ -89,9 +93,14 @@ export const fetchSummaryPeers = createAsyncThunk(
 export const fetchSummaryFundamentals = createAsyncThunk(
   'summary/fetchSummaryFundamentals',
   async (symbol, { dispatch, rejectWithValue }) => {
+    const normalizedSymbol = normalizeSymbol(symbol);
+    if (!normalizedSymbol) {
+      return rejectWithValue('Missing symbol');
+    }
     try {
-      const data = await fetchStockFundamentals(symbol);
-      dispatch(fetchSummaryPeerAverages(symbol));
+      // Start peer averages in parallel; no need to block on fundamentals first.
+      dispatch(fetchSummaryPeerAverages(normalizedSymbol));
+      const data = await fetchStockFundamentals(normalizedSymbol);
       return data;
     } catch (err) {
       return rejectWithValue(err.message);
@@ -127,8 +136,12 @@ export const fetchSummaryFundamentals = createAsyncThunk(
 export const fetchSummaryPeerAverages = createAsyncThunk(
   'summary/fetchSummaryPeerAverages',
   async (symbol, { rejectWithValue }) => {
+    const normalizedSymbol = normalizeSymbol(symbol);
+    if (!normalizedSymbol) {
+      return rejectWithValue('Missing symbol');
+    }
     try {
-      return await fetchStockPeerAverages(symbol);
+      return await fetchStockPeerAverages(normalizedSymbol);
     } catch (err) {
       return rejectWithValue(err.message);
     }

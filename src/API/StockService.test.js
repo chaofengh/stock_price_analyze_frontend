@@ -26,6 +26,7 @@ describe('fetchStockSummary', () => {
 
     expect(data.symbol).toBe('AAPL');
     expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(global.fetch.mock.calls[0][0]).toBe('http://example.test/summary?symbol=AAPL');
     expect(global.fetch.mock.calls[0][1].cache).toBe('no-store');
   });
 

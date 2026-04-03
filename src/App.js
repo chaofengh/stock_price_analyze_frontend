@@ -32,7 +32,12 @@ import TickerList from './components/SidebarRail/TickerList';
 import News from './components/SidebarRail/News';
 import SymbolSearch from './components/SymbolSearch';
 
-import { fetchSummary, clearSummary } from './components/Redux/summarySlice';
+import {
+  fetchSummary,
+  fetchSummaryPeers,
+  fetchSummaryFundamentals,
+  clearSummary,
+} from './components/Redux/summarySlice';
 import theme from './theme';
 
 function AppShell() {
@@ -63,9 +68,10 @@ function AppShell() {
     const rawSymbol = searchParams.get('symbol');
     const normalized = rawSymbol?.trim().toUpperCase();
     if (!normalized) return;
-    if (summary?.symbol === normalized) return;
     dispatch(fetchSummary(normalized));
-  }, [dispatch, location.search, summary?.symbol]);
+    dispatch(fetchSummaryPeers(normalized));
+    dispatch(fetchSummaryFundamentals(normalized));
+  }, [dispatch, location.search]);
 
   useEffect(() => {
     if (!isDashboardRoute) return;

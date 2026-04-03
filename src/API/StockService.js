@@ -1,8 +1,10 @@
-const stock_summary_api_key = process.env.REACT_APP_summary_root_api;
+const getSummaryApiRoot = () =>
+  process.env.REACT_APP_summary_root_api || 'http://localhost:5000/api';
 
 export async function fetchStockSummary(symbol) {
+  const apiRoot = getSummaryApiRoot();
   const response = await fetch(
-    `${stock_summary_api_key}/summary/bundle?symbol=${symbol}`,
+    `${apiRoot}/summary?symbol=${symbol}`,
     { cache: 'no-store' }
   );
   if (!response.ok) {
@@ -19,7 +21,8 @@ export async function fetchStockSummary(symbol) {
 }
 
 export async function fetchStockOverview(symbol) {
-  const response = await fetch(`${stock_summary_api_key}/summary/overview?symbol=${symbol}`);
+  const apiRoot = getSummaryApiRoot();
+  const response = await fetch(`${apiRoot}/summary/overview?symbol=${symbol}`);
   if (!response.ok) {
     throw new Error(`Server error: ${response.statusText}`);
   }
@@ -27,7 +30,8 @@ export async function fetchStockOverview(symbol) {
 }
 
 export async function fetchStockPeers(symbol) {
-  const response = await fetch(`${stock_summary_api_key}/summary/peers?symbol=${symbol}`);
+  const apiRoot = getSummaryApiRoot();
+  const response = await fetch(`${apiRoot}/summary/peers?symbol=${symbol}`);
   if (!response.ok) {
     throw new Error(`Server error: ${response.statusText}`);
   }
@@ -35,7 +39,8 @@ export async function fetchStockPeers(symbol) {
 }
 
 export async function fetchStockFundamentals(symbol) {
-  const response = await fetch(`${stock_summary_api_key}/summary/fundamentals?symbol=${symbol}`);
+  const apiRoot = getSummaryApiRoot();
+  const response = await fetch(`${apiRoot}/summary/fundamentals?symbol=${symbol}`);
   if (!response.ok) {
     throw new Error(`Server error: ${response.statusText}`);
   }
@@ -43,7 +48,8 @@ export async function fetchStockFundamentals(symbol) {
 }
 
 export async function fetchStockPeerAverages(symbol) {
-  const response = await fetch(`${stock_summary_api_key}/summary/peer-averages?symbol=${symbol}`);
+  const apiRoot = getSummaryApiRoot();
+  const response = await fetch(`${apiRoot}/summary/peer-averages?symbol=${symbol}`);
   if (!response.ok) {
     throw new Error(`Server error: ${response.statusText}`);
   }
@@ -51,7 +57,8 @@ export async function fetchStockPeerAverages(symbol) {
 }
 
 export async function fetchCashFlowData(symbol) {
-  const response = await fetch(`${stock_summary_api_key}/financials/cash_flow/${symbol}`);
+  const apiRoot = getSummaryApiRoot();
+  const response = await fetch(`${apiRoot}/financials/cash_flow/${symbol}`);
   if (!response.ok) {
     throw new Error(`HTTP error! Status: ${response.status}`);
   }
@@ -59,7 +66,8 @@ export async function fetchCashFlowData(symbol) {
 }
 
 export async function fetchBalanceSheetData(symbol) {
-  const response = await fetch(`${stock_summary_api_key}/financials/balance_sheet/${symbol}`);
+  const apiRoot = getSummaryApiRoot();
+  const response = await fetch(`${apiRoot}/financials/balance_sheet/${symbol}`);
   if (!response.ok) {
     throw new Error(`HTTP error! Status: ${response.status}`);
   }
@@ -67,7 +75,8 @@ export async function fetchBalanceSheetData(symbol) {
 }
 
 export async function fetchIncomeStatementData(symbol) {
-  const response = await fetch(`${stock_summary_api_key}/financials/income_statement/${symbol}`);
+  const apiRoot = getSummaryApiRoot();
+  const response = await fetch(`${apiRoot}/financials/income_statement/${symbol}`);
   if (!response.ok) {
     throw new Error(`HTTP error! Status: ${response.status}`);
   }
@@ -75,9 +84,10 @@ export async function fetchIncomeStatementData(symbol) {
 }
 
 export async function fetchWorldMarketMoves({ refresh = true } = {}) {
+  const apiRoot = getSummaryApiRoot();
   const endpoint = refresh
-    ? `${stock_summary_api_key}/world-markets?refresh=1`
-    : `${stock_summary_api_key}/world-markets`;
+    ? `${apiRoot}/world-markets?refresh=1`
+    : `${apiRoot}/world-markets`;
   const response = await fetch(endpoint, {
     cache: 'no-store',
   });
