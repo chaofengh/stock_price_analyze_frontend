@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useId, useRef } from 'react';
+import React, { useState, useEffect, useId, useRef, useCallback } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -73,9 +73,16 @@ function AuthDialog({ open, mode, onClose, onSwitchMode }) {
   // State for ForgotPasswordDialog visibility
   const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
 
-  useEffect(() => {
-    if (open) {
-      setFormStartTime(Date.now());
+  const resolveTimezone = useCallback(() => {
+    try {
+      return Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+    } catch (e) {
+      return '';
+    }
+  }, []);
+
+  const resetAuthFormFields = useCallback(
+    (targetMode, { opened = false } = {}) => {
       setLocalError('');
       setEmailOrUsername('');
       setPassword('');
@@ -89,13 +96,23 @@ function AuthDialog({ open, mode, onClose, onSwitchMode }) {
       setMarketingOptIn(false);
       setAcceptTerms(false);
       setHoneyTrap('');
-      try {
-        setTimezone(Intl.DateTimeFormat().resolvedOptions().timeZone || '');
-      } catch (e) {
+      if (opened) {
+        setTimezone(resolveTimezone());
+      } else if (targetMode === 'register') {
+        setTimezone(resolveTimezone());
+      } else {
         setTimezone('');
       }
+    },
+    [resolveTimezone]
+  );
+
+  useEffect(() => {
+    if (open) {
+      setFormStartTime(Date.now());
+      resetAuthFormFields('login', { opened: true });
     }
-  }, [open]);
+  }, [open, resetAuthFormFields]);
 
   useEffect(() => {
     if (!open) {
@@ -113,31 +130,10 @@ function AuthDialog({ open, mode, onClose, onSwitchMode }) {
   }, [mode, open, posthog]);
 
   const handleSwitchMode = () => {
-    setLocalError('');
     const nextMode = mode === 'login' ? 'register' : 'login';
     onSwitchMode(nextMode);
     setFormStartTime(Date.now());
-    setEmailOrUsername('');
-    setPassword('');
-    setConfirmPassword('');
-    setEmail('');
-    setUsername('');
-    setFirstName('');
-    setLastName('');
-    setPhone('');
-    setCountry('');
-    setMarketingOptIn(false);
-    setAcceptTerms(false);
-    setHoneyTrap('');
-    if (nextMode === 'register') {
-      try {
-        setTimezone(Intl.DateTimeFormat().resolvedOptions().timeZone || '');
-      } catch (e) {
-        setTimezone('');
-      }
-    } else {
-      setTimezone('');
-    }
+    resetAuthFormFields(nextMode);
   };
 
   const handleSubmit = async () => {

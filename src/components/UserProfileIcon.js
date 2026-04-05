@@ -12,7 +12,7 @@ import { alpha } from '@mui/material/styles';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import KeyboardArrowDownRoundedIcon from '@mui/icons-material/KeyboardArrowDownRounded';
 import { logout } from './Redux/authSlice';
-import AuthDialog from './AuthDialog';
+import AuthDialog, { openAuthDialog } from './AuthDialog';
 import { stringToHslColor } from '../utils/stringToColor';
 
 function UserProfileIcon() {
@@ -35,7 +35,6 @@ function UserProfileIcon() {
   /* ───────── handlers ───────── */
   const handleMenuOpen = (e) => setAnchorEl(e.currentTarget);
   const handleMenuClose = () => setAnchorEl(null);
-  const handleDialogOpen = (mode) => { setAuthMode(mode); setOpenDialog(true); };
   const handleLogout = () => { dispatch(logout()); handleMenuClose(); };
 
   useEffect(() => {
@@ -135,7 +134,7 @@ function UserProfileIcon() {
       ) : (
         /* ================= Logged‑out ================= */
         <>
-          {profileButton(() => handleDialogOpen('login'), true)}
+          {profileButton(() => openAuthDialog('login'), true)}
         </>
       )}
 

@@ -13,6 +13,7 @@ import { DataGrid } from '@mui/x-data-grid';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchSummary } from '../Redux/summarySlice';
 import { logout } from '../Redux/authSlice';
+import { openAuthDialog } from '../AuthDialog';
 
 function OptionPriceRatio() {
   const dispatch = useDispatch();
@@ -24,10 +25,6 @@ function OptionPriceRatio() {
   const [loading, setLoading] = useState(false);
   const [fetchError, setFetchError] = useState(null);
   const [paginationModel, setPaginationModel] = useState({ page: 0, pageSize: 25 });
-
-  const openAuthDialog = (mode = 'login') => {
-    window.dispatchEvent(new CustomEvent('auth:open', { detail: { mode } }));
-  };
 
   const scheduleBump = () => {
     if (bumpTimerRef.current) return;
