@@ -3,6 +3,37 @@ import React from "react";
 import { Box, Typography } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 
+export const getBandBreakoutRawPct = ({
+  close,
+  high_price,
+  low_price,
+  lower,
+  upper,
+  touched_side,
+}) => {
+  if (
+    typeof close !== "number" ||
+    typeof lower !== "number" ||
+    typeof upper !== "number"
+  ) {
+    return null;
+  }
+
+  let diff = 0;
+  let base = 0;
+
+  if (touched_side === "Upper") {
+    diff = (typeof high_price === "number" ? high_price : close) - upper;
+    base = upper;
+  } else {
+    // default to "Lower" logic when touched_side is not "Upper"
+    diff = lower - (typeof low_price === "number" ? low_price : close);
+    base = lower;
+  }
+
+  return base !== 0 ? (diff / base) * 100 : 0;
+};
+
 /**
  * Center-anchored meter:
  *  - 0% at the center
@@ -17,32 +48,23 @@ const BandBreakoutMeter = ({
   upper,
   touched_side,
 }) => {
-  // Basic guard: ensure we have numbers to work with
-  if (
-    typeof close !== "number" ||
-    typeof lower !== "number" ||
-    typeof upper !== "number"
-  ) {
+  const rawPct = getBandBreakoutRawPct({
+    close,
+    high_price,
+    low_price,
+    lower,
+    upper,
+    touched_side,
+  });
+
+  if (rawPct === null) {
     return null;
   }
 
   // Compute raw % distance from the touched band
-  let diff = 0;
-  let base = 0;
   let label = "Band Breakout";
-
-  if (touched_side === "Upper") {
-    diff = (typeof high_price === "number" ? high_price : close) - upper;
-    base = upper;
-    label = "Overbought Meter";
-  } else {
-    // default to "Lower" logic when touched_side is not "Upper"
-    diff = lower - (typeof low_price === "number" ? low_price : close);
-    base = lower;
-    label = "Oversold Meter";
-  }
-
-  const rawPct = base !== 0 ? (diff / base) * 100 : 0;
+  if (touched_side === "Upper") label = "Overbought Meter";
+  else label = "Oversold Meter";
   // Positive -> right (overbought), Negative -> left (oversold)
   const signedPct = touched_side === "Upper" ? +rawPct : -rawPct;
 

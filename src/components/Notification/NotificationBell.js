@@ -9,6 +9,7 @@ import { AlertsContext } from './AlertContext';
 import { useTheme } from '@mui/system';
 import { useNavigate } from 'react-router-dom';
 import GroupedAlerts from './GroupedAlerts';
+import { getBandBreakoutRawPct } from './BandBreakoutMeter';
 
 const Transition = React.forwardRef(function Transition(props, ref) {
   return <Slide direction="up" ref={ref} {...props} />;
@@ -17,7 +18,7 @@ const Transition = React.forwardRef(function Transition(props, ref) {
 const NotificationBell = () => {
   const { alerts, timestamp, clearAlerts } = useContext(AlertsContext);
   const [open, setOpen] = useState(false);
-  const [sortOption, setSortOption] = useState('symbol');
+  const [sortOption, setSortOption] = useState('rawPct');
   const theme = useTheme();
   const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
   const navigate = useNavigate();
@@ -27,6 +28,30 @@ const NotificationBell = () => {
   const groupedAlerts = useMemo(() => {
     const sorted = [...alerts];
     if (sortOption === 'symbol') sorted.sort((a, b) => a.symbol.localeCompare(b.symbol));
+    else if (sortOption === 'rawPct') {
+      sorted.sort((a, b) => {
+        const aRawPct = getBandBreakoutRawPct({
+          close: a?.close_price,
+          high_price: a?.high_price,
+          low_price: a?.low_price,
+          lower: a?.bb_lower,
+          upper: a?.bb_upper,
+          touched_side: a?.touched_side,
+        });
+        const bRawPct = getBandBreakoutRawPct({
+          close: b?.close_price,
+          high_price: b?.high_price,
+          low_price: b?.low_price,
+          lower: b?.bb_lower,
+          upper: b?.bb_upper,
+          touched_side: b?.touched_side,
+        });
+
+        const aRank = typeof aRawPct === 'number' ? aRawPct : Number.NEGATIVE_INFINITY;
+        const bRank = typeof bRawPct === 'number' ? bRawPct : Number.NEGATIVE_INFINITY;
+        return bRank - aRank;
+      });
+    }
     else if (sortOption === 'side') sorted.sort((a, b) => a.touched_side.localeCompare(b.touched_side));
 
     const map = { Upper: [], Lower: [] };
@@ -116,6 +141,7 @@ const NotificationBell = () => {
               <FormControl size="small" sx={{ width: 150 }}>
                 <InputLabel>Sort by</InputLabel>
                 <Select value={sortOption} label="Sort by" onChange={(e) => setSortOption(e.target.value)}>
+                  <MenuItem value="rawPct">Breakout % (High-Low)</MenuItem>
                   <MenuItem value="symbol">Symbol</MenuItem>
                   <MenuItem value="side">Upper/Lower</MenuItem>
                 </Select>
