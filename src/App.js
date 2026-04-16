@@ -30,6 +30,7 @@ import Backtest from './components/Backtest/Backtest';
 import OptionPriceRatio from './components/SidebarRail/OptionPriceRatio';
 import TickerList from './components/SidebarRail/TickerList';
 import News from './components/SidebarRail/News';
+import EntryDecision from './components/SidebarRail/EntryDecision';
 import SymbolSearch from './components/SymbolSearch';
 
 import {
@@ -275,6 +276,7 @@ function AppShell() {
                 <Route path="/watchlist" element={<TickerList />} />
                 <Route path="/news" element={<News />} />
                 <Route path="/backtest" element={<Backtest />} />
+                <Route path="/entry-decision" element={<EntryDecision />} />
               </Routes>
             </Box>
           </Box>

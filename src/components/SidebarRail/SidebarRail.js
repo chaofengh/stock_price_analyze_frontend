@@ -10,6 +10,7 @@ import BookmarkBorderOutlinedIcon from '@mui/icons-material/BookmarkBorderOutlin
 import SwapHorizOutlinedIcon from '@mui/icons-material/SwapHorizOutlined';
 import ArticleOutlinedIcon from '@mui/icons-material/ArticleOutlined';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
+import PsychologyAltOutlinedIcon from '@mui/icons-material/PsychologyAltOutlined';
 
 const SidebarRail = ({ summary, railWidth = 176 }) => {
   const location = useLocation();
@@ -25,10 +26,14 @@ const SidebarRail = ({ summary, railWidth = 176 }) => {
   const isWatchListActive = location.pathname === '/watchlist';
   const isNewsActive = location.pathname === '/news';
   const isBacktestActive = location.pathname === '/backtest';
+  const isEntryDecisionActive = location.pathname === '/entry-decision';
   const isDashboardActive = location.pathname === '/' && Boolean(analysisSymbol);
   const dashboardLink = analysisSymbol
     ? `/?symbol=${encodeURIComponent(analysisSymbol)}`
     : '/';
+  const entryDecisionLink = analysisSymbol
+    ? `/entry-decision?symbol=${encodeURIComponent(analysisSymbol)}`
+    : '/entry-decision';
   const analysisLinkProps = hasSymbol
     ? {
         component: RouterLink,
@@ -280,6 +285,24 @@ const SidebarRail = ({ summary, railWidth = 176 }) => {
             <ArticleOutlinedIcon />
           </ListItemIcon>
           <ListItemText primary="News" primaryTypographyProps={{ noWrap: true }} />
+        </ListItemButton>
+
+        <ListItemButton
+          aria-label="Entry decision"
+          aria-current={isEntryDecisionActive ? 'page' : undefined}
+          disabled={!hasSymbol}
+          component={RouterLink}
+          to={entryDecisionLink}
+          disableGutters
+          sx={(theme) => baseItemStyles(theme, isEntryDecisionActive)}
+        >
+          <ListItemIcon>
+            <PsychologyAltOutlinedIcon />
+          </ListItemIcon>
+          <ListItemText
+            primary="Entry Decision"
+            primaryTypographyProps={{ noWrap: true }}
+          />
         </ListItemButton>
 
         <ListItemButton

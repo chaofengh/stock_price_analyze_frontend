@@ -1,4 +1,8 @@
-import { fetchStockSummary, fetchWorldMarketMoves } from './StockService';
+import {
+  fetchStockSummary,
+  fetchStockEntryDecision,
+  fetchWorldMarketMoves,
+} from './StockService';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 describe('fetchStockSummary', () => {
@@ -92,5 +96,59 @@ describe('fetchWorldMarketMoves', () => {
     });
 
     await expect(fetchWorldMarketMoves()).rejects.toThrow('Server error: BAD REQUEST');
+  });
+});
+
+describe('fetchStockEntryDecision', () => {
+  const originalFetch = global.fetch;
+  const originalEnv = process.env.REACT_APP_summary_root_api;
+
+  beforeEach(() => {
+    process.env.REACT_APP_summary_root_api = 'http://example.test';
+    global.fetch = vi.fn();
+  });
+
+  afterEach(() => {
+    process.env.REACT_APP_summary_root_api = originalEnv;
+    global.fetch = originalFetch;
+    vi.clearAllMocks();
+  });
+
+  it('returns data and uses no-store cache', async () => {
+    global.fetch.mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue({ symbol: 'AAPL', enter_today: true }),
+    });
+
+    const data = await fetchStockEntryDecision('AAPL');
+
+    expect(data.symbol).toBe('AAPL');
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(global.fetch.mock.calls[0][0]).toBe('http://example.test/summary/entry-decision?symbol=AAPL');
+    expect(global.fetch.mock.calls[0][1].cache).toBe('no-store');
+  });
+
+  it('appends as_of_date when provided', async () => {
+    global.fetch.mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue({ symbol: 'AAPL', enter_today: true }),
+    });
+
+    await fetchStockEntryDecision('AAPL', '2026-04-10');
+
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(global.fetch.mock.calls[0][0]).toBe(
+      'http://example.test/summary/entry-decision?symbol=AAPL&as_of_date=2026-04-10'
+    );
+  });
+
+  it('throws with backend error body message', async () => {
+    global.fetch.mockResolvedValue({
+      ok: false,
+      statusText: 'INTERNAL SERVER ERROR',
+      json: vi.fn().mockResolvedValue({ error: 'decision failed' }),
+    });
+
+    await expect(fetchStockEntryDecision('AAPL')).rejects.toThrow('Server error: decision failed');
   });
 });
