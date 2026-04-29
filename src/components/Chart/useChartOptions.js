@@ -8,8 +8,10 @@ const useChartOptions = ({
   handleZoomComplete,
   tooltipMappingTouch,
   zoomEnabled = true,
+  priceView = "close",
 }) => {
   const theme = useTheme();
+  const isCandleView = priceView === "candles";
 
   return useMemo(
     () => ({
@@ -39,7 +41,7 @@ const useChartOptions = ({
       },
 
       // IMPORTANT: show tooltip anywhere along an index (not just on a point)
-      interaction: { mode: "point", intersect: false },
+      interaction: { mode: isCandleView ? "index" : "point", intersect: false },
 
       plugins: {
         legend: {
@@ -47,12 +49,35 @@ const useChartOptions = ({
           labels: { boxWidth: 12 },
         },
 
-        tooltip: {
-          enabled: false,
-          external: externalTooltipHandler,
-          // Stash mapping for TooltipHandler to read (so the hook needs no args)
-          _touchMapping: tooltipMappingTouch || {},
-        },
+        tooltip: isCandleView
+          ? {
+              enabled: true,
+              filter: (item) => item?.dataset?.type === "candlestick",
+              callbacks: {
+                label: (context) => {
+                  const raw = context?.raw;
+                  const hasOhlc =
+                    raw &&
+                    typeof raw === "object" &&
+                    raw.o != null &&
+                    raw.h != null &&
+                    raw.l != null &&
+                    raw.c != null;
+                  if (!hasOhlc) return "";
+                  const o = Number(raw.o).toFixed(2);
+                  const h = Number(raw.h).toFixed(2);
+                  const l = Number(raw.l).toFixed(2);
+                  const c = Number(raw.c).toFixed(2);
+                  return `O: $${o}  H: $${h}  L: $${l}  C: $${c}`;
+                },
+              },
+            }
+          : {
+              enabled: false,
+              external: externalTooltipHandler,
+              // Stash mapping for TooltipHandler to read (so the hook needs no args)
+              _touchMapping: tooltipMappingTouch || {},
+            },
 
         zoom: {
           zoom: {
@@ -74,6 +99,7 @@ const useChartOptions = ({
       handleZoomComplete,
       tooltipMappingTouch,
       zoomEnabled,
+      isCandleView,
     ]
   );
 };

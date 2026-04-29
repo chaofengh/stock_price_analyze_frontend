@@ -1,12 +1,18 @@
 // StockChart.js
 import React, { useCallback, useState, useRef, useEffect, useMemo } from "react";
 import { Box, Typography, ToggleButton, ToggleButtonGroup } from "@mui/material";
-import { Line } from "react-chartjs-2";
+import { Chart, Line } from "react-chartjs-2";
 import {
   Chart as ChartJS,
   CategoryScale, LinearScale, PointElement, LineElement,
   Title, Tooltip as ChartTooltip, Legend, Filler,
 } from "chart.js";
+import {
+  CandlestickController,
+  CandlestickElement,
+  OhlcController,
+  OhlcElement,
+} from "chartjs-chart-financial/dist/chartjs-chart-financial.esm.js";
 import annotationPlugin from "chartjs-plugin-annotation";
 import zoomPlugin from "chartjs-plugin-zoom";
 
@@ -28,8 +34,14 @@ const parseTimestamp = (value) => {
   return Number.isNaN(parsed) ? null : parsed;
 };
 
+const toFiniteNumberOrNull = (value) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
 ChartJS.register(
   CategoryScale, LinearScale, PointElement, LineElement,
+  CandlestickController, CandlestickElement, OhlcController, OhlcElement,
   Title, ChartTooltip, Legend, annotationPlugin, zoomPlugin,
   CrosshairLinePlugin, Filler
 );
@@ -38,6 +50,7 @@ function StockChart({ summary, eventMap, onHoverPriceChange, range = "3M", onRan
   const chartRef = useRef(null);
   const [dragInfo, setDragInfo] = useState(null);
   const [hasZoomed, setHasZoomed] = useState(false);
+  const [priceView, setPriceView] = useState("close");
 
   const chartPoints = useMemo(
     () => summary?.chart_data ?? EMPTY_POINTS,
@@ -51,6 +64,11 @@ function StockChart({ summary, eventMap, onHoverPriceChange, range = "3M", onRan
     },
     [onRangeChange]
   );
+
+  const handlePriceViewChange = useCallback((_, value) => {
+    if (!value) return;
+    setPriceView(value);
+  }, []);
 
   const latestTimestamp = useMemo(() => {
     if (!chartPoints.length) return null;
@@ -134,6 +152,50 @@ function StockChart({ summary, eventMap, onHoverPriceChange, range = "3M", onRan
     () => filteredPoints.map((pt) => pt.lower ?? null),
     [filteredPoints]
   );
+  const candleLowerBand = useMemo(
+    () =>
+      filteredPoints.map((pt, idx) => ({
+        x: idx,
+        y: toFiniteNumberOrNull(pt.lower),
+      })),
+    [filteredPoints]
+  );
+  const candleUpperBand = useMemo(
+    () =>
+      filteredPoints.map((pt, idx) => ({
+        x: idx,
+        y: toFiniteNumberOrNull(pt.upper),
+      })),
+    [filteredPoints]
+  );
+  const candlestickData = useMemo(
+    () => {
+      const candles = [];
+      let previousClose = null;
+      filteredPoints.forEach((pt, idx) => {
+        const close = toFiniteNumberOrNull(pt.close);
+        const open = toFiniteNumberOrNull(pt.open) ?? previousClose ?? close;
+        const high = toFiniteNumberOrNull(pt.high) ?? Math.max(open ?? close ?? 0, close ?? 0);
+        const low = toFiniteNumberOrNull(pt.low) ?? Math.min(open ?? close ?? 0, close ?? 0);
+
+        if (close == null || open == null || high == null || low == null) {
+          return;
+        }
+
+        candles.push({
+          // chartjs-chart-financial uses parsing:false; category scales expect x as label index
+          x: idx,
+          o: open,
+          h: high,
+          l: low,
+          c: close,
+        });
+        previousClose = close;
+      });
+      return candles;
+    },
+    [filteredPoints]
+  );
 
   const [chartData, setChartData] = useState({ labels: [], datasets: [] });
 
@@ -153,11 +215,12 @@ function StockChart({ summary, eventMap, onHoverPriceChange, range = "3M", onRan
     const lowerBB = {
       type: "line",
       label: "Lower BB",
-      data: lowerBand,
+      data: priceView === "candles" ? candleLowerBand : lowerBand,
       borderColor: "rgba(75,192,192,0.8)",
       borderWidth: 2,
       pointRadius: 0,
       fill: false,
+      parsing: priceView === "candles" ? false : undefined,
       yAxisID: "y",
       order: 1,
     };
@@ -165,21 +228,48 @@ function StockChart({ summary, eventMap, onHoverPriceChange, range = "3M", onRan
     const upperBB = {
       type: "line",
       label: "Upper BB",
-      data: upperBand,
+      data: priceView === "candles" ? candleUpperBand : upperBand,
       borderColor: "rgba(75,192,192,0.8)",
       borderWidth: 2,
       pointRadius: 0,
       fill: "-1",
       backgroundColor: "rgba(20,133,203,0.2)",
+      parsing: priceView === "candles" ? false : undefined,
       yAxisID: "y",
       order: 1,
     };
+
+    if (priceView === "candles") {
+      const candleDataset = {
+        type: "candlestick",
+        label: "Price",
+        data: candlestickData,
+        backgroundColors: {
+          up: "rgba(46,125,50,0.55)",
+          down: "rgba(211,47,47,0.55)",
+          unchanged: "rgba(144,164,174,0.55)",
+        },
+        borderColors: {
+          up: "#2e7d32",
+          down: "#d32f2f",
+          unchanged: "#90a4ae",
+        },
+        yAxisID: "y",
+        order: 2,
+      };
+
+      setChartData({
+        labels: baseChartData.labels,
+        datasets: [candleDataset, lowerBB, upperBB],
+      });
+      return;
+    }
 
     setChartData({
       labels: baseChartData.labels,
       datasets: [mainDataset, lowerBB, upperBB],
     });
-  }, [baseChartData, lowerBand, upperBand]);
+  }, [baseChartData, lowerBand, upperBand, candleLowerBand, candleUpperBand, candlestickData, priceView]);
 
   // ── Tooltip + hover logic ───────────────────────────────────────────────
   const externalTooltipHandler = useExternalTooltipHandler();
@@ -257,16 +347,25 @@ function StockChart({ summary, eventMap, onHoverPriceChange, range = "3M", onRan
   );
 
   const handleResetZoom = useCallback(() => {
-    chartRef.current?.resetZoom();
+    chartRef.current?.resetZoom?.();
     setDragInfo(null);
     setHasZoomed(false);
   }, []);
 
   useEffect(() => {
-    chartRef.current?.resetZoom();
+    chartRef.current?.resetZoom?.();
     setDragInfo(null);
     setHasZoomed(false);
-  }, [range, filteredPoints.length]);
+  }, [range, filteredPoints.length, priceView]);
+
+  useEffect(() => {
+    const tooltips = document.querySelectorAll('[id^="chartjs-tooltip-"]');
+    tooltips.forEach((el) => {
+      if (el?.style) {
+        el.style.opacity = 0;
+      }
+    });
+  }, [priceView]);
 
   const chartOptions = useChartOptions({
     externalTooltipHandler,
@@ -274,6 +373,7 @@ function StockChart({ summary, eventMap, onHoverPriceChange, range = "3M", onRan
     handleZoomComplete,
     tooltipMappingTouch, // still needed by TooltipHandler for rows
     zoomEnabled: !hasZoomed,
+    priceView,
   });
 
   const formattedRangePct = rangeChange
@@ -305,6 +405,30 @@ function StockChart({ summary, eventMap, onHoverPriceChange, range = "3M", onRan
             {formattedRangePct}
           </Typography>
           <ToggleButtonGroup
+            value={priceView}
+            exclusive
+            onChange={handlePriceViewChange}
+            size="small"
+            sx={{
+              background: "rgba(255,255,255,0.06)",
+              borderRadius: "var(--app-radius)",
+              "& .MuiToggleButton-root": {
+                py: 0,
+                px: 1,
+                fontSize: 12,
+                minWidth: 68,
+                color: "text.secondary",
+                "&.Mui-selected": {
+                  color: "primary.main",
+                  backgroundColor: "rgba(0,123,255,0.15)",
+                },
+              },
+            }}
+          >
+            <ToggleButton value="close">Close</ToggleButton>
+            <ToggleButton value="candles">Candles</ToggleButton>
+          </ToggleButtonGroup>
+          <ToggleButtonGroup
             value={range}
             exclusive
             onChange={handleRangeChange}
@@ -333,7 +457,11 @@ function StockChart({ summary, eventMap, onHoverPriceChange, range = "3M", onRan
         </Box>
       </Box>
       <PriceChangeInfo dragInfo={dragInfo} onResetZoom={handleResetZoom} />
-      <Line ref={chartRef} data={chartData} options={chartOptions} />
+      {priceView === "candles" ? (
+        <Chart ref={chartRef} type="candlestick" data={chartData} options={chartOptions} />
+      ) : (
+        <Line ref={chartRef} data={chartData} options={chartOptions} />
+      )}
     </Box>
   );
 }

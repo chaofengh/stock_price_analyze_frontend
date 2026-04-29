@@ -87,7 +87,8 @@ describe('EntryDecision', () => {
 
     expect(fetchStockEntryDecision).toHaveBeenCalledWith(
       'AAPL',
-      expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/)
+      expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+      expect.objectContaining({ signal: expect.any(Object) })
     );
   });
 
@@ -114,7 +115,11 @@ describe('EntryDecision', () => {
 
     await waitFor(() => {
       expect(fetchStockEntryDecision).toHaveBeenCalledTimes(2);
-      expect(fetchStockEntryDecision).toHaveBeenLastCalledWith('AAPL', '2026-04-13');
+      expect(fetchStockEntryDecision).toHaveBeenLastCalledWith(
+        'AAPL',
+        '2026-04-13',
+        expect.objectContaining({ signal: expect.any(Object) })
+      );
       expect(screen.getByText('Snapped To Previous Trading Day')).toBeInTheDocument();
     });
   });

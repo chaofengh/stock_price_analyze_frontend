@@ -192,6 +192,8 @@ export default function EntryDecision() {
 
   useEffect(() => {
     let active = true;
+    const controller = new AbortController();
+    let requestTimer = null;
 
     if (!symbol) {
       setPayload(null);
@@ -202,26 +204,34 @@ export default function EntryDecision() {
       };
     }
 
-    setLoading(true);
-    setError('');
+    requestTimer = window.setTimeout(() => {
+      if (!active) return;
+      setLoading(true);
+      setError('');
 
-    fetchStockEntryDecision(symbol, selectedDate)
-      .then((data) => {
-        if (!active) return;
-        setPayload(data);
-      })
-      .catch((err) => {
-        if (!active) return;
-        setPayload(null);
-        setError(err?.message || 'Failed to fetch entry decision.');
-      })
-      .finally(() => {
-        if (!active) return;
-        setLoading(false);
-      });
+      fetchStockEntryDecision(symbol, selectedDate, { signal: controller.signal })
+        .then((data) => {
+          if (!active) return;
+          setPayload(data);
+        })
+        .catch((err) => {
+          if (!active) return;
+          if (err?.name === 'AbortError') return;
+          setPayload(null);
+          setError(err?.message || 'Failed to fetch entry decision.');
+        })
+        .finally(() => {
+          if (!active) return;
+          setLoading(false);
+        });
+    }, 250);
 
     return () => {
       active = false;
+      if (requestTimer) {
+        window.clearTimeout(requestTimer);
+      }
+      controller.abort();
     };
   }, [symbol, selectedDate]);
 

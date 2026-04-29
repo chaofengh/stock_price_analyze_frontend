@@ -1,4 +1,5 @@
 import {
+  __resetStockServiceCaches,
   fetchStockSummary,
   fetchStockEntryDecision,
   fetchWorldMarketMoves,
@@ -17,6 +18,7 @@ describe('fetchStockSummary', () => {
   afterEach(() => {
     process.env.REACT_APP_summary_root_api = originalEnv;
     global.fetch = originalFetch;
+    __resetStockServiceCaches();
     vi.clearAllMocks();
   });
 
@@ -59,6 +61,7 @@ describe('fetchWorldMarketMoves', () => {
   afterEach(() => {
     process.env.REACT_APP_summary_root_api = originalEnv;
     global.fetch = originalFetch;
+    __resetStockServiceCaches();
     vi.clearAllMocks();
   });
 
@@ -111,10 +114,11 @@ describe('fetchStockEntryDecision', () => {
   afterEach(() => {
     process.env.REACT_APP_summary_root_api = originalEnv;
     global.fetch = originalFetch;
+    __resetStockServiceCaches();
     vi.clearAllMocks();
   });
 
-  it('returns data and uses no-store cache', async () => {
+  it('returns data and uses force-cache mode', async () => {
     global.fetch.mockResolvedValue({
       ok: true,
       json: vi.fn().mockResolvedValue({ symbol: 'AAPL', enter_today: true }),
@@ -125,7 +129,7 @@ describe('fetchStockEntryDecision', () => {
     expect(data.symbol).toBe('AAPL');
     expect(global.fetch).toHaveBeenCalledTimes(1);
     expect(global.fetch.mock.calls[0][0]).toBe('http://example.test/summary/entry-decision?symbol=AAPL');
-    expect(global.fetch.mock.calls[0][1].cache).toBe('no-store');
+    expect(global.fetch.mock.calls[0][1].cache).toBe('force-cache');
   });
 
   it('appends as_of_date when provided', async () => {
@@ -150,5 +154,19 @@ describe('fetchStockEntryDecision', () => {
     });
 
     await expect(fetchStockEntryDecision('AAPL')).rejects.toThrow('Server error: decision failed');
+  });
+
+  it('uses cache for repeated symbol/date requests', async () => {
+    global.fetch.mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue({ symbol: 'AAPL', enter_today: true }),
+    });
+
+    const first = await fetchStockEntryDecision('AAPL', '2026-04-10');
+    const second = await fetchStockEntryDecision('AAPL', '2026-04-10');
+
+    expect(first.symbol).toBe('AAPL');
+    expect(second.symbol).toBe('AAPL');
+    expect(global.fetch).toHaveBeenCalledTimes(1);
   });
 });
