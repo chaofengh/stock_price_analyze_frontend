@@ -46,7 +46,14 @@ ChartJS.register(
   CrosshairLinePlugin, Filler
 );
 
-function StockChart({ summary, eventMap, onHoverPriceChange, range = "3M", onRangeChange }) {
+function StockChart({
+  summary,
+  eventMap,
+  onHoverPriceChange,
+  range = "3M",
+  onRangeChange,
+  predictionMarkers = [],
+}) {
   const chartRef = useRef(null);
   const [dragInfo, setDragInfo] = useState(null);
   const [hasZoomed, setHasZoomed] = useState(false);
@@ -197,6 +204,72 @@ function StockChart({ summary, eventMap, onHoverPriceChange, range = "3M", onRan
     [filteredPoints]
   );
 
+  const predictionByDate = useMemo(() => {
+    const out = {};
+    predictionMarkers.forEach((marker) => {
+      const date = marker?.signal_date || marker?.date;
+      if (!date) return;
+      out[String(date).slice(0, 10)] = marker;
+    });
+    return out;
+  }, [predictionMarkers]);
+
+  const predictionMarkerDataset = useMemo(() => {
+    const markerDates = Object.keys(predictionByDate);
+    if (!markerDates.length || !filteredPoints.length) return null;
+
+    const colors = filteredPoints.map((pt) => {
+      const marker = predictionByDate?.[String(pt.date).slice(0, 10)];
+      if (!marker) return "transparent";
+      if (marker.is_correct === true) return "#2e7d32";
+      if (marker.is_correct === false) return "#d32f2f";
+      return "#90a4ae";
+    });
+    const radii = filteredPoints.map((pt) => {
+      const marker = predictionByDate?.[String(pt.date).slice(0, 10)];
+      return marker ? 6 : 0;
+    });
+    const hoverRadii = radii.map((radius) => (radius ? 8 : 0));
+    const pointStyles = filteredPoints.map((pt) => {
+      const marker = predictionByDate?.[String(pt.date).slice(0, 10)];
+      if (!marker) return "circle";
+      return marker.predicted_direction === "reversal" ? "triangle" : "circle";
+    });
+
+    const data =
+      priceView === "candles"
+        ? filteredPoints.map((pt, idx) => ({
+            x: idx,
+            y: predictionByDate?.[String(pt.date).slice(0, 10)]
+              ? toFiniteNumberOrNull(pt.close)
+              : null,
+          }))
+        : filteredPoints.map((pt) =>
+            predictionByDate?.[String(pt.date).slice(0, 10)]
+              ? toFiniteNumberOrNull(pt.close)
+              : null
+          );
+
+    return {
+      type: "line",
+      label: "Predictions",
+      data,
+      showLine: false,
+      borderWidth: 0,
+      pointRadius: radii,
+      pointHoverRadius: hoverRadii,
+      pointStyle: pointStyles,
+      pointHitRadius: 10,
+      pointBackgroundColor: colors,
+      pointBorderColor: "#0b0f14",
+      pointBorderWidth: 1.5,
+      fill: false,
+      parsing: priceView === "candles" ? false : undefined,
+      yAxisID: "y",
+      order: 0,
+    };
+  }, [filteredPoints, predictionByDate, priceView]);
+
   const [chartData, setChartData] = useState({ labels: [], datasets: [] });
 
   useEffect(() => {
@@ -260,16 +333,29 @@ function StockChart({ summary, eventMap, onHoverPriceChange, range = "3M", onRan
 
       setChartData({
         labels: baseChartData.labels,
-        datasets: [candleDataset, lowerBB, upperBB],
+        datasets: predictionMarkerDataset
+          ? [candleDataset, lowerBB, upperBB, predictionMarkerDataset]
+          : [candleDataset, lowerBB, upperBB],
       });
       return;
     }
 
     setChartData({
       labels: baseChartData.labels,
-      datasets: [mainDataset, lowerBB, upperBB],
+      datasets: predictionMarkerDataset
+        ? [mainDataset, lowerBB, upperBB, predictionMarkerDataset]
+        : [mainDataset, lowerBB, upperBB],
     });
-  }, [baseChartData, lowerBand, upperBand, candleLowerBand, candleUpperBand, candlestickData, priceView]);
+  }, [
+    baseChartData,
+    lowerBand,
+    upperBand,
+    candleLowerBand,
+    candleUpperBand,
+    candlestickData,
+    predictionMarkerDataset,
+    priceView,
+  ]);
 
   // ── Tooltip + hover logic ───────────────────────────────────────────────
   const externalTooltipHandler = useExternalTooltipHandler();

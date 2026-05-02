@@ -15,12 +15,24 @@ import {
   TableHead,
   TableRow,
   TextField,
+  ToggleButton,
+  ToggleButtonGroup,
   Typography,
 } from '@mui/material';
 import { alpha } from '@mui/material/styles';
+import AutoGraphRoundedIcon from '@mui/icons-material/AutoGraphRounded';
+import CalendarMonthRoundedIcon from '@mui/icons-material/CalendarMonthRounded';
+import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
+import PsychologyAltRoundedIcon from '@mui/icons-material/PsychologyAltRounded';
+import ShieldRoundedIcon from '@mui/icons-material/ShieldRounded';
+import TimelineRoundedIcon from '@mui/icons-material/TimelineRounded';
+import TrendingDownRoundedIcon from '@mui/icons-material/TrendingDownRounded';
+import TrendingFlatRoundedIcon from '@mui/icons-material/TrendingFlatRounded';
+import TrendingUpRoundedIcon from '@mui/icons-material/TrendingUpRounded';
 import { useLocation } from 'react-router-dom';
 
 import { fetchStockEntryDecision } from '../../API/StockService';
+import StockChart from '../Chart/StockChart';
 
 const toIsoLocalDate = (date) => {
   const year = date.getFullYear();
@@ -29,20 +41,17 @@ const toIsoLocalDate = (date) => {
   return `${year}-${month}-${day}`;
 };
 
+const isBlankValue = (value) => value === null || value === undefined || value === '';
+
 const percent = (value) => {
+  if (isBlankValue(value)) return '--';
   const n = Number(value);
   if (!Number.isFinite(n)) return '--';
   return `${(n * 100).toFixed(1)}%`;
 };
 
-const signedPercent = (value) => {
-  const n = Number(value);
-  if (!Number.isFinite(n)) return '--';
-  const sign = n > 0 ? '+' : '';
-  return `${sign}${n.toFixed(2)}%`;
-};
-
 const decimal = (value, digits = 2) => {
+  if (isBlankValue(value)) return '--';
   const n = Number(value);
   if (!Number.isFinite(n)) return '--';
   return n.toFixed(digits);
@@ -56,20 +65,61 @@ const titleCase = (text) =>
         .join(' ')
     : '--';
 
-function MetricCard({ label, value, hint }) {
+const signalColor = (decision = {}) => {
+  if (decision.status !== 'prediction') return 'warning';
+  return decision.predicted_direction === 'reversal' ? 'success' : 'info';
+};
+
+const signalText = (decision = {}) => {
+  if (decision.status !== 'prediction') return 'No Prediction';
+  return titleCase(decision.predicted_direction);
+};
+
+const panelSx = (theme) => ({
+  p: 2.5,
+  borderRadius: 'var(--app-radius)',
+  borderColor: alpha(theme.palette.common.white, 0.12),
+  bgcolor: alpha(theme.palette.background.paper, 0.68),
+  boxShadow: `0 20px 60px ${alpha(theme.palette.common.black, 0.34)}`,
+  backdropFilter: 'blur(22px) saturate(145%)',
+});
+
+const insetSx = (theme) => ({
+  border: `1px solid ${alpha(theme.palette.common.white, 0.10)}`,
+  borderRadius: 'var(--app-radius)',
+  bgcolor: alpha(theme.palette.common.white, 0.045),
+});
+
+const progressValue = (value) => {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return 0;
+  return Math.max(0, Math.min(100, n * 100));
+};
+
+function MetricCard({ label, value, hint, tone = 'neutral', compact = false }) {
   return (
-    <Paper
-      variant="outlined"
+    <Box
       sx={(theme) => ({
-        p: 2,
-        borderColor: alpha(theme.palette.divider, 0.65),
-        bgcolor: alpha(theme.palette.background.paper, 0.75),
+        minHeight: compact ? 64 : 78,
+        p: compact ? 1.25 : 1.5,
+        ...insetSx(theme),
+        borderColor:
+          tone !== 'neutral' && theme.palette[tone]
+            ? alpha(theme.palette[tone].main, 0.24)
+            : alpha(theme.palette.common.white, 0.10),
       })}
     >
       <Typography variant="caption" color="text.secondary">
         {label}
       </Typography>
-      <Typography variant="h6" fontWeight={700} sx={{ mt: 0.5 }}>
+      <Typography
+        variant={compact ? 'subtitle1' : 'h6'}
+        fontWeight={850}
+        sx={(theme) => ({
+          mt: 0.35,
+          color: tone !== 'neutral' && theme.palette[tone] ? theme.palette[tone].main : 'text.primary',
+        })}
+      >
         {value}
       </Typography>
       {hint ? (
@@ -77,13 +127,442 @@ function MetricCard({ label, value, hint }) {
           {hint}
         </Typography>
       ) : null}
+    </Box>
+  );
+}
+
+function DirectionCase({ label, icon, probability, precision, count, active, tone }) {
+  return (
+    <Box
+      sx={(theme) => ({
+        ...insetSx(theme),
+        p: 1.5,
+        minHeight: 138,
+        borderColor: active ? alpha(theme.palette[tone].main, 0.48) : alpha(theme.palette.common.white, 0.10),
+        bgcolor: active ? alpha(theme.palette[tone].main, 0.10) : alpha(theme.palette.common.white, 0.04),
+        boxShadow: active ? `inset 0 1px 0 ${alpha(theme.palette[tone].main, 0.16)}` : 'none',
+      })}
+    >
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+          <Box
+            sx={(theme) => ({
+              width: 28,
+              height: 28,
+              display: 'grid',
+              placeItems: 'center',
+              borderRadius: '10px',
+              color: theme.palette[tone].main,
+              bgcolor: alpha(theme.palette[tone].main, 0.12),
+            })}
+          >
+            {icon}
+          </Box>
+          <Typography variant="subtitle2" fontWeight={800}>
+            {label}
+          </Typography>
+        </Box>
+        {active ? <Chip size="small" color={tone} label="Selected" /> : null}
+      </Box>
+
+      <Typography
+        variant="h4"
+        fontWeight={900}
+        sx={(theme) => ({ mt: 1.25, color: active ? theme.palette[tone].main : 'text.primary' })}
+      >
+        {percent(probability)}
+      </Typography>
+      <Typography variant="caption" color="text.secondary">
+        Probability
+      </Typography>
+
+      <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1, mt: 1.25 }}>
+        <MetricCard label="Precision" value={percent(precision)} compact tone={active ? tone : 'neutral'} />
+        <MetricCard label="Analogs" value={decimal(count, 0)} compact />
+      </Box>
+    </Box>
+  );
+}
+
+function HorizonDecisionCard({ label, decision = {} }) {
+  const isPrediction = decision.status === 'prediction';
+  const featureCount = decision.model?.feature_count ?? '--';
+  const candidateCount = decision.model?.candidate_count ?? 0;
+  const candidateSearchCount = decision.model?.candidate_search_count ?? '--';
+  const analog = decision.analog_evidence;
+  const qualityGate = decision.deployment_quality_gate;
+  const playbook = decision.playbook;
+  const tier = playbook?.tier || playbook?.profile?.tier;
+  const selectedTone = decision.predicted_direction === 'reversal' ? 'success' : 'info';
+  return (
+    <Paper
+      variant="outlined"
+      sx={(theme) => ({
+        p: 2,
+        height: '100%',
+        borderRadius: 'var(--app-radius)',
+        borderColor: isPrediction
+          ? alpha(theme.palette[selectedTone].main, 0.48)
+          : alpha(theme.palette.common.white, 0.12),
+        bgcolor: alpha(theme.palette.background.paper, 0.62),
+        boxShadow: `inset 0 1px 0 ${alpha(theme.palette.common.white, 0.06)}`,
+      })}
+    >
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1, flexWrap: 'wrap', mb: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          {isPrediction ? <TrendingDownRoundedIcon fontSize="small" /> : <TrendingFlatRoundedIcon fontSize="small" />}
+          <Typography variant="subtitle1" fontWeight={700}>
+            {label}
+          </Typography>
+        </Box>
+        <Chip
+          size="small"
+          color={signalColor(decision)}
+          label={isPrediction ? 'Prediction' : 'No Prediction'}
+        />
+      </Box>
+
+      <Box sx={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 1, mb: 1.5 }}>
+        <Typography variant="h4" fontWeight={900} sx={{ lineHeight: 1.05 }}>
+          {signalText(decision)}
+        </Typography>
+        <Box sx={{ textAlign: 'right' }}>
+          <Typography variant="h5" fontWeight={900} color={isPrediction ? `${signalColor(decision)}.main` : 'text.secondary'}>
+            {decision.confidence_score ?? 0}
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            confidence
+          </Typography>
+        </Box>
+      </Box>
+
+      <Grid container spacing={1.25}>
+        <Grid item xs={12} sm={6}>
+          <DirectionCase
+            label="Reverse"
+            icon={<TrendingDownRoundedIcon fontSize="small" />}
+            probability={decision.reversal_probability}
+            precision={decision.reversal_validation_precision}
+            count={decision.reversal_validation_count}
+            active={decision.predicted_direction === 'reversal'}
+            tone="success"
+          />
+        </Grid>
+        <Grid item xs={12} sm={6}>
+          <DirectionCase
+            label="Continue"
+            icon={<TrendingUpRoundedIcon fontSize="small" />}
+            probability={decision.continuation_probability}
+            precision={decision.continuation_validation_precision}
+            count={decision.continuation_validation_count}
+            active={decision.predicted_direction === 'continuation'}
+            tone="info"
+          />
+        </Grid>
+      </Grid>
+
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75, mt: 1.5 }}>
+        <Chip size="small" variant="outlined" label={`Training: ${decision.model?.training_sample_count ?? 0} prior outcomes`} />
+        <Chip size="small" variant="outlined" label={`Inputs: ${featureCount} features, ${candidateCount}/${candidateSearchCount} candidates`} />
+        {playbook?.name ? (
+          <Chip
+            size="small"
+            variant="outlined"
+            label={`Signal: ${playbook.name} (${decimal(playbook.precision, 2)} precision / ${playbook.match_count} prior)`}
+          />
+        ) : null}
+        {tier ? <Chip size="small" variant="outlined" label={`Tier: ${titleCase(tier)}`} /> : null}
+        {qualityGate?.status ? (
+          <Chip size="small" variant="outlined" label={`Deployment Gate: ${titleCase(qualityGate.status)}`} />
+        ) : null}
+        {analog?.status === 'ready' ? (
+          <Chip
+            size="small"
+            variant="outlined"
+            label={`Analog: ${percent(analog.posterior_probability)} over ${analog.neighbor_count} similar setups`}
+          />
+        ) : null}
+        {decision.reversal_veto_reason ? (
+          <Chip size="small" color="warning" variant="outlined" label={`Veto: ${titleCase(decision.reversal_veto_reason)}`} />
+        ) : null}
+        {decision.no_prediction_reason ? (
+          <Chip size="small" color="warning" variant="outlined" label={`Reason: ${titleCase(decision.no_prediction_reason)}`} />
+        ) : null}
+      </Box>
+    </Paper>
+  );
+}
+
+function DirectionPerformanceGroup({
+  title,
+  icon,
+  tone,
+  accuracy,
+  rawAccuracy,
+  callCount,
+  correctCount,
+  gate,
+  missedReversalCount,
+  predictionCount,
+}) {
+  const share =
+    Number(predictionCount) > 0 && Number(callCount) >= 0
+      ? Number(callCount) / Number(predictionCount)
+      : null;
+  return (
+    <Box
+      sx={(theme) => ({
+        ...insetSx(theme),
+        p: 2,
+        height: '100%',
+        borderColor: alpha(theme.palette[tone].main, 0.24),
+        background: `linear-gradient(180deg, ${alpha(theme.palette[tone].main, 0.10)}, ${alpha(
+          theme.palette.common.white,
+          0.035
+        )})`,
+      })}
+    >
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box
+            sx={(theme) => ({
+              width: 36,
+              height: 36,
+              borderRadius: '12px',
+              display: 'grid',
+              placeItems: 'center',
+              color: theme.palette[tone].main,
+              bgcolor: alpha(theme.palette[tone].main, 0.13),
+              border: `1px solid ${alpha(theme.palette[tone].main, 0.2)}`,
+            })}
+          >
+            {icon}
+          </Box>
+          <Box>
+            <Typography variant="h6" fontWeight={850}>
+              {title}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              {title.split(' ')[0]} signal quality
+            </Typography>
+          </Box>
+        </Box>
+        <Chip size="small" color={gate?.status === 'passed' ? tone : 'default'} label={`${title.split(' ')[0]} Gate ${titleCase(gate?.status)}`} />
+      </Box>
+
+      <Box sx={{ mt: 2 }}>
+        <Box sx={{ display: 'flex', alignItems: 'end', justifyContent: 'space-between', gap: 1 }}>
+          <Box>
+            <Typography
+              variant="h3"
+              fontWeight={950}
+              sx={(theme) => ({ color: theme.palette[tone].main, lineHeight: 1 })}
+            >
+              {percent(accuracy)}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {title.split(' ')[0]} Accuracy
+            </Typography>
+          </Box>
+          <Typography variant="body2" color="text.secondary">
+            Raw {percent(rawAccuracy)}
+          </Typography>
+        </Box>
+        <LinearProgress
+          variant="determinate"
+          value={progressValue(accuracy)}
+          sx={(theme) => ({
+            mt: 1.25,
+            height: 8,
+            borderRadius: '999px',
+            bgcolor: alpha(theme.palette.common.white, 0.08),
+            '& .MuiLinearProgress-bar': {
+              borderRadius: '999px',
+              bgcolor: theme.palette[tone].main,
+            },
+          })}
+        />
+      </Box>
+
+      <Grid container spacing={1.25} sx={{ mt: 0.75 }}>
+        <Grid item xs={4}>
+          <MetricCard label="Calls" value={String(callCount ?? 0)} compact tone={tone} />
+        </Grid>
+        <Grid item xs={4}>
+          <MetricCard label="Correct" value={String(correctCount ?? 0)} compact />
+        </Grid>
+        <Grid item xs={4}>
+          <MetricCard label="Share" value={share === null ? '--' : percent(share)} compact />
+        </Grid>
+        {missedReversalCount !== undefined ? (
+          <Grid item xs={12}>
+            <MetricCard label="Missed Reversals" value={String(missedReversalCount ?? 0)} compact />
+          </Grid>
+        ) : null}
+      </Grid>
+    </Box>
+  );
+}
+
+function PerformancePanel({ horizon, backtest = {} }) {
+  const tierCounts = backtest.signal_tier_counts || {};
+  const qualityGate = backtest.quality_gate || {};
+  const directionGate = backtest.direction_quality_gate || {};
+  const rawPredictionCount = Number(backtest.raw_prediction_count);
+  const deployedPredictionCount = Number(backtest.prediction_count);
+  const quarantinedCount =
+    Number.isFinite(rawPredictionCount) && Number.isFinite(deployedPredictionCount)
+      ? Math.max(0, rawPredictionCount - deployedPredictionCount)
+      : 0;
+  const coverageValue = Math.max(0, Math.min(100, (Number(backtest.coverage) || 0) * 100));
+  return (
+    <Paper variant="outlined" sx={panelSx}>
+      <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 2, flexWrap: 'wrap' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
+          <Box
+            sx={(theme) => ({
+              width: 42,
+              height: 42,
+              display: 'grid',
+              placeItems: 'center',
+              borderRadius: '14px',
+              color: theme.palette.primary.main,
+              bgcolor: alpha(theme.palette.primary.main, 0.13),
+              border: `1px solid ${alpha(theme.palette.primary.main, 0.24)}`,
+            })}
+          >
+            <ShieldRoundedIcon fontSize="small" />
+          </Box>
+          <Box>
+            <Typography variant="h5" fontWeight={900}>
+              1Y {horizon.toUpperCase()} Accuracy
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {backtest.period_start || '--'} to {backtest.period_end || '--'}
+            </Typography>
+          </Box>
+        </Box>
+        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          <Chip size="small" label={`Gate ${titleCase(qualityGate.status || directionGate.status)}`} />
+          <Chip size="small" variant="outlined" label={`Target ${percent(backtest.coverage_target)}`} />
+          <Chip size="small" variant="outlined" label={`Quarantined ${quarantinedCount}`} />
+          <Chip size="small" variant="outlined" label={`Expanded ${backtest.coverage_expansion_signal_count ?? 0}`} />
+        </Box>
+      </Box>
+
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '260px 1fr' }, gap: 2, mt: 2 }}>
+        <Box
+          sx={(theme) => ({
+            ...insetSx(theme),
+            p: 2,
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            minHeight: 230,
+          })}
+        >
+          <Box>
+            <Typography variant="caption" color="text.secondary">
+              Coverage
+            </Typography>
+            <Typography variant="h4" fontWeight={950} sx={{ lineHeight: 1.05 }}>
+              {percent(backtest.coverage)}
+            </Typography>
+          </Box>
+          <Box
+            sx={(theme) => ({
+              width: 136,
+              height: 136,
+              mx: 'auto',
+              my: 1.5,
+              borderRadius: '50%',
+              display: 'grid',
+              placeItems: 'center',
+              background: `conic-gradient(${theme.palette.primary.main} ${coverageValue}%, ${alpha(
+                theme.palette.common.white,
+                0.08
+              )} 0)`,
+              boxShadow: `inset 0 0 0 1px ${alpha(theme.palette.common.white, 0.08)}`,
+            })}
+          >
+            <Box
+              sx={(theme) => ({
+                width: 106,
+                height: 106,
+                borderRadius: '50%',
+                display: 'grid',
+                placeItems: 'center',
+                bgcolor: alpha(theme.palette.background.paper, 0.94),
+              })}
+            >
+              <Box sx={{ textAlign: 'center' }}>
+                <Typography variant="h5" fontWeight={900}>
+                  {percent(backtest.accuracy)}
+                </Typography>
+                <Typography variant="caption">accuracy</Typography>
+              </Box>
+            </Box>
+          </Box>
+          <Grid container spacing={1}>
+            <Grid item xs={6}>
+              <MetricCard label="Predictions" value={String(backtest.prediction_count ?? 0)} compact />
+            </Grid>
+            <Grid item xs={6}>
+              <MetricCard label="Eligible" value={String(backtest.eligible_touch_count ?? 0)} compact />
+            </Grid>
+          </Grid>
+        </Box>
+
+        <Box>
+          <Grid container spacing={1.5}>
+            <Grid item xs={12} md={6}>
+              <DirectionPerformanceGroup
+                title="Reverse Signals"
+                icon={<TrendingDownRoundedIcon fontSize="small" />}
+                tone="success"
+                accuracy={backtest.reversal_accuracy}
+                rawAccuracy={backtest.raw_reverse_accuracy}
+                callCount={backtest.reversal_call_count}
+                correctCount={backtest.reversal_correct_count}
+                gate={directionGate.reversal}
+                missedReversalCount={backtest.missed_reversal_count}
+                predictionCount={backtest.prediction_count}
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <DirectionPerformanceGroup
+                title="Continue Signals"
+                icon={<TrendingUpRoundedIcon fontSize="small" />}
+                tone="info"
+                accuracy={backtest.continuation_accuracy}
+                rawAccuracy={backtest.raw_continue_accuracy}
+                callCount={backtest.continuation_call_count}
+                correctCount={backtest.continuation_correct_count}
+                gate={directionGate.continuation}
+                predictionCount={backtest.prediction_count}
+              />
+            </Grid>
+          </Grid>
+
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75, mt: 1.5 }}>
+            <Chip size="small" variant="outlined" label="Model: Signal-Gated Regime" />
+            <Chip size="small" variant="outlined" label={`Raw Predictions ${Number.isFinite(rawPredictionCount) ? rawPredictionCount : '--'}`} />
+            <Chip size="small" variant="outlined" label={`Raw Accuracy ${percent(backtest.raw_accuracy)}`} />
+            <Chip size="small" variant="outlined" label={`No Predictions ${backtest.no_prediction_count ?? 0}`} />
+            <Chip size="small" variant="outlined" label={`Core ${tierCounts.core ?? 0}`} />
+            <Chip size="small" variant="outlined" label={`Expansion ${tierCounts.expansion ?? 0}`} />
+            <Chip size="small" variant="outlined" label={`Opportunity ${tierCounts.opportunity ?? 0}`} />
+            <Chip size="small" variant="outlined" label={`Regime ${tierCounts.regime ?? 0}`} />
+          </Box>
+        </Box>
+      </Box>
     </Paper>
   );
 }
 
 function ContributionsTable({ title, contributions = [] }) {
   return (
-    <Paper variant="outlined" sx={{ p: 2 }}>
+    <Paper variant="outlined" sx={panelSx}>
       <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1.5 }}>
         {title}
       </Typography>
@@ -111,7 +590,7 @@ function ContributionsTable({ title, contributions = [] }) {
               <TableRow>
                 <TableCell colSpan={4} align="center">
                   <Typography variant="body2" color="text.secondary">
-                    No contributions for this stage.
+                    No contributions for this horizon.
                   </Typography>
                 </TableCell>
               </TableRow>
@@ -125,20 +604,21 @@ function ContributionsTable({ title, contributions = [] }) {
 
 function PredictionHistoryTable({ predictions = [] }) {
   return (
-    <Paper variant="outlined" sx={{ p: 2 }}>
+    <Paper variant="outlined" sx={panelSx}>
       <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1.5 }}>
-        Recent Predictions
+        Recent Scored Predictions
       </Typography>
       <TableContainer>
         <Table size="small">
           <TableHead>
             <TableRow>
               <TableCell>Signal Date</TableCell>
-              <TableCell>Next Date</TableCell>
+              <TableCell>Outcome Date</TableCell>
               <TableCell>Side</TableCell>
               <TableCell>Predicted</TableCell>
               <TableCell>Actual</TableCell>
-              <TableCell align="right">Next Day Change</TableCell>
+              <TableCell>Signal</TableCell>
+              <TableCell align="right">Confidence</TableCell>
               <TableCell align="right">Correct</TableCell>
             </TableRow>
           </TableHead>
@@ -147,19 +627,20 @@ function PredictionHistoryTable({ predictions = [] }) {
               predictions.map((item, index) => (
                 <TableRow key={`prediction-${item.signal_date || index}-${index}`}>
                   <TableCell>{item.signal_date || '--'}</TableCell>
-                  <TableCell>{item.next_date || '--'}</TableCell>
+                  <TableCell>{item.outcome_date || '--'}</TableCell>
                   <TableCell>{item.touched_side || '--'}</TableCell>
-                  <TableCell>{titleCase(item.predicted_class)}</TableCell>
-                  <TableCell>{titleCase(item.actual_next_day_direction)}</TableCell>
-                  <TableCell align="right">{signedPercent(item.next_day_change_pct)}</TableCell>
+                  <TableCell>{titleCase(item.predicted_direction)}</TableCell>
+                  <TableCell>{titleCase(item.actual_direction)}</TableCell>
+                  <TableCell>{item.signal_model || '--'}</TableCell>
+                  <TableCell align="right">{item.confidence_score ?? '--'}</TableCell>
                   <TableCell align="right">{item.is_correct ? 'Yes' : 'No'}</TableCell>
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={7} align="center">
+                <TableCell colSpan={8} align="center">
                   <Typography variant="body2" color="text.secondary">
-                    No recent predictions.
+                    No scored predictions for this horizon.
                   </Typography>
                 </TableCell>
               </TableRow>
@@ -186,6 +667,8 @@ export default function EntryDecision() {
   }, [location.search]);
 
   const [selectedDate, setSelectedDate] = useState(maxSelectableDate);
+  const [activeHorizon, setActiveHorizon] = useState('5d');
+  const [chartRange, setChartRange] = useState('1Y');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [payload, setPayload] = useState(null);
@@ -235,38 +718,129 @@ export default function EntryDecision() {
     };
   }, [symbol, selectedDate]);
 
-  const stageA = payload?.stage_a || {};
-  const stageB = payload?.stage_b || {};
-  const backtest = payload?.backtest_1y || {};
+  const horizons = payload?.horizons || {};
+  const activeDecision = horizons[activeHorizon] || {};
+  const activeBacktest = payload?.backtest_1y?.[activeHorizon] || {};
+  const activePredictions = activeBacktest.predictions || [];
+  const recentPredictions = activeBacktest.recent_predictions || [];
+
+  const chartSummary = useMemo(
+    () => ({
+      symbol: payload?.symbol,
+      chart_data: payload?.chart_data || [],
+    }),
+    [payload]
+  );
+
+  const predictionMarkers = useMemo(() => {
+    const markers = [...activePredictions];
+    const hasCurrentMarker = markers.some((marker) => marker.signal_date === payload?.as_of_date);
+    if (activeDecision.status === 'prediction' && payload?.as_of_date && !hasCurrentMarker) {
+      markers.push({
+        signal_date: payload.as_of_date,
+        predicted_direction: activeDecision.predicted_direction,
+        is_correct: null,
+      });
+    }
+    return markers;
+  }, [activeDecision, activePredictions, payload?.as_of_date]);
+
+  const handleHorizonChange = (_, value) => {
+    if (!value) return;
+    setActiveHorizon(value);
+  };
 
   return (
-    <Box sx={{ maxWidth: 1200, mx: 'auto' }}>
-      <Typography variant="h4" fontWeight={700} sx={{ mb: 1 }}>
-        Two-Stage Entry Decision
-      </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        {symbol ? `Active Symbol: ${symbol}` : 'Select a symbol from Dashboard first.'}
-      </Typography>
+    <Box
+      sx={(theme) => ({
+        maxWidth: 1360,
+        mx: 'auto',
+        px: { xs: 0, md: 1 },
+        color: theme.palette.text.primary,
+      })}
+    >
+      <Paper
+        variant="outlined"
+        sx={(theme) => ({
+          ...panelSx(theme),
+          mb: 2.5,
+          overflow: 'hidden',
+        })}
+      >
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 2.5, flexWrap: 'wrap' }}>
+          <Box sx={{ minWidth: 260, flex: '1 1 420px' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Box
+                sx={(theme) => ({
+                  width: 38,
+                  height: 38,
+                  display: 'grid',
+                  placeItems: 'center',
+                  borderRadius: 'var(--app-radius)',
+                  bgcolor: alpha(theme.palette.primary.main, 0.14),
+                  border: `1px solid ${alpha(theme.palette.primary.main, 0.24)}`,
+                })}
+              >
+                <PsychologyAltRoundedIcon fontSize="small" />
+              </Box>
+              <Typography variant="h4" fontWeight={900}>
+                Entry Decision
+              </Typography>
+            </Box>
+            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 1.25 }}>
+              <Chip size="small" label={symbol ? `Active Symbol: ${symbol}` : 'No Active Symbol'} />
+              {payload?.as_of_date ? <Chip size="small" variant="outlined" label={`Resolved: ${payload.as_of_date}`} /> : null}
+              {payload?.setup_type ? <Chip size="small" variant="outlined" label={`Setup: ${titleCase(payload.setup_type)}`} /> : null}
+            </Box>
+          </Box>
+
+          {symbol ? (
+            <Box
+              sx={(theme) => ({
+                ...insetSx(theme),
+                p: 1.25,
+                display: 'flex',
+                alignItems: 'flex-end',
+                gap: 1.5,
+                flexWrap: 'wrap',
+              })}
+            >
+              <Box>
+                <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 0.75 }}>
+                  <CalendarMonthRoundedIcon fontSize="inherit" sx={{ mr: 0.5, verticalAlign: '-0.15em' }} />
+                  Decision Date
+                </Typography>
+                <TextField
+                  type="date"
+                  size="small"
+                  value={selectedDate}
+                  onChange={(event) => setSelectedDate(event.target.value || maxSelectableDate)}
+                  inputProps={{ min: minSelectableDate, max: maxSelectableDate }}
+                />
+              </Box>
+              <Box>
+                <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 0.75 }}>
+                  <TimelineRoundedIcon fontSize="inherit" sx={{ mr: 0.5, verticalAlign: '-0.15em' }} />
+                  Horizon
+                </Typography>
+                <ToggleButtonGroup
+                  exclusive
+                  size="small"
+                  value={activeHorizon}
+                  onChange={handleHorizonChange}
+                >
+                  <ToggleButton value="5d">5D</ToggleButton>
+                  <ToggleButton value="10d">10D</ToggleButton>
+                </ToggleButtonGroup>
+              </Box>
+            </Box>
+          ) : null}
+        </Box>
+      </Paper>
 
       {!symbol ? (
         <Alert severity="info">This page is active-symbol only. Open a ticker and return here.</Alert>
-      ) : (
-        <Paper variant="outlined" sx={{ p: 2, mb: 2.5 }}>
-          <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>
-            Run Decision Date
-          </Typography>
-          <TextField
-            type="date"
-            size="small"
-            value={selectedDate}
-            onChange={(event) => setSelectedDate(event.target.value || maxSelectableDate)}
-            inputProps={{ min: minSelectableDate, max: maxSelectableDate }}
-          />
-          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
-            Range: {minSelectableDate} to {maxSelectableDate}. Non-trading dates auto-snap to the previous trading day.
-          </Typography>
-        </Paper>
-      )}
+      ) : null}
 
       {loading ? (
         <Paper variant="outlined" sx={{ p: 4, display: 'flex', justifyContent: 'center' }}>
@@ -278,99 +852,74 @@ export default function EntryDecision() {
 
       {!loading && !error && payload ? (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
-          <Paper variant="outlined" sx={{ p: 2.5 }}>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.25, alignItems: 'center' }}>
-              <Chip
-                label={payload.enter_today ? 'Enter Today: YES' : 'Enter Today: NO'}
-                color={payload.enter_today ? 'success' : 'error'}
-              />
-              <Chip label={`Setup: ${titleCase(payload.setup_type)}`} variant="outlined" />
-              <Chip label={`Touched Side: ${payload.touched_side || 'None'}`} variant="outlined" />
-              <Chip label={`Requested: ${payload.requested_as_of_date || '--'}`} variant="outlined" />
-              <Chip label={`Resolved: ${payload.as_of_date || '--'}`} variant="outlined" />
-              {payload.date_was_snapped ? (
-                <Chip label="Snapped To Previous Trading Day" color="warning" variant="outlined" />
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
+            <Chip icon={<AutoGraphRoundedIcon />} label={`Setup: ${titleCase(payload.setup_type)}`} variant="outlined" />
+            <Chip label={`Touched Side: ${payload.touched_side || 'None'}`} variant="outlined" />
+            <Chip label={`Resolved: ${payload.as_of_date || '--'}`} variant="outlined" />
+            <Chip label={`Base Threshold: ${percent(payload.prediction_threshold)}`} variant="outlined" />
+            <Chip label={`Reverse Edge: ${percent(payload.deployment_thresholds?.reversal)}`} variant="outlined" />
+            <Chip label={`Continue Edge: ${percent(payload.deployment_thresholds?.continuation)}`} variant="outlined" />
+            <Chip
+              icon={<CheckCircleRoundedIcon />}
+              label={`Context: QQQ ${payload.context_status?.qqq ? 'OK' : 'Missing'}, XLK ${
+                payload.context_status?.xlk ? 'OK' : 'Missing'
+              }`}
+              variant="outlined"
+            />
+            {payload.date_was_snapped ? (
+              <Chip label="Snapped To Previous Trading Day" color="warning" variant="outlined" />
+            ) : null}
+          </Box>
+
+          <Grid container spacing={2.5} alignItems="stretch">
+            <Grid item xs={12} lg={5}>
+              <Grid container spacing={2}>
+                <Grid item xs={12}>
+                  <HorizonDecisionCard label="5-Day Direction" decision={horizons['5d']} />
+                </Grid>
+                <Grid item xs={12}>
+                  <HorizonDecisionCard label="10-Day Direction" decision={horizons['10d']} />
+                </Grid>
+                <Grid item xs={12}>
+                  <Box sx={{ px: 0.5 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                      <Typography variant="body2">{activeHorizon.toUpperCase()} Confidence</Typography>
+                      <Typography variant="body2" fontWeight={700}>
+                        {activeDecision.confidence_score ?? 0}
+                      </Typography>
+                    </Box>
+                    <LinearProgress
+                      variant="determinate"
+                      value={Number(activeDecision.confidence_score) || 0}
+                      sx={{ height: 10, borderRadius: 'var(--app-radius)' }}
+                    />
+                  </Box>
+                </Grid>
+              </Grid>
+            </Grid>
+
+            <Grid item xs={12} lg={7}>
+              {payload.chart_data?.length ? (
+                <Paper variant="outlined" sx={(theme) => ({ ...panelSx(theme), height: '100%' })}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                    <Typography variant="h6" fontWeight={700}>
+                      Bollinger Prediction Chart
+                    </Typography>
+                    <Chip size="small" color={signalColor(activeDecision)} label={signalText(activeDecision)} />
+                  </Box>
+                  <StockChart
+                    summary={chartSummary}
+                    eventMap={{}}
+                    range={chartRange}
+                    onRangeChange={setChartRange}
+                    predictionMarkers={predictionMarkers}
+                  />
+                </Paper>
               ) : null}
-            </Box>
-
-            <Grid container spacing={2} sx={{ mt: 0.5 }}>
-              <Grid item xs={12} sm={6} md={3}>
-                <MetricCard
-                  label="Reversion Probability"
-                  value={percent(payload.reversion_probability)}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6} md={3}>
-                <MetricCard
-                  label="Continuation Probability"
-                  value={percent(payload.continuation_probability)}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6} md={3}>
-                <MetricCard
-                  label="Expected Return"
-                  value={`${decimal(payload.expected_return_to_target_atr, 2)} ATR`}
-                  hint="to middle band target"
-                />
-              </Grid>
-              <Grid item xs={12} sm={6} md={3}>
-                <MetricCard
-                  label="Expected Adverse Move"
-                  value={`${decimal(payload.expected_adverse_move_atr, 2)} ATR`}
-                />
-              </Grid>
-            </Grid>
-
-            <Box sx={{ mt: 2 }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                <Typography variant="body2">Confidence Score</Typography>
-                <Typography variant="body2" fontWeight={700}>
-                  {payload.confidence_score ?? 0}
-                </Typography>
-              </Box>
-              <LinearProgress
-                variant="determinate"
-                value={Number(payload.confidence_score) || 0}
-                sx={{ height: 10, borderRadius: 'var(--app-radius)' }}
-              />
-            </Box>
-          </Paper>
-
-          <Grid container spacing={2}>
-            <Grid item xs={12} md={6}>
-              <Paper variant="outlined" sx={{ p: 2 }}>
-                <Typography variant="subtitle1" fontWeight={700}>
-                  Stage A - Regime Filter
-                </Typography>
-                <Typography variant="body2" sx={{ mt: 0.5 }}>
-                  Favorable: {stageA.is_favorable ? 'Yes' : 'No'}
-                </Typography>
-                <Typography variant="body2">
-                  Probability: {percent(stageA.probability)} (Threshold {decimal(stageA.threshold, 2)})
-                </Typography>
-                <Typography variant="body2">
-                  Earnings Block: {stageA.event_risk_blocked ? 'Yes' : 'No'}
-                </Typography>
-              </Paper>
-            </Grid>
-
-            <Grid item xs={12} md={6}>
-              <Paper variant="outlined" sx={{ p: 2 }}>
-                <Typography variant="subtitle1" fontWeight={700}>
-                  Stage B - Entry Quality
-                </Typography>
-                <Typography variant="body2" sx={{ mt: 0.5 }}>
-                  Entry Probability: {percent(stageB.entry_probability)}
-                </Typography>
-                <Typography variant="body2">
-                  Decision Threshold: {decimal(stageB.threshold, 2)}
-                </Typography>
-                <Typography variant="body2">Decision: {payload.enter_today ? 'Good Entry Day' : 'Bad Entry Day'}</Typography>
-              </Paper>
             </Grid>
           </Grid>
 
-          <Paper variant="outlined" sx={{ p: 2 }}>
+          <Paper variant="outlined" sx={panelSx}>
             <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1.5 }}>
               Top Reasons
             </Typography>
@@ -379,7 +928,7 @@ export default function EntryDecision() {
                 <TableHead>
                   <TableRow>
                     <TableCell>Rank</TableCell>
-                    <TableCell>Stage</TableCell>
+                    <TableCell>Horizon</TableCell>
                     <TableCell>Feature</TableCell>
                     <TableCell>Impact</TableCell>
                     <TableCell align="right">Value</TableCell>
@@ -391,7 +940,7 @@ export default function EntryDecision() {
                     payload.top_reasons.map((reason, index) => (
                       <TableRow key={`reason-${index}`}>
                         <TableCell>{index + 1}</TableCell>
-                        <TableCell>{titleCase(reason.stage)}</TableCell>
+                        <TableCell>{String(reason.horizon || '--').toUpperCase()}</TableCell>
                         <TableCell>{titleCase(reason.feature)}</TableCell>
                         <TableCell>{titleCase(reason.impact)}</TableCell>
                         <TableCell align="right">{String(reason.value ?? '--')}</TableCell>
@@ -412,58 +961,16 @@ export default function EntryDecision() {
             </TableContainer>
           </Paper>
 
-          <Grid container spacing={2}>
-            <Grid item xs={12} md={6}>
-              <ContributionsTable title="Stage A Contributions" contributions={stageA.contributions} />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <ContributionsTable title="Stage B Contributions" contributions={stageB.contributions} />
-            </Grid>
-          </Grid>
+          <ContributionsTable
+            title={`${activeHorizon.toUpperCase()} Contributions`}
+            contributions={activeDecision.contributions}
+          />
 
           <Divider />
 
-          <Paper variant="outlined" sx={{ p: 2.5 }}>
-            <Typography variant="h6" fontWeight={700} sx={{ mb: 1.5 }}>
-              1Y Prediction Accuracy
-            </Typography>
+          <PerformancePanel horizon={activeHorizon} backtest={activeBacktest} />
 
-            <Grid container spacing={2}>
-              <Grid item xs={12} sm={6} md={3}>
-                <MetricCard label="Sample Count" value={String(backtest.sample_count ?? 0)} />
-              </Grid>
-              <Grid item xs={12} sm={6} md={3}>
-                <MetricCard label="Correct Count" value={String(backtest.correct_count ?? 0)} />
-              </Grid>
-              <Grid item xs={12} sm={6} md={3}>
-                <MetricCard label="Accuracy" value={percent(backtest.accuracy)} />
-              </Grid>
-              <Grid item xs={12} sm={6} md={3}>
-                <MetricCard label="Reverse Precision" value={percent(backtest.reverse_precision)} />
-              </Grid>
-              <Grid item xs={12} sm={6} md={3}>
-                <MetricCard label="Continue Precision" value={percent(backtest.continue_precision)} />
-              </Grid>
-              <Grid item xs={12} sm={6} md={3}>
-                <MetricCard label="Reverse Calls" value={String(backtest.reverse_call_count ?? 0)} />
-              </Grid>
-              <Grid item xs={12} sm={6} md={3}>
-                <MetricCard label="Continue Calls" value={String(backtest.continue_call_count ?? 0)} />
-              </Grid>
-              <Grid item xs={12} sm={6} md={3}>
-                <MetricCard label="Flat Next Day" value={String(backtest.flat_count ?? 0)} />
-              </Grid>
-            </Grid>
-
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5 }}>
-              Period: {backtest.period_start || '--'} to {backtest.period_end || '--'}
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-              Reverse confusion counts: TP {backtest.tp_reverse ?? 0} / FP {backtest.fp_reverse ?? 0} / TN {backtest.tn_reverse ?? 0} / FN {backtest.fn_reverse ?? 0}
-            </Typography>
-          </Paper>
-
-          <PredictionHistoryTable predictions={backtest.recent_predictions || []} />
+          <PredictionHistoryTable predictions={recentPredictions} />
         </Box>
       ) : null}
     </Box>

@@ -140,4 +140,31 @@ describe("StockChart price view toggle", () => {
     expect(chartProps.options.plugins.tooltip.external).toBeUndefined();
     expect(typeof chartProps.options.plugins.tooltip.callbacks.label).toBe("function");
   });
+
+  it("adds optional prediction marker dataset with correctness colors", async () => {
+    render(
+      <StockChart
+        summary={summary}
+        eventMap={{}}
+        onHoverPriceChange={vi.fn()}
+        range="3M"
+        onRangeChange={vi.fn()}
+        predictionMarkers={[
+          { signal_date: "2026-01-02", predicted_direction: "reversal", is_correct: true },
+          { signal_date: "2026-01-04", predicted_direction: "continuation", is_correct: false },
+        ]}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("line-chart")).toBeInTheDocument();
+    });
+
+    const lineProps = __getLastLineProps();
+    const markerDataset = lineProps.data.datasets[3];
+    expect(markerDataset.label).toBe("Predictions");
+    expect(markerDataset.pointRadius).toEqual([6, 0, 6]);
+    expect(markerDataset.pointBackgroundColor).toEqual(["#2e7d32", "transparent", "#d32f2f"]);
+    expect(markerDataset.pointStyle).toEqual(["triangle", "circle", "circle"]);
+  });
 });

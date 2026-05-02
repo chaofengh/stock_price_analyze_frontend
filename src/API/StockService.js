@@ -1,7 +1,6 @@
 const getSummaryApiRoot = () =>
   process.env.REACT_APP_summary_root_api || 'http://localhost:5000/api';
 
-const entryDecisionCache = new Map();
 const entryDecisionInFlight = new Map();
 
 const buildEntryDecisionKey = (symbol, asOfDate) =>
@@ -64,10 +63,6 @@ export async function fetchStockPeerAverages(symbol) {
 
 export async function fetchStockEntryDecision(symbol, asOfDate, options = {}) {
   const cacheKey = buildEntryDecisionKey(symbol, asOfDate);
-  const cached = entryDecisionCache.get(cacheKey);
-  if (!options.forceRefresh && cached) {
-    return cached.payload;
-  }
 
   if (!options.forceRefresh && entryDecisionInFlight.has(cacheKey)) {
     return entryDecisionInFlight.get(cacheKey);
@@ -81,7 +76,7 @@ export async function fetchStockEntryDecision(symbol, asOfDate, options = {}) {
   const requestPromise = fetch(
     `${apiRoot}/summary/entry-decision?${params.toString()}`,
     {
-      cache: 'force-cache',
+      cache: 'no-store',
       signal: options.signal,
     }
   )
@@ -96,11 +91,7 @@ export async function fetchStockEntryDecision(symbol, asOfDate, options = {}) {
         }
         throw new Error(`Server error: ${message}`);
       }
-      const payload = await response.json();
-      entryDecisionCache.set(cacheKey, {
-        payload,
-      });
-      return payload;
+      return response.json();
     })
     .finally(() => {
       entryDecisionInFlight.delete(cacheKey);
@@ -111,7 +102,6 @@ export async function fetchStockEntryDecision(symbol, asOfDate, options = {}) {
 }
 
 export function __resetStockServiceCaches() {
-  entryDecisionCache.clear();
   entryDecisionInFlight.clear();
 }
 

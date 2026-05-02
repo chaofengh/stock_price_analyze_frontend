@@ -118,7 +118,7 @@ describe('fetchStockEntryDecision', () => {
     vi.clearAllMocks();
   });
 
-  it('returns data and uses force-cache mode', async () => {
+  it('returns data and uses no-store mode', async () => {
     global.fetch.mockResolvedValue({
       ok: true,
       json: vi.fn().mockResolvedValue({ symbol: 'AAPL', enter_today: true }),
@@ -129,7 +129,7 @@ describe('fetchStockEntryDecision', () => {
     expect(data.symbol).toBe('AAPL');
     expect(global.fetch).toHaveBeenCalledTimes(1);
     expect(global.fetch.mock.calls[0][0]).toBe('http://example.test/summary/entry-decision?symbol=AAPL');
-    expect(global.fetch.mock.calls[0][1].cache).toBe('force-cache');
+    expect(global.fetch.mock.calls[0][1].cache).toBe('no-store');
   });
 
   it('appends as_of_date when provided', async () => {
@@ -156,10 +156,32 @@ describe('fetchStockEntryDecision', () => {
     await expect(fetchStockEntryDecision('AAPL')).rejects.toThrow('Server error: decision failed');
   });
 
-  it('uses cache for repeated symbol/date requests', async () => {
+  it('dedupes in-flight repeated symbol/date requests', async () => {
+    let resolveResponse;
+    const responsePromise = new Promise((resolve) => {
+      resolveResponse = resolve;
+    });
+    global.fetch.mockReturnValue(responsePromise);
+
+    const firstPromise = fetchStockEntryDecision('AAPL', '2026-04-10');
+    const secondPromise = fetchStockEntryDecision('AAPL', '2026-04-10');
+
+    resolveResponse({
+      ok: true,
+      json: vi.fn().mockResolvedValue({ symbol: 'AAPL', threshold: 0.75 }),
+    });
+
+    const [first, second] = await Promise.all([firstPromise, secondPromise]);
+
+    expect(first.symbol).toBe('AAPL');
+    expect(second.symbol).toBe('AAPL');
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('refetches completed repeated symbol/date requests', async () => {
     global.fetch.mockResolvedValue({
       ok: true,
-      json: vi.fn().mockResolvedValue({ symbol: 'AAPL', enter_today: true }),
+      json: vi.fn().mockResolvedValue({ symbol: 'AAPL', threshold: 0.75 }),
     });
 
     const first = await fetchStockEntryDecision('AAPL', '2026-04-10');
@@ -167,6 +189,6 @@ describe('fetchStockEntryDecision', () => {
 
     expect(first.symbol).toBe('AAPL');
     expect(second.symbol).toBe('AAPL');
-    expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(global.fetch).toHaveBeenCalledTimes(2);
   });
 });
