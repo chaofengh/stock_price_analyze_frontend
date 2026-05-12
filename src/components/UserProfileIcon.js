@@ -61,8 +61,8 @@ function UserProfileIcon() {
     cursor: 'pointer',
     display: 'flex',
     alignItems: 'center',
-    gap: 1,
-    px: 0.75,
+    gap: { xs: 0, sm: 1 },
+    px: { xs: 0.25, sm: 0.75 },
     py: 0.25,
     minHeight: 36,
     borderRadius: 'var(--app-radius)',
@@ -93,7 +93,7 @@ function UserProfileIcon() {
       >
         {showAvatarIcon ? <AccountCircleIcon sx={{ fontSize: 20 }} /> : avatarLetter}
       </Avatar>
-      <Box sx={{ minWidth: 0, textAlign: 'left' }}>
+      <Box sx={{ minWidth: 0, textAlign: 'left', display: { xs: 'none', sm: 'block' } }}>
         <Typography variant="subtitle2" sx={{ fontWeight: 700, lineHeight: 1.1 }} noWrap>
           {displayName}
         </Typography>
@@ -105,7 +105,7 @@ function UserProfileIcon() {
           {displayPlan}
         </Typography>
       </Box>
-      <KeyboardArrowDownRoundedIcon sx={{ color: 'text.secondary', fontSize: 20 }} />
+      <KeyboardArrowDownRoundedIcon sx={{ color: 'text.secondary', fontSize: 20, display: { xs: 'none', sm: 'block' } }} />
     </Box>
   );
 

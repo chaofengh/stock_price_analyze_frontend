@@ -270,12 +270,9 @@ function StockChart({
     };
   }, [filteredPoints, predictionByDate, priceView]);
 
-  const [chartData, setChartData] = useState({ labels: [], datasets: [] });
-
-  useEffect(() => {
+  const chartData = useMemo(() => {
     if (!baseChartData?.labels?.length) {
-      setChartData({ labels: [], datasets: [] });
-      return;
+      return { labels: [], datasets: [] };
     }
 
     const mainDataset = {
@@ -331,21 +328,20 @@ function StockChart({
         order: 2,
       };
 
-      setChartData({
+      return {
         labels: baseChartData.labels,
         datasets: predictionMarkerDataset
           ? [candleDataset, lowerBB, upperBB, predictionMarkerDataset]
           : [candleDataset, lowerBB, upperBB],
-      });
-      return;
+      };
     }
 
-    setChartData({
+    return {
       labels: baseChartData.labels,
       datasets: predictionMarkerDataset
         ? [mainDataset, lowerBB, upperBB, predictionMarkerDataset]
         : [mainDataset, lowerBB, upperBB],
-    });
+    };
   }, [
     baseChartData,
     lowerBand,

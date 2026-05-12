@@ -71,6 +71,7 @@ const mockPayload = {
         feature_count: 116,
         candidate_count: 3,
         candidate_search_count: 5,
+        flat_reversal_predictions_count_as_correct: true,
       },
       contributions: [
         {
@@ -113,6 +114,7 @@ const mockPayload = {
         feature_count: 116,
         candidate_count: 0,
         candidate_search_count: 5,
+        flat_reversal_predictions_count_as_correct: true,
       },
       contributions: [],
     },
@@ -271,6 +273,13 @@ describe('EntryDecision', () => {
       expect(screen.getByText('Entry Decision')).toBeInTheDocument();
       expect(screen.getByText('5-Day Direction')).toBeInTheDocument();
       expect(screen.getByText('10-Day Direction')).toBeInTheDocument();
+      expect(screen.getByText('Decision Cockpit')).toBeInTheDocument();
+      expect(screen.getByText('Bullish Reversal Watch')).toBeInTheDocument();
+      expect(screen.getByText('ATM Call Bias')).toBeInTheDocument();
+      expect(screen.getByText('5D Reversal')).toBeInTheDocument();
+      expect(screen.getByText('Side Precision')).toBeInTheDocument();
+      expect(screen.getByText('1Y Side Accuracy')).toBeInTheDocument();
+      expect(screen.getByText('Flat Move OK')).toBeInTheDocument();
       expect(screen.getByText('1Y 5D Accuracy')).toBeInTheDocument();
       expect(screen.getByText('Bollinger Prediction Chart')).toBeInTheDocument();
       expect(screen.getAllByText('Training: 24 prior outcomes')).toHaveLength(2);
@@ -324,8 +333,12 @@ describe('EntryDecision', () => {
     fireEvent.click(screen.getByRole('button', { name: '10D' }));
 
     expect(screen.getByText('1Y 10D Accuracy')).toBeInTheDocument();
+    expect(screen.getByText('Stand Aside')).toBeInTheDocument();
+    expect(screen.getByText('No Directional Bias')).toBeInTheDocument();
+    expect(screen.getByText('10D No Prediction')).toBeInTheDocument();
     expect(screen.getByText('Reason: Low Confidence')).toBeInTheDocument();
-    expect(screen.getByText('Veto: Falling Knife No Exhaustion')).toBeInTheDocument();
+    expect(screen.getByText('Hold: Low Confidence')).toBeInTheDocument();
+    expect(screen.getAllByText('Veto: Falling Knife No Exhaustion').length).toBeGreaterThan(0);
     expect(screen.getByText('Deployment Gate: Quarantined')).toBeInTheDocument();
     expect(__getStockChartProps().predictionMarkers).toHaveLength(0);
   });

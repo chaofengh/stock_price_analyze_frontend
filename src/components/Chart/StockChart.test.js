@@ -12,6 +12,9 @@ vi.mock("react-chartjs-2", () => {
       return <div data-testid="line-chart" />;
     }),
     Chart: React.forwardRef((props, _ref) => {
+      if (props.type === "candlestick" && props.data.datasets[0]?.type !== "candlestick") {
+        throw new Error("Candlestick chart rendered before candle data was ready.");
+      }
       lastChartProps = props;
       return <div data-testid="generic-chart" data-type={props.type} />;
     }),

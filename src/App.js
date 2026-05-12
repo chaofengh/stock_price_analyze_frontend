@@ -108,11 +108,14 @@ function AppShell() {
         styles={{
           'html, body, #root': {
             height: '100%',
+            width: '100%',
+            maxWidth: '100%',
             margin: 0,
             padding: 0,
             backgroundColor: theme.palette.background.default,
             color: theme.palette.text.primary,
             overscrollBehavior: 'none',
+            overflowX: 'hidden',
           },
         }}
       />
@@ -143,18 +146,21 @@ function AppShell() {
               display: 'flex',
               alignItems: 'center',
               width: '100%',
+              maxWidth: '100vw',
+              overflow: 'hidden',
               color: 'text.primary',
             }}
           >
             <Box
               sx={(theme) => ({
-                width: railWidth,
+                width: { xs: 64, sm: railWidth },
+                flex: '0 0 auto',
                 height: '100%',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'flex-start',
-                pl: 2.5,
-                pr: 1.25,
+                justifyContent: { xs: 'center', sm: 'flex-start' },
+                pl: { xs: 0, sm: 2.5 },
+                pr: { xs: 0, sm: 1.25 },
               })}
             >
               <Typography
@@ -178,14 +184,15 @@ function AppShell() {
             <Box
               sx={{
                 flex: 1,
+                minWidth: 0,
                 display: 'flex',
                 alignItems: 'center',
-                gap: 2,
-                px: { xs: 2, md: 3 },
+                gap: { xs: 1, md: 2 },
+                px: { xs: 1, md: 3 },
               }}
             >
-              <Box sx={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
-                <Box sx={{ width: '100%', maxWidth: 560 }}>
+              <Box sx={{ flex: 1, minWidth: 0, display: 'flex', justifyContent: 'center' }}>
+                <Box sx={{ width: '100%', minWidth: 0, maxWidth: 560 }}>
                   <SymbolSearch
                     placeholder="Search symbol…"
                     onSelectSymbol={handleSelectSymbol}
@@ -200,7 +207,7 @@ function AppShell() {
                   display: 'flex',
                   justifyContent: 'flex-end',
                   alignItems: 'center',
-                  gap: 1,
+                  gap: { xs: 0.5, sm: 1 },
                   ml: 'auto',
                   flexShrink: 0,
                 }}
@@ -227,6 +234,9 @@ function AppShell() {
             display: 'flex',
             height: `calc(100vh - ${navHeight}px)`,
             minHeight: 0,
+            width: '100%',
+            maxWidth: '100vw',
+            overflow: 'hidden',
           }}
         >
           <Box
@@ -235,13 +245,17 @@ function AppShell() {
               alignItems: 'stretch',
               height: '100%',
               minHeight: 0,
-              flex: 1,
+              width: '100%',
+              maxWidth: '100%',
+              flex: '1 1 0%',
+              overflow: 'hidden',
             }}
           >
             <SidebarRail summary={summary} railWidth={railWidth} />
             <Box
               sx={(theme) => ({
-                flex: 1,
+                flex: '1 1 0%',
+                width: 0,
                 minWidth: 0,
                 height: '100%',
                 minHeight: 0,

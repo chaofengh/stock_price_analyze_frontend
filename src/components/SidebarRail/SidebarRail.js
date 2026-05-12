@@ -45,10 +45,10 @@ const SidebarRail = ({ summary, railWidth = 176 }) => {
     position: 'relative',
     width: '100%',
     alignItems: 'center',
-    justifyContent: 'flex-start',
-    gap: 1.25,
-    pl: 2.5,
-    pr: 1.25,
+    justifyContent: { xs: 'center', sm: 'flex-start' },
+    gap: { xs: 0, sm: 1.25 },
+    pl: { xs: 0, sm: 2.5 },
+    pr: { xs: 0, sm: 1.25 },
     py: 2,
     minHeight: 40,
     border: '1px solid transparent',
@@ -79,6 +79,7 @@ const SidebarRail = ({ summary, railWidth = 176 }) => {
     },
     '& .MuiListItemText-root': {
       margin: 0,
+      display: { xs: 'none', sm: 'block' },
     },
     '& .MuiListItemText-primary': {
       fontSize: 12,
@@ -100,7 +101,8 @@ const SidebarRail = ({ summary, railWidth = 176 }) => {
   return (
     <Box
       sx={(theme) => ({
-        width: railWidth,
+        width: { xs: 64, sm: railWidth },
+        flex: '0 0 auto',
         height: '100%',
         minHeight: 0,
         pt: 3,

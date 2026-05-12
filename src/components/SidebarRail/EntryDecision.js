@@ -96,10 +96,81 @@ const progressValue = (value) => {
   return Math.max(0, Math.min(100, n * 100));
 };
 
+const selectedDirectionStats = (decision = {}) => {
+  if (decision.predicted_direction === 'reversal') {
+    return {
+      probability: decision.reversal_probability,
+      precision: decision.reversal_validation_precision,
+      count: decision.reversal_validation_count,
+    };
+  }
+  if (decision.predicted_direction === 'continuation') {
+    return {
+      probability: decision.continuation_probability,
+      precision: decision.continuation_validation_precision,
+      count: decision.continuation_validation_count,
+    };
+  }
+  return { probability: null, precision: null, count: 0 };
+};
+
+const activeDirectionAccuracy = (decision = {}, backtest = {}) => {
+  if (decision.predicted_direction === 'reversal') return backtest.reversal_accuracy;
+  if (decision.predicted_direction === 'continuation') return backtest.continuation_accuracy;
+  return backtest.accuracy;
+};
+
+const tradePosture = (payload = {}, decision = {}) => {
+  const side = payload.touched_side;
+  const direction = decision.predicted_direction;
+  if (decision.status !== 'prediction') {
+    return {
+      title: 'Stand Aside',
+      optionBias: 'No Directional Bias',
+      subtitle: 'Model gates did not clear a trade-quality signal.',
+      tone: 'warning',
+      icon: <TrendingFlatRoundedIcon fontSize="small" />,
+    };
+  }
+
+  const bullish =
+    (side === 'Lower' && direction === 'reversal') ||
+    (side === 'Upper' && direction === 'continuation');
+  const bearish =
+    (side === 'Upper' && direction === 'reversal') ||
+    (side === 'Lower' && direction === 'continuation');
+  if (bullish) {
+    return {
+      title: direction === 'reversal' ? 'Bullish Reversal Watch' : 'Bullish Continuation Watch',
+      optionBias: 'ATM Call Bias',
+      subtitle: `${side || 'Band'} touch with ${titleCase(direction)} signal.`,
+      tone: 'success',
+      icon: <TrendingUpRoundedIcon fontSize="small" />,
+    };
+  }
+  if (bearish) {
+    return {
+      title: direction === 'reversal' ? 'Bearish Reversal Watch' : 'Bearish Continuation Watch',
+      optionBias: 'ATM Put Bias',
+      subtitle: `${side || 'Band'} touch with ${titleCase(direction)} signal.`,
+      tone: 'error',
+      icon: <TrendingDownRoundedIcon fontSize="small" />,
+    };
+  }
+  return {
+    title: `${titleCase(direction)} Watch`,
+    optionBias: 'Directional Bias',
+    subtitle: `${side || 'Band'} touch with ${titleCase(direction)} signal.`,
+    tone: decision.predicted_direction === 'reversal' ? 'success' : 'info',
+    icon: direction === 'reversal' ? <TrendingDownRoundedIcon fontSize="small" /> : <TrendingUpRoundedIcon fontSize="small" />,
+  };
+};
+
 function MetricCard({ label, value, hint, tone = 'neutral', compact = false }) {
   return (
     <Box
       sx={(theme) => ({
+        minWidth: 0,
         minHeight: compact ? 64 : 78,
         p: compact ? 1.25 : 1.5,
         ...insetSx(theme),
@@ -117,17 +188,207 @@ function MetricCard({ label, value, hint, tone = 'neutral', compact = false }) {
         fontWeight={850}
         sx={(theme) => ({
           mt: 0.35,
+          overflowWrap: 'anywhere',
           color: tone !== 'neutral' && theme.palette[tone] ? theme.palette[tone].main : 'text.primary',
         })}
       >
         {value}
       </Typography>
       {hint ? (
-        <Typography variant="caption" color="text.secondary">
+        <Typography variant="caption" color="text.secondary" sx={{ overflowWrap: 'anywhere' }}>
           {hint}
         </Typography>
       ) : null}
     </Box>
+  );
+}
+
+function DecisionCockpit({ payload = {}, activeHorizon, decision = {}, backtest = {} }) {
+  const isPrediction = decision.status === 'prediction';
+  const posture = tradePosture(payload, decision);
+  const selectedStats = selectedDirectionStats(decision);
+  const gateStatus = decision.deployment_quality_gate?.status || backtest.quality_gate?.status || 'unknown';
+  const gateTone = gateStatus === 'passed' && isPrediction ? posture.tone : gateStatus === 'quarantined' ? 'warning' : 'default';
+  const signalLabel = isPrediction
+    ? `${activeHorizon.toUpperCase()} ${titleCase(decision.predicted_direction)}`
+    : `${activeHorizon.toUpperCase()} No Prediction`;
+  const analog = decision.analog_evidence;
+  const playbook = decision.playbook;
+  const flatOk = decision.model?.flat_reversal_predictions_count_as_correct;
+  const activeAccuracy = activeDirectionAccuracy(decision, backtest);
+
+  return (
+    <Paper
+      variant="outlined"
+      sx={(theme) => ({
+        ...panelSx(theme),
+        position: 'relative',
+        overflow: 'hidden',
+        minWidth: 0,
+        borderColor: alpha(theme.palette[posture.tone]?.main || theme.palette.primary.main, 0.36),
+      })}
+    >
+      <Box
+        sx={(theme) => ({
+          position: 'absolute',
+          inset: 0,
+          pointerEvents: 'none',
+          background: `linear-gradient(135deg, ${alpha(
+            theme.palette[posture.tone]?.main || theme.palette.primary.main,
+            0.13
+          )}, transparent 42%)`,
+        })}
+      />
+      <Box sx={{ position: 'relative' }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 2, flexWrap: 'wrap' }}>
+          <Box sx={{ minWidth: 0, flex: '1 1 240px' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Box
+                sx={(theme) => ({
+                  width: 36,
+                  height: 36,
+                  display: 'grid',
+                  placeItems: 'center',
+                  borderRadius: 'var(--app-radius)',
+                  color: theme.palette[posture.tone]?.main || theme.palette.primary.main,
+                  bgcolor: alpha(theme.palette[posture.tone]?.main || theme.palette.primary.main, 0.14),
+                  border: `1px solid ${alpha(theme.palette[posture.tone]?.main || theme.palette.primary.main, 0.24)}`,
+                })}
+              >
+                {posture.icon}
+              </Box>
+              <Box>
+                <Typography variant="overline" color="text.secondary" sx={{ lineHeight: 1 }}>
+                  Decision Cockpit
+                </Typography>
+                <Typography
+                  variant="h5"
+                  fontWeight={950}
+                  sx={{ lineHeight: 1.1, overflowWrap: 'anywhere' }}
+                >
+                  {posture.title}
+                </Typography>
+              </Box>
+            </Box>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+              {posture.subtitle}
+            </Typography>
+          </Box>
+
+          <Box
+            sx={{
+              display: 'flex',
+              gap: 0.75,
+              flexWrap: 'wrap',
+              alignContent: 'flex-start',
+              justifyContent: { xs: 'flex-start', sm: 'flex-end' },
+              minWidth: 0,
+              '& .MuiChip-root': { maxWidth: '100%' },
+            }}
+          >
+            <Chip size="small" color={signalColor(decision)} label={signalLabel} />
+            <Chip size="small" color={gateTone} variant="outlined" label={`Gate ${titleCase(gateStatus)}`} />
+            <Chip size="small" variant="outlined" label={`Resolved ${payload.as_of_date || '--'}`} />
+            {payload.date_was_snapped ? <Chip size="small" color="warning" variant="outlined" label="Snapped Date" /> : null}
+          </Box>
+        </Box>
+
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'minmax(260px, 0.9fr) 1.6fr' },
+            gap: 1.5,
+            mt: 2,
+          }}
+        >
+          <Box
+            sx={(theme) => ({
+              ...insetSx(theme),
+              p: 2,
+              minWidth: 0,
+              minHeight: 164,
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              borderColor: alpha(theme.palette[posture.tone]?.main || theme.palette.primary.main, 0.34),
+              bgcolor: alpha(theme.palette[posture.tone]?.main || theme.palette.primary.main, 0.08),
+            })}
+          >
+            <Box>
+              <Typography variant="caption" color="text.secondary">
+                Option Lens
+              </Typography>
+              <Typography
+                variant="h3"
+                fontWeight={950}
+                sx={(theme) => ({
+                  mt: 0.5,
+                  lineHeight: 1,
+                  fontSize: { xs: '2.1rem', sm: '3rem' },
+                  overflowWrap: 'anywhere',
+                  color: theme.palette[posture.tone]?.main || theme.palette.text.primary,
+                })}
+              >
+                {posture.optionBias}
+              </Typography>
+            </Box>
+            <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap', mt: 2, minWidth: 0 }}>
+              <Chip size="small" variant="outlined" label={`Setup ${titleCase(payload.setup_type)}`} />
+              <Chip size="small" variant="outlined" label={`Band ${payload.touched_side || '--'}`} />
+              {flatOk ? <Chip size="small" variant="outlined" label="Flat Move OK" /> : null}
+            </Box>
+          </Box>
+
+          <Grid container spacing={1.25}>
+            <Grid item xs={6} md={3}>
+              <MetricCard label="Confidence" value={decision.confidence_score ?? 0} hint="model score" tone={isPrediction ? posture.tone : 'neutral'} />
+            </Grid>
+            <Grid item xs={6} md={3}>
+              <MetricCard label="Signal Probability" value={percent(selectedStats.probability)} hint={titleCase(decision.predicted_direction)} tone={isPrediction ? posture.tone : 'neutral'} />
+            </Grid>
+            <Grid item xs={6} md={3}>
+              <MetricCard label="Side Precision" value={percent(selectedStats.precision)} hint={`${selectedStats.count ?? 0} analog calls`} />
+            </Grid>
+            <Grid item xs={6} md={3}>
+              <MetricCard label="1Y Side Accuracy" value={percent(activeAccuracy)} hint={`${backtest.prediction_count ?? 0} deployed`} />
+            </Grid>
+            <Grid item xs={6} md={3}>
+              <MetricCard label="Coverage" value={percent(backtest.coverage)} hint={`${backtest.eligible_touch_count ?? 0} eligible`} />
+            </Grid>
+            <Grid item xs={6} md={3}>
+              <MetricCard label="Training" value={decision.model?.training_sample_count ?? 0} hint="prior outcomes" />
+            </Grid>
+            <Grid item xs={6} md={3}>
+              <MetricCard label="Playbook" value={playbook?.match_count ?? '--'} hint={playbook?.name || 'no matched profile'} />
+            </Grid>
+            <Grid item xs={6} md={3}>
+              <MetricCard label="Similar Setups" value={analog?.neighbor_count ?? '--'} hint={percent(analog?.posterior_probability)} />
+            </Grid>
+          </Grid>
+        </Box>
+
+        <Box
+          sx={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: 0.75,
+            mt: 1.5,
+            minWidth: 0,
+            '& .MuiChip-root': { maxWidth: '100%' },
+          }}
+        >
+          <Chip size="small" variant="outlined" label={`Threshold ${percent(payload.prediction_threshold)}`} />
+          <Chip size="small" variant="outlined" label={`Reverse Edge ${percent(payload.deployment_thresholds?.reversal)}`} />
+          <Chip size="small" variant="outlined" label={`Continue Edge ${percent(payload.deployment_thresholds?.continuation)}`} />
+          {decision.no_prediction_reason ? (
+            <Chip size="small" color="warning" variant="outlined" label={`Hold: ${titleCase(decision.no_prediction_reason)}`} />
+          ) : null}
+          {decision.reversal_veto_reason ? (
+            <Chip size="small" color="warning" variant="outlined" label={`Veto: ${titleCase(decision.reversal_veto_reason)}`} />
+          ) : null}
+        </Box>
+      </Box>
+    </Paper>
   );
 }
 
@@ -753,6 +1014,8 @@ export default function EntryDecision() {
   return (
     <Box
       sx={(theme) => ({
+        width: '100%',
+        minWidth: 0,
         maxWidth: 1360,
         mx: 'auto',
         px: { xs: 0, md: 1 },
@@ -767,8 +1030,8 @@ export default function EntryDecision() {
           overflow: 'hidden',
         })}
       >
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 2.5, flexWrap: 'wrap' }}>
-          <Box sx={{ minWidth: 260, flex: '1 1 420px' }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 2.5, flexWrap: 'wrap', minWidth: 0 }}>
+          <Box sx={{ minWidth: 0, flex: '1 1 420px' }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <Box
                 sx={(theme) => ({
@@ -783,11 +1046,24 @@ export default function EntryDecision() {
               >
                 <PsychologyAltRoundedIcon fontSize="small" />
               </Box>
-              <Typography variant="h4" fontWeight={900}>
+              <Typography
+                variant="h4"
+                fontWeight={900}
+                sx={{ fontSize: { xs: '1.8rem', sm: '2.125rem' }, overflowWrap: 'anywhere' }}
+              >
                 Entry Decision
               </Typography>
             </Box>
-            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 1.25 }}>
+            <Box
+              sx={{
+                display: 'flex',
+                gap: 1,
+                flexWrap: 'wrap',
+                mt: 1.25,
+                minWidth: 0,
+                '& .MuiChip-root': { maxWidth: '100%' },
+              }}
+            >
               <Chip size="small" label={symbol ? `Active Symbol: ${symbol}` : 'No Active Symbol'} />
               {payload?.as_of_date ? <Chip size="small" variant="outlined" label={`Resolved: ${payload.as_of_date}`} /> : null}
               {payload?.setup_type ? <Chip size="small" variant="outlined" label={`Setup: ${titleCase(payload.setup_type)}`} /> : null}
@@ -803,6 +1079,7 @@ export default function EntryDecision() {
                 alignItems: 'flex-end',
                 gap: 1.5,
                 flexWrap: 'wrap',
+                maxWidth: '100%',
               })}
             >
               <Box>
@@ -813,6 +1090,7 @@ export default function EntryDecision() {
                 <TextField
                   type="date"
                   size="small"
+                  sx={{ maxWidth: '100%' }}
                   value={selectedDate}
                   onChange={(event) => setSelectedDate(event.target.value || maxSelectableDate)}
                   inputProps={{ min: minSelectableDate, max: maxSelectableDate }}
@@ -852,7 +1130,16 @@ export default function EntryDecision() {
 
       {!loading && !error && payload ? (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
+          <Box
+            sx={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: 1,
+              alignItems: 'center',
+              minWidth: 0,
+              '& .MuiChip-root': { maxWidth: '100%' },
+            }}
+          >
             <Chip icon={<AutoGraphRoundedIcon />} label={`Setup: ${titleCase(payload.setup_type)}`} variant="outlined" />
             <Chip label={`Touched Side: ${payload.touched_side || 'None'}`} variant="outlined" />
             <Chip label={`Resolved: ${payload.as_of_date || '--'}`} variant="outlined" />
@@ -870,6 +1157,13 @@ export default function EntryDecision() {
               <Chip label="Snapped To Previous Trading Day" color="warning" variant="outlined" />
             ) : null}
           </Box>
+
+          <DecisionCockpit
+            payload={payload}
+            activeHorizon={activeHorizon}
+            decision={activeDecision}
+            backtest={activeBacktest}
+          />
 
           <Grid container spacing={2.5} alignItems="stretch">
             <Grid item xs={12} lg={5}>
