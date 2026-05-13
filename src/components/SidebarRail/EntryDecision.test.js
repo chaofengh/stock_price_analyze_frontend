@@ -34,6 +34,30 @@ const mockPayload = {
     reversal: 0.92,
   },
   context_status: { qqq: true, xlk: true },
+  meta: {
+    full_decision_preloaded: true,
+    context: {
+      model_version: 'entry-test',
+      feature_schema_version: 'features-test',
+      price_data_end_date: '2026-04-15',
+      trained_through_date: '2026-04-15',
+      context_key: 'aapl-2026-04-15',
+      quality: {
+        status: 'passed',
+      },
+    },
+    freshness: {
+      status: 'fresh',
+      serving_allowed: true,
+      reason: 'latest_required_data_available',
+      latest_required_price_date: '2026-04-15',
+      price_data_end_date: '2026-04-15',
+      stale_sessions: 0,
+    },
+    quality: {
+      status: 'passed',
+    },
+  },
   horizons: {
     '5d': {
       status: 'prediction',
@@ -180,6 +204,19 @@ const mockPayload = {
           is_correct: true,
         },
       ],
+      open_predictions: [
+        {
+          status: 'open',
+          signal_date: '2026-04-14',
+          outcome_date: null,
+          horizon_days: 5,
+          touched_side: 'Lower',
+          predicted_direction: 'reversal',
+          confidence_score: 86,
+          is_correct: null,
+        },
+      ],
+      open_prediction_count: 1,
       recent_predictions: [
         {
           signal_date: '2026-04-01',
@@ -228,6 +265,19 @@ const mockPayload = {
       coverage_expansion_signal_count: 0,
       signal_tier_counts: {},
       predictions: [],
+      open_predictions: [
+        {
+          status: 'open',
+          signal_date: '2026-04-01',
+          outcome_date: null,
+          horizon_days: 10,
+          touched_side: 'Lower',
+          predicted_direction: 'continuation',
+          confidence_score: 54,
+          is_correct: null,
+        },
+      ],
+      open_prediction_count: 1,
       recent_predictions: [],
     },
   },
@@ -276,19 +326,30 @@ describe('EntryDecision', () => {
       expect(screen.getByText('Decision Cockpit')).toBeInTheDocument();
       expect(screen.getByText('Bullish Reversal Watch')).toBeInTheDocument();
       expect(screen.getByText('ATM Call Bias')).toBeInTheDocument();
-      expect(screen.getByText('5D Reversal')).toBeInTheDocument();
+      expect(screen.getAllByText('5D Reversal').length).toBeGreaterThan(0);
       expect(screen.getByText('Side Precision')).toBeInTheDocument();
       expect(screen.getByText('1Y Side Accuracy')).toBeInTheDocument();
       expect(screen.getByText('Flat Move OK')).toBeInTheDocument();
       expect(screen.getByText('1Y 5D Accuracy')).toBeInTheDocument();
       expect(screen.getByText('Bollinger Prediction Chart')).toBeInTheDocument();
-      expect(screen.getAllByText('Training: 24 prior outcomes')).toHaveLength(2);
-      expect(screen.getByText('Inputs: 116 features, 3/5 candidates')).toBeInTheDocument();
-      expect(screen.getByText('Signal: Adaptive Analog Signal (0.83 precision / 12 prior)')).toBeInTheDocument();
-      expect(screen.getAllByText('Deployment Gate: Passed').length).toBeGreaterThan(0);
+      expect(screen.getByText('Status')).toBeInTheDocument();
+      expect(screen.getByText('Direction')).toBeInTheDocument();
+      expect(screen.getByText('Touch Only')).toBeInTheDocument();
+      expect(screen.getByText('Win')).toBeInTheDocument();
+      expect(screen.getByText('Loss')).toBeInTheDocument();
+      expect(screen.getByText('Open')).toBeInTheDocument();
+      expect(screen.getByText('2 Open')).toBeInTheDocument();
+      expect(screen.getByText('Wins 8')).toBeInTheDocument();
+      expect(screen.getByText('Losses 4')).toBeInTheDocument();
+      expect(screen.getAllByText('Training 24')).toHaveLength(2);
+      expect(screen.getByText('Analogs 12')).toBeInTheDocument();
+      expect(screen.getAllByText('Gate Passed').length).toBeGreaterThan(0);
       expect(screen.getByText('Reverse Edge: 92.0%')).toBeInTheDocument();
       expect(screen.getByText('Continue Edge: 85.0%')).toBeInTheDocument();
-      expect(screen.getByText('Analog: 92.9% over 12 similar setups')).toBeInTheDocument();
+      expect(screen.getByText('Model Fresh')).toBeInTheDocument();
+      expect(screen.getByText('Data Through: 2026-04-15')).toBeInTheDocument();
+      expect(screen.getByText('Required: 2026-04-15')).toBeInTheDocument();
+      expect(screen.getByText('Quality: Passed')).toBeInTheDocument();
       expect(screen.getByText('Reverse Accuracy')).toBeInTheDocument();
       expect(screen.getByText('Continue Accuracy')).toBeInTheDocument();
       expect(screen.getByText('Reverse Signals')).toBeInTheDocument();
@@ -316,7 +377,32 @@ describe('EntryDecision', () => {
 
     const chartProps = __getStockChartProps();
     expect(chartProps.summary.chart_data).toHaveLength(2);
-    expect(chartProps.predictionMarkers).toHaveLength(2);
+    expect(chartProps.height).toBe(560);
+    expect(chartProps.touchMarkerVariant).toBe('neutral');
+    expect(chartProps.predictionMarkers).toHaveLength(3);
+    expect(chartProps.predictionMarkers).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          horizon: '5d',
+          marker_status: 'scored',
+          signal_date: '2026-04-01',
+          predicted_direction: 'reversal',
+          is_correct: true,
+        }),
+        expect.objectContaining({
+          horizon: '5d',
+          marker_status: 'open',
+          signal_date: '2026-04-14',
+          predicted_direction: 'reversal',
+        }),
+        expect.objectContaining({
+          horizon: '10d',
+          marker_status: 'open',
+          signal_date: '2026-04-01',
+          predicted_direction: 'continuation',
+        }),
+      ])
+    );
   });
 
   it('switches horizon and shows no-prediction reason', async () => {
@@ -335,12 +421,13 @@ describe('EntryDecision', () => {
     expect(screen.getByText('1Y 10D Accuracy')).toBeInTheDocument();
     expect(screen.getByText('Stand Aside')).toBeInTheDocument();
     expect(screen.getByText('No Directional Bias')).toBeInTheDocument();
-    expect(screen.getByText('10D No Prediction')).toBeInTheDocument();
-    expect(screen.getByText('Reason: Low Confidence')).toBeInTheDocument();
+    expect(screen.getAllByText('10D No Prediction').length).toBeGreaterThan(0);
     expect(screen.getByText('Hold: Low Confidence')).toBeInTheDocument();
     expect(screen.getAllByText('Veto: Falling Knife No Exhaustion').length).toBeGreaterThan(0);
-    expect(screen.getByText('Deployment Gate: Quarantined')).toBeInTheDocument();
-    expect(__getStockChartProps().predictionMarkers).toHaveLength(0);
+    expect(screen.getAllByText('Gate Quarantined').length).toBeGreaterThan(0);
+    expect(__getStockChartProps().predictionMarkers).toHaveLength(2);
+    expect(__getStockChartProps().predictionMarkers.every((marker) => marker.marker_status === 'open')).toBe(true);
+    expect(screen.queryByText('Open Predictions')).not.toBeInTheDocument();
   });
 
   it('refetches when date picker changes and shows snap chip', async () => {
@@ -373,6 +460,41 @@ describe('EntryDecision', () => {
       );
       expect(screen.getByText('Snapped To Previous Trading Day')).toBeInTheDocument();
     });
+  });
+
+  it('polls backend loading contract until the full model payload is ready', async () => {
+    fetchStockEntryDecision
+      .mockResolvedValueOnce({
+        status: 'loading',
+        symbol: 'AAPL',
+        requested_as_of_date: '2026-04-14',
+        retry_after_seconds: 1,
+        preload: {
+          status: 'started',
+          reason: 'preload_worker_started',
+        },
+      })
+      .mockResolvedValueOnce(mockPayload);
+
+    render(
+      <MemoryRouter initialEntries={['/entry-decision?symbol=AAPL']}>
+        <EntryDecision />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Preparing Entry Decision Model')).toBeInTheDocument();
+      expect(screen.getByText('Worker Started. Retrying in 1s.')).toBeInTheDocument();
+      expect(screen.getByText('Preload Worker Started')).toBeInTheDocument();
+    });
+
+    await waitFor(
+      () => {
+        expect(fetchStockEntryDecision).toHaveBeenCalledTimes(2);
+        expect(screen.getByText('Bullish Reversal Watch')).toBeInTheDocument();
+      },
+      { timeout: 3000 }
+    );
   });
 
   it('renders API error state', async () => {

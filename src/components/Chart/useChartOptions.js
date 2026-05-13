@@ -46,7 +46,10 @@ const useChartOptions = ({
       plugins: {
         legend: {
           display: true,
-          labels: { boxWidth: 12 },
+          labels: {
+            boxWidth: 12,
+            filter: (item) => item.text !== "Prediction signals",
+          },
         },
 
         tooltip: isCandleView

@@ -144,7 +144,7 @@ describe("StockChart price view toggle", () => {
     expect(typeof chartProps.options.plugins.tooltip.callbacks.label).toBe("function");
   });
 
-  it("adds optional prediction marker dataset with correctness colors", async () => {
+  it("adds optional prediction marker dataset with status colors and direction shapes", async () => {
     render(
       <StockChart
         summary={summary}
@@ -165,9 +165,82 @@ describe("StockChart price view toggle", () => {
 
     const lineProps = __getLastLineProps();
     const markerDataset = lineProps.data.datasets[3];
-    expect(markerDataset.label).toBe("Predictions");
-    expect(markerDataset.pointRadius).toEqual([6, 0, 6]);
-    expect(markerDataset.pointBackgroundColor).toEqual(["#2e7d32", "transparent", "#d32f2f"]);
-    expect(markerDataset.pointStyle).toEqual(["triangle", "circle", "circle"]);
+    expect(markerDataset.label).toBe("Prediction signals");
+    expect(markerDataset.parsing).toBe(false);
+    expect(markerDataset.data).toEqual([
+      { x: 0, y: 102 },
+      { x: 2, y: 101 },
+    ]);
+    expect(markerDataset.pointRadius).toEqual([3.75, 3.75]);
+    expect(markerDataset.pointBackgroundColor).toEqual(["#34c759", "#ff453a"]);
+    expect(markerDataset.pointStyle).toEqual(["triangle", "rectRounded"]);
+  });
+
+  it("stacks multiple open prediction markers on the same trading day", async () => {
+    render(
+      <StockChart
+        summary={summary}
+        eventMap={{}}
+        onHoverPriceChange={vi.fn()}
+        range="3M"
+        onRangeChange={vi.fn()}
+        predictionMarkers={[
+          {
+            signal_date: "2026-01-02",
+            predicted_direction: "reversal",
+            marker_status: "open",
+            horizon: "5d",
+            is_active_horizon: true,
+            is_correct: null,
+          },
+          {
+            signal_date: "2026-01-02",
+            predicted_direction: "continuation",
+            marker_status: "open",
+            horizon: "10d",
+            is_correct: null,
+          },
+        ]}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("line-chart")).toBeInTheDocument();
+    });
+
+    const lineProps = __getLastLineProps();
+    const markerDataset = lineProps.data.datasets[3];
+    expect(markerDataset.data).toHaveLength(2);
+    expect(markerDataset.data[0].x).toBe(0);
+    expect(markerDataset.data[1].x).toBe(0);
+    expect(markerDataset.data[0].y).not.toBe(markerDataset.data[1].y);
+    expect(markerDataset.pointRadius).toEqual([5.5, 4.75]);
+    expect(markerDataset.pointBackgroundColor).toEqual(["#ff9f0a", "#ff9f0a"]);
+    expect(markerDataset.pointBorderColor).toEqual(["#24180a", "#24180a"]);
+    expect(markerDataset.pointStyle).toEqual(["triangle", "rectRounded"]);
+  });
+
+  it("can mute Bollinger touch markers so they do not look like predictions", async () => {
+    render(
+      <StockChart
+        summary={summary}
+        eventMap={{}}
+        onHoverPriceChange={vi.fn()}
+        range="3M"
+        onRangeChange={vi.fn()}
+        touchMarkerVariant="neutral"
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("line-chart")).toBeInTheDocument();
+    });
+
+    const lineProps = __getLastLineProps();
+    const closeDataset = lineProps.data.datasets[0];
+    expect(closeDataset.pointBackgroundColor[0]).toBe("rgba(148,163,184,0.58)");
+    expect(closeDataset.pointBackgroundColor[2]).toBe("rgba(148,163,184,0.58)");
+    expect(closeDataset.pointBorderColor[0]).toBe("rgba(227,236,255,0.34)");
+    expect(closeDataset.pointBackgroundColor[1]).toBe("rgba(25,118,210,0.9)");
   });
 });

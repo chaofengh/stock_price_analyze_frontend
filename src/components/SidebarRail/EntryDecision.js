@@ -25,6 +25,7 @@ import CalendarMonthRoundedIcon from '@mui/icons-material/CalendarMonthRounded';
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
 import PsychologyAltRoundedIcon from '@mui/icons-material/PsychologyAltRounded';
 import ShieldRoundedIcon from '@mui/icons-material/ShieldRounded';
+import SyncRoundedIcon from '@mui/icons-material/SyncRounded';
 import TimelineRoundedIcon from '@mui/icons-material/TimelineRounded';
 import TrendingDownRoundedIcon from '@mui/icons-material/TrendingDownRounded';
 import TrendingFlatRoundedIcon from '@mui/icons-material/TrendingFlatRounded';
@@ -33,6 +34,8 @@ import { useLocation } from 'react-router-dom';
 
 import { fetchStockEntryDecision } from '../../API/StockService';
 import StockChart from '../Chart/StockChart';
+
+const MAX_ENTRY_DECISION_WAIT_MS = 5 * 60 * 1000;
 
 const toIsoLocalDate = (date) => {
   const year = date.getFullYear();
@@ -95,6 +98,53 @@ const progressValue = (value) => {
   if (!Number.isFinite(n)) return 0;
   return Math.max(0, Math.min(100, n * 100));
 };
+
+const retryDelaySeconds = (value) => {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return 2;
+  return Math.max(1, Math.min(30, Math.ceil(n)));
+};
+
+const freshnessTone = (status) => {
+  if (status === 'fresh') return 'success';
+  if (status === 'stale') return 'warning';
+  if (status === 'expired') return 'error';
+  return 'default';
+};
+
+const freshnessLabel = (freshness = {}) => {
+  const status = freshness.status || 'unknown';
+  if (status === 'stale' && Number(freshness.stale_sessions) > 0) {
+    const sessions = Number(freshness.stale_sessions);
+    return `Model Stale ${sessions} Session${sessions === 1 ? '' : 's'}`;
+  }
+  return `Model ${titleCase(status)}`;
+};
+
+const HORIZON_ORDER = ['5d', '10d'];
+
+const predictionDate = (prediction = {}) => {
+  const date = prediction.signal_date || prediction.date;
+  return date ? String(date).slice(0, 10) : '';
+};
+
+const predictionMarkerKey = (prediction = {}, horizon = '') => `${horizon}|${predictionDate(prediction)}`;
+
+const normalizePredictionMarker = (prediction = {}, horizon, activeHorizon, markerStatus) => ({
+  ...prediction,
+  horizon,
+  marker_status:
+    markerStatus ||
+    prediction.marker_status ||
+    prediction.status ||
+    (prediction.is_correct == null ? 'open' : 'scored'),
+  is_open:
+    prediction.is_open === true ||
+    prediction.status === 'open' ||
+    prediction.marker_status === 'open' ||
+    prediction.is_correct == null,
+  is_active_horizon: horizon === activeHorizon,
+});
 
 const selectedDirectionStats = (decision = {}) => {
   if (decision.predicted_direction === 'reversal') {
@@ -392,104 +442,126 @@ function DecisionCockpit({ payload = {}, activeHorizon, decision = {}, backtest 
   );
 }
 
-function DirectionCase({ label, icon, probability, precision, count, active, tone }) {
+function DirectionProbabilityBar({ label, probability, tone, active }) {
   return (
-    <Box
-      sx={(theme) => ({
-        ...insetSx(theme),
-        p: 1.5,
-        minHeight: 138,
-        borderColor: active ? alpha(theme.palette[tone].main, 0.48) : alpha(theme.palette.common.white, 0.10),
-        bgcolor: active ? alpha(theme.palette[tone].main, 0.10) : alpha(theme.palette.common.white, 0.04),
-        boxShadow: active ? `inset 0 1px 0 ${alpha(theme.palette[tone].main, 0.16)}` : 'none',
-      })}
-    >
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-          <Box
-            sx={(theme) => ({
-              width: 28,
-              height: 28,
-              display: 'grid',
-              placeItems: 'center',
-              borderRadius: '10px',
-              color: theme.palette[tone].main,
-              bgcolor: alpha(theme.palette[tone].main, 0.12),
-            })}
-          >
-            {icon}
-          </Box>
-          <Typography variant="subtitle2" fontWeight={800}>
-            {label}
-          </Typography>
-        </Box>
-        {active ? <Chip size="small" color={tone} label="Selected" /> : null}
+    <Box sx={{ minWidth: 0 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1, mb: 0.65 }}>
+        <Typography variant="caption" color={active ? `${tone}.main` : 'text.secondary'} fontWeight={active ? 850 : 650}>
+          {label}
+        </Typography>
+        <Typography variant="caption" color={active ? `${tone}.main` : 'text.secondary'} fontWeight={850}>
+          {percent(probability)}
+        </Typography>
       </Box>
-
-      <Typography
-        variant="h4"
-        fontWeight={900}
-        sx={(theme) => ({ mt: 1.25, color: active ? theme.palette[tone].main : 'text.primary' })}
-      >
-        {percent(probability)}
-      </Typography>
-      <Typography variant="caption" color="text.secondary">
-        Probability
-      </Typography>
-
-      <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1, mt: 1.25 }}>
-        <MetricCard label="Precision" value={percent(precision)} compact tone={active ? tone : 'neutral'} />
-        <MetricCard label="Analogs" value={decimal(count, 0)} compact />
-      </Box>
+      <LinearProgress
+        variant="determinate"
+        value={progressValue(probability)}
+        sx={(theme) => ({
+          height: 5,
+          borderRadius: '999px',
+          bgcolor: alpha(theme.palette.common.white, 0.08),
+          '& .MuiLinearProgress-bar': {
+            borderRadius: '999px',
+            bgcolor: active ? theme.palette[tone].main : alpha(theme.palette.text.primary, 0.42),
+          },
+        })}
+      />
     </Box>
   );
 }
 
-function HorizonDecisionCard({ label, decision = {} }) {
+function HorizonSummaryCard({ label, horizon, decision = {}, active, onSelect }) {
   const isPrediction = decision.status === 'prediction';
-  const featureCount = decision.model?.feature_count ?? '--';
-  const candidateCount = decision.model?.candidate_count ?? 0;
-  const candidateSearchCount = decision.model?.candidate_search_count ?? '--';
+  const tone = isPrediction ? signalColor(decision) : 'warning';
+  const gateStatus = decision.deployment_quality_gate?.status || 'unknown';
+  const confidence = Number(decision.confidence_score);
+  const confidenceLabel = Number.isFinite(confidence) ? String(confidence) : '--';
+  const selectedStats = selectedDirectionStats(decision);
   const analog = decision.analog_evidence;
-  const qualityGate = decision.deployment_quality_gate;
-  const playbook = decision.playbook;
-  const tier = playbook?.tier || playbook?.profile?.tier;
-  const selectedTone = decision.predicted_direction === 'reversal' ? 'success' : 'info';
+  const trainingCount = decision.model?.training_sample_count;
+  const reasonText = decision.no_prediction_reason || decision.reversal_veto_reason;
+
   return (
     <Paper
+      component="button"
+      type="button"
       variant="outlined"
+      aria-pressed={active}
+      onClick={() => onSelect?.(horizon)}
       sx={(theme) => ({
-        p: 2,
+        ...panelSx(theme),
+        width: '100%',
         height: '100%',
-        borderRadius: 'var(--app-radius)',
-        borderColor: isPrediction
-          ? alpha(theme.palette[selectedTone].main, 0.48)
+        m: 0,
+        p: 2,
+        appearance: 'none',
+        color: 'inherit',
+        font: 'inherit',
+        textAlign: 'left',
+        cursor: 'pointer',
+        overflow: 'hidden',
+        borderColor: active
+          ? alpha(theme.palette[tone].main, 0.42)
           : alpha(theme.palette.common.white, 0.12),
-        bgcolor: alpha(theme.palette.background.paper, 0.62),
-        boxShadow: `inset 0 1px 0 ${alpha(theme.palette.common.white, 0.06)}`,
+        bgcolor: active
+          ? alpha(theme.palette[tone].main, 0.09)
+          : alpha(theme.palette.background.paper, 0.58),
+        boxShadow: active
+          ? `0 16px 46px ${alpha(theme.palette[tone].main, 0.12)}, inset 0 1px 0 ${alpha(
+              theme.palette.common.white,
+              0.08
+            )}`
+          : `inset 0 1px 0 ${alpha(theme.palette.common.white, 0.06)}`,
+        transition: theme.transitions.create(['border-color', 'background-color', 'box-shadow', 'transform'], {
+          duration: theme.transitions.duration.shorter,
+        }),
+        '&:hover': {
+          transform: 'translateY(-1px)',
+          borderColor: alpha(theme.palette[tone].main, 0.46),
+          bgcolor: alpha(theme.palette[tone].main, active ? 0.11 : 0.06),
+        },
+        '&:focus-visible': {
+          outline: `2px solid ${alpha(theme.palette.primary.main, 0.7)}`,
+          outlineOffset: 2,
+        },
       })}
     >
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1, flexWrap: 'wrap', mb: 1 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          {isPrediction ? <TrendingDownRoundedIcon fontSize="small" /> : <TrendingFlatRoundedIcon fontSize="small" />}
-          <Typography variant="subtitle1" fontWeight={700}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1.5, minWidth: 0 }}>
+        <Box sx={{ minWidth: 0 }}>
+          <Typography variant="overline" color="text.secondary" sx={{ lineHeight: 1 }}>
             {label}
           </Typography>
+          <Typography
+            variant="h4"
+            fontWeight={950}
+            sx={(theme) => ({
+              mt: 0.45,
+              lineHeight: 1.03,
+              fontSize: { xs: '1.75rem', sm: '2rem' },
+              color: isPrediction ? theme.palette[tone].main : theme.palette.text.primary,
+              overflowWrap: 'anywhere',
+            })}
+          >
+            {signalText(decision)}
+          </Typography>
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.45 }}>
+            {isPrediction
+              ? `${titleCase(decision.predicted_direction)} edge ${percent(selectedStats.probability)}`
+              : reasonText
+              ? titleCase(reasonText)
+              : 'Model gates did not clear'}
+          </Typography>
         </Box>
-        <Chip
-          size="small"
-          color={signalColor(decision)}
-          label={isPrediction ? 'Prediction' : 'No Prediction'}
-        />
-      </Box>
 
-      <Box sx={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 1, mb: 1.5 }}>
-        <Typography variant="h4" fontWeight={900} sx={{ lineHeight: 1.05 }}>
-          {signalText(decision)}
-        </Typography>
-        <Box sx={{ textAlign: 'right' }}>
-          <Typography variant="h5" fontWeight={900} color={isPrediction ? `${signalColor(decision)}.main` : 'text.secondary'}>
-            {decision.confidence_score ?? 0}
+        <Box sx={{ textAlign: 'right', flex: '0 0 auto' }}>
+          <Chip
+            size="small"
+            color={active ? tone : 'default'}
+            variant={active ? 'filled' : 'outlined'}
+            label={active ? 'Active' : horizon.toUpperCase()}
+          />
+          <Typography variant="h4" fontWeight={950} sx={{ lineHeight: 1, mt: 1 }}>
+            {confidenceLabel}
           </Typography>
           <Typography variant="caption" color="text.secondary">
             confidence
@@ -497,60 +569,104 @@ function HorizonDecisionCard({ label, decision = {} }) {
         </Box>
       </Box>
 
-      <Grid container spacing={1.25}>
-        <Grid item xs={12} sm={6}>
-          <DirectionCase
-            label="Reverse"
-            icon={<TrendingDownRoundedIcon fontSize="small" />}
-            probability={decision.reversal_probability}
-            precision={decision.reversal_validation_precision}
-            count={decision.reversal_validation_count}
-            active={decision.predicted_direction === 'reversal'}
-            tone="success"
-          />
-        </Grid>
-        <Grid item xs={12} sm={6}>
-          <DirectionCase
-            label="Continue"
-            icon={<TrendingUpRoundedIcon fontSize="small" />}
-            probability={decision.continuation_probability}
-            precision={decision.continuation_validation_precision}
-            count={decision.continuation_validation_count}
-            active={decision.predicted_direction === 'continuation'}
-            tone="info"
-          />
-        </Grid>
-      </Grid>
+      <Box
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+          gap: 1.5,
+          mt: 2,
+        }}
+      >
+        <DirectionProbabilityBar
+          label="Reverse"
+          probability={decision.reversal_probability}
+          tone="success"
+          active={decision.predicted_direction === 'reversal'}
+        />
+        <DirectionProbabilityBar
+          label="Continue"
+          probability={decision.continuation_probability}
+          tone="info"
+          active={decision.predicted_direction === 'continuation'}
+        />
+      </Box>
 
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75, mt: 1.5 }}>
-        <Chip size="small" variant="outlined" label={`Training: ${decision.model?.training_sample_count ?? 0} prior outcomes`} />
-        <Chip size="small" variant="outlined" label={`Inputs: ${featureCount} features, ${candidateCount}/${candidateSearchCount} candidates`} />
-        {playbook?.name ? (
-          <Chip
-            size="small"
-            variant="outlined"
-            label={`Signal: ${playbook.name} (${decimal(playbook.precision, 2)} precision / ${playbook.match_count} prior)`}
-          />
-        ) : null}
-        {tier ? <Chip size="small" variant="outlined" label={`Tier: ${titleCase(tier)}`} /> : null}
-        {qualityGate?.status ? (
-          <Chip size="small" variant="outlined" label={`Deployment Gate: ${titleCase(qualityGate.status)}`} />
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75, mt: 1.75, '& .MuiChip-root': { maxWidth: '100%' } }}>
+        <Chip size="small" variant="outlined" label={`Gate ${titleCase(gateStatus)}`} />
+        {Number.isFinite(Number(trainingCount)) ? (
+          <Chip size="small" variant="outlined" label={`Training ${trainingCount}`} />
         ) : null}
         {analog?.status === 'ready' ? (
-          <Chip
-            size="small"
-            variant="outlined"
-            label={`Analog: ${percent(analog.posterior_probability)} over ${analog.neighbor_count} similar setups`}
-          />
+          <Chip size="small" variant="outlined" label={`Analogs ${analog.neighbor_count ?? '--'}`} />
         ) : null}
-        {decision.reversal_veto_reason ? (
-          <Chip size="small" color="warning" variant="outlined" label={`Veto: ${titleCase(decision.reversal_veto_reason)}`} />
-        ) : null}
-        {decision.no_prediction_reason ? (
-          <Chip size="small" color="warning" variant="outlined" label={`Reason: ${titleCase(decision.no_prediction_reason)}`} />
+        {decision.model?.flat_reversal_predictions_count_as_correct ? (
+          <Chip size="small" variant="outlined" label="Flat OK" />
         ) : null}
       </Box>
     </Paper>
+  );
+}
+
+function MarkerSwatch({ color, shape = 'circle' }) {
+  return (
+    <Box
+      sx={{
+        width: shape === 'triangle' ? 0 : 9,
+        height: shape === 'triangle' ? 0 : 9,
+        borderRadius: shape === 'circle' ? '50%' : '2px',
+        bgcolor: shape === 'triangle' ? 'transparent' : color,
+        border: shape === 'triangle' ? 'none' : '1px solid rgba(10, 14, 20, 0.9)',
+        borderLeft: shape === 'triangle' ? '5px solid transparent' : undefined,
+        borderRight: shape === 'triangle' ? '5px solid transparent' : undefined,
+        borderBottom: shape === 'triangle' ? `9px solid ${color}` : undefined,
+        flex: '0 0 auto',
+      }}
+    />
+  );
+}
+
+function PredictionMarkerLegend() {
+  const statusItems = [
+    { label: 'Touch Only', color: 'rgba(148,163,184,0.58)' },
+    { label: 'Win', color: '#34c759' },
+    { label: 'Loss', color: '#ff453a' },
+    { label: 'Open', color: '#ff9f0a' },
+  ];
+  const directionItems = [
+    { label: 'Reverse', color: 'rgba(227,236,255,0.86)', shape: 'triangle' },
+    { label: 'Continue', color: 'rgba(227,236,255,0.86)', shape: 'square' },
+  ];
+
+  return (
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, flexWrap: 'wrap', mt: 0.25 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.85, flexWrap: 'wrap' }}>
+        <Typography variant="caption" color="text.secondary" fontWeight={850}>
+          Status
+        </Typography>
+        {statusItems.map((item) => (
+          <Box key={item.label} sx={{ display: 'flex', alignItems: 'center', gap: 0.55 }}>
+            <MarkerSwatch color={item.color} />
+            <Typography variant="caption" color="text.secondary" fontWeight={700}>
+              {item.label}
+            </Typography>
+          </Box>
+        ))}
+      </Box>
+      <Box sx={(theme) => ({ width: 1, height: 14, bgcolor: alpha(theme.palette.common.white, 0.14) })} />
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.85, flexWrap: 'wrap' }}>
+        <Typography variant="caption" color="text.secondary" fontWeight={850}>
+          Direction
+        </Typography>
+        {directionItems.map((item) => (
+          <Box key={item.label} sx={{ display: 'flex', alignItems: 'center', gap: 0.55 }}>
+            <MarkerSwatch color={item.color} shape={item.shape} />
+            <Typography variant="caption" color="text.secondary" fontWeight={700}>
+              {item.label}
+            </Typography>
+          </Box>
+        ))}
+      </Box>
+    </Box>
   );
 }
 
@@ -913,6 +1029,48 @@ function PredictionHistoryTable({ predictions = [] }) {
   );
 }
 
+function LoadingPanel({ pendingStatus }) {
+  const retrySeconds = retryDelaySeconds(pendingStatus?.retry_after_seconds);
+  const preload = pendingStatus?.preload || {};
+  const preloadStatus = preload.status || pendingStatus?.status;
+  const preloadStatusText = preloadStatus ? titleCase(preloadStatus) : 'Running';
+  const preloadReason = preload.reason || pendingStatus?.reason;
+
+  return (
+    <Paper
+      variant="outlined"
+      sx={(theme) => ({
+        ...panelSx(theme),
+        display: 'flex',
+        alignItems: 'center',
+        gap: 2,
+        minHeight: 128,
+      })}
+    >
+      <CircularProgress size={34} />
+      <Box sx={{ minWidth: 0 }}>
+        <Typography variant="h6" fontWeight={850}>
+          {pendingStatus ? 'Preparing Entry Decision Model' : 'Loading Entry Decision'}
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+          {pendingStatus
+            ? `Worker ${preloadStatusText}. Retrying in ${retrySeconds}s.`
+            : 'Fetching model payload.'}
+        </Typography>
+        {preloadReason ? (
+          <Chip
+            size="small"
+            icon={<SyncRoundedIcon />}
+            label={titleCase(preloadReason)}
+            variant="outlined"
+            sx={{ mt: 1 }}
+          />
+        ) : null}
+      </Box>
+    </Paper>
+  );
+}
+
 export default function EntryDecision() {
   const location = useLocation();
   const maxSelectableDate = useMemo(() => toIsoLocalDate(new Date()), []);
@@ -931,16 +1089,19 @@ export default function EntryDecision() {
   const [activeHorizon, setActiveHorizon] = useState('5d');
   const [chartRange, setChartRange] = useState('1Y');
   const [loading, setLoading] = useState(false);
+  const [pendingStatus, setPendingStatus] = useState(null);
   const [error, setError] = useState('');
   const [payload, setPayload] = useState(null);
 
   useEffect(() => {
     let active = true;
-    const controller = new AbortController();
-    let requestTimer = null;
+    const startedAt = Date.now();
+    const timers = new Set();
+    const controllers = new Set();
 
     if (!symbol) {
       setPayload(null);
+      setPendingStatus(null);
       setError('');
       setLoading(false);
       return () => {
@@ -948,34 +1109,64 @@ export default function EntryDecision() {
       };
     }
 
-    requestTimer = window.setTimeout(() => {
+    const schedule = (callback, delayMs) => {
+      const timer = window.setTimeout(() => {
+        timers.delete(timer);
+        callback();
+      }, delayMs);
+      timers.add(timer);
+    };
+
+    const requestDecision = (forceRefresh = false) => {
       if (!active) return;
+      const controller = new AbortController();
+      controllers.add(controller);
       setLoading(true);
       setError('');
 
-      fetchStockEntryDecision(symbol, selectedDate, { signal: controller.signal })
+      fetchStockEntryDecision(symbol, selectedDate, { signal: controller.signal, forceRefresh })
         .then((data) => {
           if (!active) return;
+          if (data?.status === 'loading') {
+            if (Date.now() - startedAt >= MAX_ENTRY_DECISION_WAIT_MS) {
+              setPayload(null);
+              setPendingStatus(null);
+              setError('Entry decision model is still warming. Try again in a few minutes.');
+              setLoading(false);
+              return;
+            }
+            setPayload(null);
+            setPendingStatus(data);
+            setLoading(true);
+            schedule(() => requestDecision(true), retryDelaySeconds(data.retry_after_seconds) * 1000);
+            return;
+          }
+          setPendingStatus(null);
           setPayload(data);
+          setLoading(false);
         })
         .catch((err) => {
           if (!active) return;
           if (err?.name === 'AbortError') return;
+          setPendingStatus(null);
           setPayload(null);
           setError(err?.message || 'Failed to fetch entry decision.');
+          setLoading(false);
         })
         .finally(() => {
-          if (!active) return;
-          setLoading(false);
+          controllers.delete(controller);
         });
-    }, 250);
+    };
+
+    setPendingStatus(null);
+    setError('');
+    setLoading(true);
+    schedule(() => requestDecision(false), 250);
 
     return () => {
       active = false;
-      if (requestTimer) {
-        window.clearTimeout(requestTimer);
-      }
-      controller.abort();
+      timers.forEach((timer) => window.clearTimeout(timer));
+      controllers.forEach((controller) => controller.abort());
     };
   }, [symbol, selectedDate]);
 
@@ -984,6 +1175,10 @@ export default function EntryDecision() {
   const activeBacktest = payload?.backtest_1y?.[activeHorizon] || {};
   const activePredictions = activeBacktest.predictions || [];
   const recentPredictions = activeBacktest.recent_predictions || [];
+  const modelMeta = payload?.meta || {};
+  const contextMeta = modelMeta.context || {};
+  const freshness = modelMeta.freshness || {};
+  const modelQuality = modelMeta.quality || contextMeta.quality || {};
 
   const chartSummary = useMemo(
     () => ({
@@ -993,18 +1188,98 @@ export default function EntryDecision() {
     [payload]
   );
 
-  const predictionMarkers = useMemo(() => {
-    const markers = [...activePredictions];
-    const hasCurrentMarker = markers.some((marker) => marker.signal_date === payload?.as_of_date);
-    if (activeDecision.status === 'prediction' && payload?.as_of_date && !hasCurrentMarker) {
-      markers.push({
-        signal_date: payload.as_of_date,
-        predicted_direction: activeDecision.predicted_direction,
-        is_correct: null,
-      });
+  const allPredictionMarkers = useMemo(() => {
+    if (!payload) return [];
+
+    const byKey = new Map();
+    const addMarker = (prediction, horizon, markerStatus) => {
+      const date = predictionDate(prediction);
+      if (!date || !horizon) return;
+      byKey.set(
+        predictionMarkerKey(prediction, horizon),
+        normalizePredictionMarker(prediction, horizon, activeHorizon, markerStatus)
+      );
+    };
+
+    activePredictions.forEach((prediction) => addMarker(prediction, activeHorizon, 'scored'));
+
+    HORIZON_ORDER.forEach((horizon) => {
+      const backtest = payload.backtest_1y?.[horizon] || {};
+      (backtest.open_predictions || []).forEach((prediction) => addMarker(prediction, horizon, 'open'));
+    });
+
+    HORIZON_ORDER.forEach((horizon) => {
+      const decision = payload.horizons?.[horizon] || {};
+      if (decision.status !== 'prediction' || !payload.as_of_date) return;
+      const currentKey = `${horizon}|${payload.as_of_date}`;
+      if (byKey.has(currentKey)) return;
+      addMarker(
+        {
+          status: 'open',
+          signal_date: payload.as_of_date,
+          predicted_direction: decision.predicted_direction,
+          confidence_score: decision.confidence_score,
+          is_correct: null,
+        },
+        horizon,
+        'open'
+      );
+    });
+
+    return [...byKey.values()].sort((a, b) => {
+      const dateDelta = predictionDate(a).localeCompare(predictionDate(b));
+      if (dateDelta) return dateDelta;
+      return HORIZON_ORDER.indexOf(a.horizon) - HORIZON_ORDER.indexOf(b.horizon);
+    });
+  }, [activeHorizon, activePredictions, payload]);
+
+  const openPredictionMarkers = useMemo(
+    () => allPredictionMarkers.filter((marker) => marker.marker_status === 'open' || marker.is_open),
+    [allPredictionMarkers]
+  );
+
+  const chartPredictionMarkers = useMemo(() => {
+    if (!payload) return [];
+    const markers = new Map();
+    activePredictions.forEach((prediction) => {
+      const scoredMarker = normalizePredictionMarker(prediction, activeHorizon, activeHorizon, 'scored');
+      markers.set(predictionMarkerKey(scoredMarker, activeHorizon), scoredMarker);
+    });
+
+    openPredictionMarkers.forEach((marker) => {
+      markers.set(predictionMarkerKey(marker, marker.horizon), marker);
+    });
+
+    const selectedScoredPrediction = activePredictions.find(
+      (prediction) => predictionDate(prediction) === payload.as_of_date
+    );
+    if (selectedScoredPrediction) {
+      const selectedMarker = normalizePredictionMarker(
+        {
+          ...selectedScoredPrediction,
+          is_selected_signal: true,
+        },
+        activeHorizon,
+        activeHorizon,
+        'scored'
+      );
+      markers.set(predictionMarkerKey(selectedMarker, activeHorizon), selectedMarker);
     }
-    return markers;
-  }, [activeDecision, activePredictions, payload?.as_of_date]);
+
+    return [...markers.values()];
+  }, [activeHorizon, activePredictions, openPredictionMarkers, payload]);
+
+  const activeWinLossCounts = useMemo(() => {
+    const predictionCount = Number(activeBacktest.prediction_count);
+    const correctCount = Number(activeBacktest.correct_count);
+    if (!Number.isFinite(predictionCount) || !Number.isFinite(correctCount)) {
+      return null;
+    }
+    return {
+      wins: correctCount,
+      losses: Math.max(0, predictionCount - correctCount),
+    };
+  }, [activeBacktest.correct_count, activeBacktest.prediction_count]);
 
   const handleHorizonChange = (_, value) => {
     if (!value) return;
@@ -1121,9 +1396,7 @@ export default function EntryDecision() {
       ) : null}
 
       {loading ? (
-        <Paper variant="outlined" sx={{ p: 4, display: 'flex', justifyContent: 'center' }}>
-          <CircularProgress />
-        </Paper>
+        <LoadingPanel pendingStatus={pendingStatus} />
       ) : null}
 
       {!loading && error ? <Alert severity="error">{error}</Alert> : null}
@@ -1153,6 +1426,23 @@ export default function EntryDecision() {
               }`}
               variant="outlined"
             />
+            {freshness.status ? (
+              <Chip
+                icon={<ShieldRoundedIcon />}
+                color={freshnessTone(freshness.status)}
+                label={freshnessLabel(freshness)}
+                variant="outlined"
+              />
+            ) : null}
+            {contextMeta.price_data_end_date ? (
+              <Chip label={`Data Through: ${contextMeta.price_data_end_date}`} variant="outlined" />
+            ) : null}
+            {freshness.latest_required_price_date ? (
+              <Chip label={`Required: ${freshness.latest_required_price_date}`} variant="outlined" />
+            ) : null}
+            {modelQuality.status ? (
+              <Chip label={`Quality: ${titleCase(modelQuality.status)}`} variant="outlined" />
+            ) : null}
             {payload.date_was_snapped ? (
               <Chip label="Snapped To Previous Trading Day" color="warning" variant="outlined" />
             ) : null}
@@ -1165,53 +1455,90 @@ export default function EntryDecision() {
             backtest={activeBacktest}
           />
 
-          <Grid container spacing={2.5} alignItems="stretch">
-            <Grid item xs={12} lg={5}>
-              <Grid container spacing={2}>
-                <Grid item xs={12}>
-                  <HorizonDecisionCard label="5-Day Direction" decision={horizons['5d']} />
-                </Grid>
-                <Grid item xs={12}>
-                  <HorizonDecisionCard label="10-Day Direction" decision={horizons['10d']} />
-                </Grid>
-                <Grid item xs={12}>
-                  <Box sx={{ px: 0.5 }}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                      <Typography variant="body2">{activeHorizon.toUpperCase()} Confidence</Typography>
-                      <Typography variant="body2" fontWeight={700}>
-                        {activeDecision.confidence_score ?? 0}
-                      </Typography>
-                    </Box>
-                    <LinearProgress
-                      variant="determinate"
-                      value={Number(activeDecision.confidence_score) || 0}
-                      sx={{ height: 10, borderRadius: 'var(--app-radius)' }}
-                    />
-                  </Box>
-                </Grid>
-              </Grid>
+          <Grid container spacing={1.5} alignItems="stretch">
+            <Grid item xs={12} md={6}>
+              <HorizonSummaryCard
+                label="5-Day Direction"
+                horizon="5d"
+                decision={horizons['5d']}
+                active={activeHorizon === '5d'}
+                onSelect={setActiveHorizon}
+              />
             </Grid>
-
-            <Grid item xs={12} lg={7}>
-              {payload.chart_data?.length ? (
-                <Paper variant="outlined" sx={(theme) => ({ ...panelSx(theme), height: '100%' })}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-                    <Typography variant="h6" fontWeight={700}>
-                      Bollinger Prediction Chart
-                    </Typography>
-                    <Chip size="small" color={signalColor(activeDecision)} label={signalText(activeDecision)} />
-                  </Box>
-                  <StockChart
-                    summary={chartSummary}
-                    eventMap={{}}
-                    range={chartRange}
-                    onRangeChange={setChartRange}
-                    predictionMarkers={predictionMarkers}
-                  />
-                </Paper>
-              ) : null}
+            <Grid item xs={12} md={6}>
+              <HorizonSummaryCard
+                label="10-Day Direction"
+                horizon="10d"
+                decision={horizons['10d']}
+                active={activeHorizon === '10d'}
+                onSelect={setActiveHorizon}
+              />
             </Grid>
           </Grid>
+
+          {payload.chart_data?.length ? (
+            <Paper
+              variant="outlined"
+              sx={(theme) => ({
+                ...panelSx(theme),
+                overflow: 'hidden',
+              })}
+            >
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: { xs: 'flex-start', sm: 'center' },
+                  justifyContent: 'space-between',
+                  gap: 1.5,
+                  flexWrap: 'wrap',
+                  mb: 1,
+                }}
+              >
+                <Box sx={{ minWidth: 0 }}>
+                  <Typography variant="h6" fontWeight={850}>
+                    Bollinger Prediction Chart
+                  </Typography>
+                  <PredictionMarkerLegend />
+                </Box>
+                <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                  <Chip size="small" color={signalColor(activeDecision)} label={`${activeHorizon.toUpperCase()} ${signalText(activeDecision)}`} />
+                  {activeWinLossCounts ? (
+                    <>
+                      <Chip
+                        size="small"
+                        color="success"
+                        variant="outlined"
+                        label={`Wins ${activeWinLossCounts.wins}`}
+                      />
+                      <Chip
+                        size="small"
+                        color="error"
+                        variant="outlined"
+                        label={`Losses ${activeWinLossCounts.losses}`}
+                      />
+                    </>
+                  ) : null}
+                  {openPredictionMarkers.length ? (
+                    <Chip
+                      size="small"
+                      color="warning"
+                      variant="outlined"
+                      label={`${openPredictionMarkers.length} Open`}
+                    />
+                  ) : null}
+                </Box>
+              </Box>
+              <StockChart
+                summary={chartSummary}
+                eventMap={{}}
+                range={chartRange}
+                onRangeChange={setChartRange}
+                predictionMarkers={chartPredictionMarkers}
+                touchMarkerVariant="neutral"
+                height={560}
+              />
+            </Paper>
+          ) : null}
 
           <Paper variant="outlined" sx={panelSx}>
             <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1.5 }}>

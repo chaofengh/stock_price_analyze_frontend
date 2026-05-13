@@ -39,6 +39,30 @@ const toFiniteNumberOrNull = (value) => {
   return Number.isFinite(parsed) ? parsed : null;
 };
 
+const predictionMarkerDate = (marker) => {
+  const date = marker?.signal_date || marker?.date;
+  return date ? String(date).slice(0, 10) : "";
+};
+
+const isOpenPredictionMarker = (marker) =>
+  marker?.marker_status === "open" ||
+  marker?.status === "open" ||
+  marker?.is_open === true ||
+  marker?.is_correct == null;
+
+const predictionMarkerColor = (marker) => {
+  if (marker?.is_correct === true) return "#34c759";
+  if (marker?.is_correct === false) return "#ff453a";
+  if (isOpenPredictionMarker(marker)) return "#ff9f0a";
+  return "#90a4ae";
+};
+
+const predictionMarkerStyle = (marker) => {
+  if (marker?.predicted_direction === "continuation") return "rectRounded";
+  if (marker?.predicted_direction === "reversal") return "triangle";
+  return "circle";
+};
+
 ChartJS.register(
   CategoryScale, LinearScale, PointElement, LineElement,
   CandlestickController, CandlestickElement, OhlcController, OhlcElement,
@@ -53,6 +77,8 @@ function StockChart({
   range = "3M",
   onRangeChange,
   predictionMarkers = [],
+  touchMarkerVariant = "pnl",
+  height = 450,
 }) {
   const chartRef = useRef(null);
   const [dragInfo, setDragInfo] = useState(null);
@@ -149,7 +175,9 @@ function StockChart({
     return { ...summary, chart_data: filteredPoints };
   }, [summary, filteredPoints]);
 
-  const baseChartData = useChartData(chartSummary, eventTypeMappingTouch, pnlStatusByDate);
+  const baseChartData = useChartData(chartSummary, eventTypeMappingTouch, pnlStatusByDate, {
+    touchMarkerVariant,
+  });
 
   const upperBand = useMemo(
     () => filteredPoints.map((pt) => pt.upper ?? null),
@@ -204,71 +232,86 @@ function StockChart({
     [filteredPoints]
   );
 
-  const predictionByDate = useMemo(() => {
+  const predictionMarkersByDate = useMemo(() => {
     const out = {};
     predictionMarkers.forEach((marker) => {
-      const date = marker?.signal_date || marker?.date;
+      const date = predictionMarkerDate(marker);
       if (!date) return;
-      out[String(date).slice(0, 10)] = marker;
+      if (!out[date]) {
+        out[date] = [];
+      }
+      out[date].push(marker);
+    });
+    Object.values(out).forEach((markers) => {
+      markers.sort((a, b) => {
+        const activeDelta =
+          Number(Boolean(b?.is_active_horizon)) - Number(Boolean(a?.is_active_horizon));
+        if (activeDelta) return activeDelta;
+        return String(a?.horizon || "").localeCompare(String(b?.horizon || ""));
+      });
     });
     return out;
   }, [predictionMarkers]);
 
+  const predictionMarkerPoints = useMemo(() => {
+    if (!filteredPoints.length) return [];
+    const points = [];
+    filteredPoints.forEach((pt, idx) => {
+      const close = toFiniteNumberOrNull(pt.close);
+      if (close == null) return;
+      const date = String(pt.date).slice(0, 10);
+      const markers = predictionMarkersByDate[date] || [];
+      if (!markers.length) return;
+      const offsetStep = Math.max(Math.abs(close) * 0.008, 0.08);
+      markers.forEach((marker, markerIndex) => {
+        const centeredSlot = markerIndex - (markers.length - 1) / 2;
+        points.push({
+          x: idx,
+          y: close + centeredSlot * offsetStep,
+          marker,
+        });
+      });
+    });
+    return points;
+  }, [filteredPoints, predictionMarkersByDate]);
+
   const predictionMarkerDataset = useMemo(() => {
-    const markerDates = Object.keys(predictionByDate);
-    if (!markerDates.length || !filteredPoints.length) return null;
+    if (!predictionMarkerPoints.length) return null;
 
-    const colors = filteredPoints.map((pt) => {
-      const marker = predictionByDate?.[String(pt.date).slice(0, 10)];
-      if (!marker) return "transparent";
-      if (marker.is_correct === true) return "#2e7d32";
-      if (marker.is_correct === false) return "#d32f2f";
-      return "#90a4ae";
+    const colors = predictionMarkerPoints.map((point) => predictionMarkerColor(point.marker));
+    const radii = predictionMarkerPoints.map((point) => {
+      if (point.marker?.is_active_horizon) return 5.5;
+      if (isOpenPredictionMarker(point.marker) || point.marker?.is_selected_signal === true) return 4.75;
+      return 3.75;
     });
-    const radii = filteredPoints.map((pt) => {
-      const marker = predictionByDate?.[String(pt.date).slice(0, 10)];
-      return marker ? 6 : 0;
-    });
-    const hoverRadii = radii.map((radius) => (radius ? 8 : 0));
-    const pointStyles = filteredPoints.map((pt) => {
-      const marker = predictionByDate?.[String(pt.date).slice(0, 10)];
-      if (!marker) return "circle";
-      return marker.predicted_direction === "reversal" ? "triangle" : "circle";
-    });
-
-    const data =
-      priceView === "candles"
-        ? filteredPoints.map((pt, idx) => ({
-            x: idx,
-            y: predictionByDate?.[String(pt.date).slice(0, 10)]
-              ? toFiniteNumberOrNull(pt.close)
-              : null,
-          }))
-        : filteredPoints.map((pt) =>
-            predictionByDate?.[String(pt.date).slice(0, 10)]
-              ? toFiniteNumberOrNull(pt.close)
-              : null
-          );
+    const hoverRadii = radii.map((radius) => radius + 2);
+    const pointStyles = predictionMarkerPoints.map((point) => predictionMarkerStyle(point.marker));
+    const pointBorderColors = predictionMarkerPoints.map((point) =>
+      isOpenPredictionMarker(point.marker) ? "#24180a" : "#0b0f14"
+    );
+    const pointBorderWidths = predictionMarkerPoints.map((point) =>
+      isOpenPredictionMarker(point.marker) || point.marker?.is_selected_signal === true ? 1.2 : 1
+    );
 
     return {
       type: "line",
-      label: "Predictions",
-      data,
+      label: "Prediction signals",
+      data: predictionMarkerPoints.map((point) => ({ x: point.x, y: point.y })),
       showLine: false,
       borderWidth: 0,
       pointRadius: radii,
       pointHoverRadius: hoverRadii,
       pointStyle: pointStyles,
-      pointHitRadius: 10,
+      pointHitRadius: 14,
       pointBackgroundColor: colors,
-      pointBorderColor: "#0b0f14",
-      pointBorderWidth: 1.5,
+      pointBorderColor: pointBorderColors,
+      pointBorderWidth: pointBorderWidths,
       fill: false,
-      parsing: priceView === "candles" ? false : undefined,
+      parsing: false,
       yAxisID: "y",
       order: 0,
     };
-  }, [filteredPoints, predictionByDate, priceView]);
+  }, [predictionMarkerPoints]);
 
   const chartData = useMemo(() => {
     if (!baseChartData?.labels?.length) {
@@ -369,7 +412,10 @@ function StockChart({
         return;
       }
 
-      const newIndex = chartElements[0].index;
+      const hovered = chartElements[0];
+      const raw = chart?.data?.datasets?.[hovered.datasetIndex]?.data?.[hovered.index];
+      const rawIndex = raw && typeof raw === "object" ? Number(raw.x) : hovered.index;
+      const newIndex = Number.isFinite(rawIndex) ? rawIndex : hovered.index;
       if (newIndex === chart.$currentHoverIndex) return;
 
       chart.$currentHoverIndex = newIndex;
@@ -468,7 +514,7 @@ function StockChart({
     : "text.secondary";
 
   return (
-    <Box sx={{ height: 450, mb: 3, position: "relative" }}>
+    <Box sx={{ height, mb: 3, position: "relative" }}>
       <Box
         sx={{
           display: "flex",

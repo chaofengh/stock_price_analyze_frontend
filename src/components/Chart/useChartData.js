@@ -8,7 +8,14 @@ import { useMemo } from 'react';
  * @param {object} eventTypeMappingTouch   // optional fallback: { 'YYYY-MM-DD': 'lower'|'upper' }
  * @param {object} pnlStatusByDate         // preferred: { 'YYYY-MM-DD': { status:'profit'|'loss'|'mixed' } }
  */
-export function useChartData(summary, eventTypeMappingTouch = {}, pnlStatusByDate = {}) {
+export function useChartData(
+  summary,
+  eventTypeMappingTouch = {},
+  pnlStatusByDate = {},
+  options = {}
+) {
+  const touchMarkerVariant = options?.touchMarkerVariant || 'pnl';
+
   return useMemo(() => {
     const rows = summary?.chart_data || [];
     if (!rows.length) return { labels: [], datasets: [] };
@@ -20,6 +27,8 @@ export function useChartData(summary, eventTypeMappingTouch = {}, pnlStatusByDat
     const GREEN = '#2ecc71';  // profit
     const RED   = '#e74c3c';  // loss
     const AMBER = '#f59e0b';  // mixed / fallback
+    const NEUTRAL_TOUCH = 'rgba(148,163,184,0.58)';
+    const NEUTRAL_TOUCH_BORDER = 'rgba(227,236,255,0.34)';
     const DEFAULT_POINT = 'rgba(25,118,210,0.9)'; // small dots along the line
     const LINE_COLOR = '#1976d2';
 
@@ -40,20 +49,34 @@ export function useChartData(summary, eventTypeMappingTouch = {}, pnlStatusByDat
 
       if (pnl) {
         // Color strictly by P&L (preferred)
-        const color = pnl === 'profit' ? GREEN : pnl === 'loss' ? RED : AMBER;
+        const color =
+          touchMarkerVariant === 'neutral'
+            ? NEUTRAL_TOUCH
+            : pnl === 'profit'
+            ? GREEN
+            : pnl === 'loss'
+            ? RED
+            : AMBER;
         pointRadius.push(TOUCH_R);
         pointHoverRadius.push(TOUCH_HOVER_R);
         pointBackgroundColor.push(color);
-        pointBorderColor.push('#0b0f14');  // subtle ring for contrast on dark canvas
+        pointBorderColor.push(touchMarkerVariant === 'neutral' ? NEUTRAL_TOUCH_BORDER : '#0b0f14');
         pointBorderWidth.push(1.5);
       } else if (pt.isTouch) {
         // Fallback: if we have no P&L status yet, use band touch type
         const t = eventTypeMappingTouch?.[date];
-        const color = t === 'lower' ? GREEN : t === 'upper' ? RED : AMBER;
+        const color =
+          touchMarkerVariant === 'neutral'
+            ? NEUTRAL_TOUCH
+            : t === 'lower'
+            ? GREEN
+            : t === 'upper'
+            ? RED
+            : AMBER;
         pointRadius.push(TOUCH_R);
         pointHoverRadius.push(TOUCH_HOVER_R);
         pointBackgroundColor.push(color);
-        pointBorderColor.push('#0b0f14');
+        pointBorderColor.push(touchMarkerVariant === 'neutral' ? NEUTRAL_TOUCH_BORDER : '#0b0f14');
         pointBorderWidth.push(1.5);
       } else {
         // Non-touch day
@@ -86,7 +109,7 @@ export function useChartData(summary, eventTypeMappingTouch = {}, pnlStatusByDat
         },
       ],
     };
-  }, [summary, eventTypeMappingTouch, pnlStatusByDate]);
+  }, [summary, eventTypeMappingTouch, pnlStatusByDate, touchMarkerVariant]);
 }
 
 export default useChartData;
