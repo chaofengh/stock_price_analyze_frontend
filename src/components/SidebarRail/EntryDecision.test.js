@@ -41,6 +41,7 @@ const mockPayload = {
       feature_schema_version: 'features-test',
       price_data_end_date: '2026-04-15',
       trained_through_date: '2026-04-15',
+      created_at: '2026-04-15 15:10:00',
       context_key: 'aapl-2026-04-15',
       quality: {
         status: 'passed',
@@ -208,10 +209,19 @@ const mockPayload = {
         {
           status: 'open',
           signal_date: '2026-04-14',
+          current_date: '2026-04-15',
           outcome_date: null,
           horizon_days: 5,
+          elapsed_sessions: 1,
+          remaining_sessions: 4,
+          progress: 0.2,
           touched_side: 'Lower',
           predicted_direction: 'reversal',
+          interim_status: 'working',
+          interim_direction: 'reversal',
+          signal_close: 188.1,
+          current_close: 189.9,
+          current_trade_return: 0.009569,
           confidence_score: 86,
           is_correct: null,
         },
@@ -269,10 +279,19 @@ const mockPayload = {
         {
           status: 'open',
           signal_date: '2026-04-01',
+          current_date: '2026-04-15',
           outcome_date: null,
           horizon_days: 10,
+          elapsed_sessions: 8,
+          remaining_sessions: 2,
+          progress: 0.8,
           touched_side: 'Lower',
           predicted_direction: 'continuation',
+          interim_status: 'against',
+          interim_direction: 'reversal',
+          signal_close: 186.4,
+          current_close: 189.9,
+          current_trade_return: -0.018777,
           confidence_score: 54,
           is_correct: null,
         },
@@ -338,7 +357,7 @@ describe('EntryDecision', () => {
       expect(screen.getByText('Win')).toBeInTheDocument();
       expect(screen.getByText('Loss')).toBeInTheDocument();
       expect(screen.getByText('Open')).toBeInTheDocument();
-      expect(screen.getByText('2 Open')).toBeInTheDocument();
+      expect(screen.getAllByText('1 Open').length).toBeGreaterThan(0);
       expect(screen.getByText('Wins 8')).toBeInTheDocument();
       expect(screen.getByText('Losses 4')).toBeInTheDocument();
       expect(screen.getAllByText('Training 24')).toHaveLength(2);
@@ -346,7 +365,9 @@ describe('EntryDecision', () => {
       expect(screen.getAllByText('Gate Passed').length).toBeGreaterThan(0);
       expect(screen.getByText('Reverse Edge: 92.0%')).toBeInTheDocument();
       expect(screen.getByText('Continue Edge: 85.0%')).toBeInTheDocument();
-      expect(screen.getByText('Model Fresh')).toBeInTheDocument();
+      expect(screen.getAllByText('Model Fresh').length).toBeGreaterThan(0);
+      expect(screen.getByText(/Model trained through Apr 15 close/)).toBeInTheDocument();
+      expect(screen.getByText(/refreshed Apr 15, 3:10 PM CT/)).toBeInTheDocument();
       expect(screen.getByText('Data Through: 2026-04-15')).toBeInTheDocument();
       expect(screen.getByText('Required: 2026-04-15')).toBeInTheDocument();
       expect(screen.getByText('Quality: Passed')).toBeInTheDocument();
@@ -365,6 +386,12 @@ describe('EntryDecision', () => {
       expect(screen.getByText('Expanded 1')).toBeInTheDocument();
       expect(screen.getByText('Reverse Gate Passed')).toBeInTheDocument();
       expect(screen.getByText('Continue Gate Quarantined')).toBeInTheDocument();
+      expect(screen.getByText('Open 5D Prediction')).toBeInTheDocument();
+      expect(screen.getByText('Day 2 of 5')).toBeInTheDocument();
+      expect(screen.getByText('Working')).toBeInTheDocument();
+      expect(screen.getByText('$188.10')).toBeInTheDocument();
+      expect(screen.getByText('$189.90')).toBeInTheDocument();
+      expect(screen.getByText('+1.0%')).toBeInTheDocument();
       expect(screen.getByTestId('stock-chart')).toBeInTheDocument();
       expect(screen.getByDisplayValue(/\d{4}-\d{2}-\d{2}/)).toBeInTheDocument();
     });
@@ -379,7 +406,7 @@ describe('EntryDecision', () => {
     expect(chartProps.summary.chart_data).toHaveLength(2);
     expect(chartProps.height).toBe(560);
     expect(chartProps.touchMarkerVariant).toBe('neutral');
-    expect(chartProps.predictionMarkers).toHaveLength(3);
+    expect(chartProps.predictionMarkers).toHaveLength(2);
     expect(chartProps.predictionMarkers).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -395,14 +422,9 @@ describe('EntryDecision', () => {
           signal_date: '2026-04-14',
           predicted_direction: 'reversal',
         }),
-        expect.objectContaining({
-          horizon: '10d',
-          marker_status: 'open',
-          signal_date: '2026-04-01',
-          predicted_direction: 'continuation',
-        }),
       ])
     );
+    expect(chartProps.predictionMarkers.some((marker) => marker.horizon === '10d')).toBe(false);
   });
 
   it('switches horizon and shows no-prediction reason', async () => {
@@ -425,9 +447,95 @@ describe('EntryDecision', () => {
     expect(screen.getByText('Hold: Low Confidence')).toBeInTheDocument();
     expect(screen.getAllByText('Veto: Falling Knife No Exhaustion').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Gate Quarantined').length).toBeGreaterThan(0);
-    expect(__getStockChartProps().predictionMarkers).toHaveLength(2);
+    expect(__getStockChartProps().predictionMarkers).toHaveLength(1);
     expect(__getStockChartProps().predictionMarkers.every((marker) => marker.marker_status === 'open')).toBe(true);
+    expect(__getStockChartProps().predictionMarkers[0]).toEqual(
+      expect.objectContaining({
+        horizon: '10d',
+        signal_date: '2026-04-01',
+        predicted_direction: 'continuation',
+      })
+    );
     expect(screen.queryByText('Open Predictions')).not.toBeInTheDocument();
+  });
+
+  it('explains earnings event-risk blocks with the affected horizon', async () => {
+    const payload = JSON.parse(JSON.stringify(mockPayload));
+    payload.event_risk_blocked = true;
+    payload.event_risk = {
+      blocked: true,
+      event_date: '2026-03-18',
+      reason: 'earnings_within_prediction_window',
+      sessions_to_event: 2,
+    };
+    payload.horizons['5d'] = {
+      ...payload.horizons['10d'],
+      no_prediction_reason: 'event_risk',
+      event_risk: payload.event_risk,
+    };
+    payload.horizons['10d'] = {
+      ...payload.horizons['10d'],
+      no_prediction_reason: 'event_risk',
+      event_risk: payload.event_risk,
+    };
+    fetchStockEntryDecision.mockResolvedValue(payload);
+
+    render(
+      <MemoryRouter initialEntries={['/entry-decision?symbol=MU']}>
+        <EntryDecision />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('No prediction: earnings on Mar 18 inside the 5D window.')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: '10D' }));
+
+    expect(screen.getByText('No prediction: earnings on Mar 18 inside the 10D window.')).toBeInTheDocument();
+  });
+
+  it('does not show a horizon event-risk warning when only the other horizon is blocked', async () => {
+    const payload = JSON.parse(JSON.stringify(mockPayload));
+    payload.event_risk_blocked = true;
+    payload.event_risk = {
+      blocked: true,
+      event_date: '2026-03-18',
+      reason: 'earnings_within_prediction_window',
+      sessions_to_event: 7,
+      blocked_horizons: ['10d'],
+    };
+    payload.horizons['5d'].event_risk = {
+      ...payload.event_risk,
+      blocked: false,
+      horizon_days: 5,
+    };
+    payload.horizons['10d'] = {
+      ...payload.horizons['10d'],
+      no_prediction_reason: 'event_risk',
+      event_risk: {
+        ...payload.event_risk,
+        blocked: true,
+        horizon_days: 10,
+      },
+    };
+    fetchStockEntryDecision.mockResolvedValue(payload);
+
+    render(
+      <MemoryRouter initialEntries={['/entry-decision?symbol=MU']}>
+        <EntryDecision />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => expect(screen.getByText('5-Day Direction')).toBeInTheDocument());
+
+    expect(screen.queryByText('No prediction: earnings on Mar 18 inside the 5D window.')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '10D' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('No prediction: earnings on Mar 18 inside the 10D window.')).toBeInTheDocument();
+    });
   });
 
   it('refetches when date picker changes and shows snap chip', async () => {

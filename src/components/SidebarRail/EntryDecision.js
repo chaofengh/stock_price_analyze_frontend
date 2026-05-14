@@ -60,6 +60,21 @@ const decimal = (value, digits = 2) => {
   return n.toFixed(digits);
 };
 
+const currency = (value) => {
+  if (isBlankValue(value)) return '--';
+  const n = Number(value);
+  if (!Number.isFinite(n)) return '--';
+  return `$${n.toFixed(2)}`;
+};
+
+const signedPercent = (value) => {
+  if (isBlankValue(value)) return '--';
+  const n = Number(value);
+  if (!Number.isFinite(n)) return '--';
+  const sign = n > 0 ? '+' : '';
+  return `${sign}${(n * 100).toFixed(1)}%`;
+};
+
 const titleCase = (text) =>
   typeof text === 'string' && text
     ? text
@@ -119,6 +134,73 @@ const freshnessLabel = (freshness = {}) => {
     return `Model Stale ${sessions} Session${sessions === 1 ? '' : 's'}`;
   }
   return `Model ${titleCase(status)}`;
+};
+
+const formatDate = (value) => {
+  if (!value) return '';
+  const parsed = new Date(`${String(value).slice(0, 10)}T12:00:00`);
+  if (Number.isNaN(parsed.getTime())) return String(value).slice(0, 10);
+  return parsed.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+};
+
+const formatDateTime = (value) => {
+  if (!value) return '';
+  const text = String(value);
+  const chicagoTimestamp = text.match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?/);
+  if (chicagoTimestamp) {
+    const [, year, month, day, hourText, minuteText] = chicagoTimestamp;
+    const dateLabel = formatDate(`${year}-${month}-${day}`);
+    if (!hourText || !minuteText) return dateLabel;
+    const hour24 = Number(hourText);
+    const hour12 = hour24 % 12 || 12;
+    const meridiem = hour24 >= 12 ? 'PM' : 'AM';
+    return `${dateLabel}, ${hour12}:${minuteText} ${meridiem}`;
+  }
+  const parsed = new Date(text);
+  if (Number.isNaN(parsed.getTime())) return String(value);
+  return parsed.toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+};
+
+const modelFreshnessLine = (contextMeta = {}, freshness = {}) => {
+  const trainedThrough = contextMeta.trained_through_date || contextMeta.price_data_end_date || freshness.price_data_end_date;
+  const refreshedAt = contextMeta.created_at;
+  const pieces = [];
+  if (trainedThrough) pieces.push(`Model trained through ${formatDate(trainedThrough)} close`);
+  if (refreshedAt) pieces.push(`refreshed ${formatDateTime(refreshedAt)} CT`);
+  if (!pieces.length && freshness.status) pieces.push(freshnessLabel(freshness));
+  return pieces.join(' • ');
+};
+
+const eventRiskMessage = (payload = {}, activeHorizon = '') => {
+  const horizonDecision = activeHorizon ? payload.horizons?.[activeHorizon] || {} : {};
+  const risk = horizonDecision.event_risk || payload.event_risk || {};
+  const horizonBlocked =
+    horizonDecision.no_prediction_reason === 'event_risk' ||
+    (horizonDecision.status === 'no_prediction' && risk.blocked);
+  if (!horizonBlocked && !risk.blocked) return '';
+  const eventDate = risk.event_date || risk.earnings_date;
+  if (!eventDate) return `No prediction: ${titleCase(risk.reason || 'event_risk')}.`;
+  const horizon = activeHorizon ? activeHorizon.toUpperCase() : 'prediction';
+  return `No prediction: earnings on ${formatDate(eventDate)} inside the ${horizon} window.`;
+};
+
+const openPredictionTone = (prediction = {}) => {
+  if (prediction.interim_status === 'working') return 'success';
+  if (prediction.interim_status === 'against') return 'error';
+  if (prediction.interim_status === 'flat') return 'warning';
+  return 'default';
+};
+
+const openPredictionStatusLabel = (prediction = {}) => {
+  if (prediction.interim_status === 'working') return 'Working';
+  if (prediction.interim_status === 'against') return 'Against thesis';
+  if (prediction.interim_status === 'flat') return 'Flat';
+  return 'Open';
 };
 
 const HORIZON_ORDER = ['5d', '10d'];
@@ -323,6 +405,11 @@ function DecisionCockpit({ payload = {}, activeHorizon, decision = {}, backtest 
             <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
               {posture.subtitle}
             </Typography>
+            {eventRiskMessage(payload, activeHorizon) ? (
+              <Box sx={{ mt: 1 }}>
+                <EventRiskNotice payload={payload} activeHorizon={activeHorizon} />
+              </Box>
+            ) : null}
           </Box>
 
           <Box
@@ -603,6 +690,140 @@ function HorizonSummaryCard({ label, horizon, decision = {}, active, onSelect })
           <Chip size="small" variant="outlined" label="Flat OK" />
         ) : null}
       </Box>
+    </Paper>
+  );
+}
+
+function ModelFreshnessStrip({ contextMeta = {}, freshness = {}, quality = {} }) {
+  const line = modelFreshnessLine(contextMeta, freshness);
+  if (!line && !quality.status) return null;
+
+  return (
+    <Paper
+      variant="outlined"
+      sx={(theme) => ({
+        ...insetSx(theme),
+        p: 1.25,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 1,
+        flexWrap: 'wrap',
+        bgcolor: alpha(theme.palette.common.white, 0.035),
+      })}
+    >
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
+        <SyncRoundedIcon fontSize="small" color={freshness.status === 'fresh' ? 'success' : 'inherit'} />
+        <Typography variant="body2" color="text.secondary" sx={{ overflowWrap: 'anywhere' }}>
+          {line || freshnessLabel(freshness)}
+        </Typography>
+      </Box>
+      <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+        {freshness.status ? (
+          <Chip size="small" color={freshnessTone(freshness.status)} label={freshnessLabel(freshness)} />
+        ) : null}
+        {quality.status ? <Chip size="small" variant="outlined" label={`Quality ${titleCase(quality.status)}`} /> : null}
+      </Box>
+    </Paper>
+  );
+}
+
+function EventRiskNotice({ payload = {}, activeHorizon }) {
+  const message = eventRiskMessage(payload, activeHorizon);
+  if (!message) return null;
+  return (
+    <Alert severity="warning" icon={<CalendarMonthRoundedIcon />}>
+      {message}
+    </Alert>
+  );
+}
+
+function OpenPredictionLifecycle({ predictions = [], activeHorizon }) {
+  if (!predictions.length) return null;
+
+  return (
+    <Paper variant="outlined" sx={panelSx}>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1.5, flexWrap: 'wrap' }}>
+        <Box>
+          <Typography variant="h6" fontWeight={850}>
+            Open {activeHorizon.toUpperCase()} Prediction
+          </Typography>
+        </Box>
+        <Chip size="small" color="warning" variant="outlined" label={`${predictions.length} Open`} />
+      </Box>
+
+      <Grid container spacing={1.25} sx={{ mt: 0.5 }}>
+        {predictions.map((prediction, index) => {
+          const horizonDays = Number(prediction.horizon_days) || Number(activeHorizon.replace('d', '')) || 0;
+          const elapsedSessions = Math.max(0, Number(prediction.elapsed_sessions) || 0);
+          const dayNumber = horizonDays > 0 ? Math.min(horizonDays, elapsedSessions + 1) : elapsedSessions + 1;
+          const progress = Math.max(0, Math.min(100, Number(prediction.progress) * 100 || 0));
+          const tone = openPredictionTone(prediction);
+
+          return (
+            <Grid item xs={12} md={predictions.length > 1 ? 6 : 12} key={`${prediction.signal_date || index}-${index}`}>
+              <Box
+                sx={(theme) => ({
+                  ...insetSx(theme),
+                  p: 1.5,
+                  height: '100%',
+                  borderColor:
+                    tone !== 'default' && theme.palette[tone]
+                      ? alpha(theme.palette[tone].main, 0.28)
+                      : alpha(theme.palette.common.white, 0.10),
+                })}
+              >
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1, flexWrap: 'wrap' }}>
+                  <Box>
+                    <Typography variant="overline" color="text.secondary" sx={{ lineHeight: 1 }}>
+                      {prediction.signal_date || '--'}
+                    </Typography>
+                    <Typography variant="h6" fontWeight={900} sx={{ lineHeight: 1.15 }}>
+                      Day {dayNumber} of {horizonDays || '--'}
+                    </Typography>
+                  </Box>
+                  <Chip
+                    size="small"
+                    color={tone}
+                    variant={tone === 'default' ? 'outlined' : 'filled'}
+                    label={openPredictionStatusLabel(prediction)}
+                  />
+                </Box>
+
+                <LinearProgress
+                  variant="determinate"
+                  value={progress}
+                  sx={(theme) => ({
+                    mt: 1.25,
+                    height: 6,
+                    borderRadius: '999px',
+                    bgcolor: alpha(theme.palette.common.white, 0.08),
+                    '& .MuiLinearProgress-bar': {
+                      borderRadius: '999px',
+                      bgcolor: tone !== 'default' && theme.palette[tone] ? theme.palette[tone].main : theme.palette.warning.main,
+                    },
+                  })}
+                />
+
+                <Grid container spacing={1} sx={{ mt: 0.5 }}>
+                  <Grid item xs={6} sm={3}>
+                    <MetricCard label="Prediction" value={titleCase(prediction.predicted_direction)} compact tone={tone === 'default' ? 'neutral' : tone} />
+                  </Grid>
+                  <Grid item xs={6} sm={3}>
+                    <MetricCard label="Entry Close" value={currency(prediction.signal_close)} compact />
+                  </Grid>
+                  <Grid item xs={6} sm={3}>
+                    <MetricCard label="Current Close" value={currency(prediction.current_close)} compact />
+                  </Grid>
+                  <Grid item xs={6} sm={3}>
+                    <MetricCard label="Unrealized" value={signedPercent(prediction.current_trade_return)} compact tone={tone === 'default' ? 'neutral' : tone} />
+                  </Grid>
+                </Grid>
+              </Box>
+            </Grid>
+          );
+        })}
+      </Grid>
     </Paper>
   );
 }
@@ -1238,6 +1459,11 @@ export default function EntryDecision() {
     [allPredictionMarkers]
   );
 
+  const activeOpenPredictionMarkers = useMemo(
+    () => openPredictionMarkers.filter((marker) => marker.horizon === activeHorizon),
+    [activeHorizon, openPredictionMarkers]
+  );
+
   const chartPredictionMarkers = useMemo(() => {
     if (!payload) return [];
     const markers = new Map();
@@ -1246,7 +1472,7 @@ export default function EntryDecision() {
       markers.set(predictionMarkerKey(scoredMarker, activeHorizon), scoredMarker);
     });
 
-    openPredictionMarkers.forEach((marker) => {
+    activeOpenPredictionMarkers.forEach((marker) => {
       markers.set(predictionMarkerKey(marker, marker.horizon), marker);
     });
 
@@ -1267,7 +1493,7 @@ export default function EntryDecision() {
     }
 
     return [...markers.values()];
-  }, [activeHorizon, activePredictions, openPredictionMarkers, payload]);
+  }, [activeHorizon, activeOpenPredictionMarkers, activePredictions, payload]);
 
   const activeWinLossCounts = useMemo(() => {
     const predictionCount = Number(activeBacktest.prediction_count);
@@ -1448,6 +1674,8 @@ export default function EntryDecision() {
             ) : null}
           </Box>
 
+          <ModelFreshnessStrip contextMeta={contextMeta} freshness={freshness} quality={modelQuality} />
+
           <DecisionCockpit
             payload={payload}
             activeHorizon={activeHorizon}
@@ -1475,6 +1703,8 @@ export default function EntryDecision() {
               />
             </Grid>
           </Grid>
+
+          <OpenPredictionLifecycle predictions={activeOpenPredictionMarkers} activeHorizon={activeHorizon} />
 
           {payload.chart_data?.length ? (
             <Paper
@@ -1518,12 +1748,12 @@ export default function EntryDecision() {
                       />
                     </>
                   ) : null}
-                  {openPredictionMarkers.length ? (
+                  {activeOpenPredictionMarkers.length ? (
                     <Chip
                       size="small"
                       color="warning"
                       variant="outlined"
-                      label={`${openPredictionMarkers.length} Open`}
+                      label={`${activeOpenPredictionMarkers.length} Open`}
                     />
                   ) : null}
                 </Box>
