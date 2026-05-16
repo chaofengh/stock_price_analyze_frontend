@@ -246,6 +246,60 @@ const selectedDirectionStats = (decision = {}) => {
   return { probability: null, precision: null, count: 0 };
 };
 
+const keyReasonsForDecision = (decision = {}) => {
+  const reasons = Array.isArray(decision.key_reasons) && decision.key_reasons.length
+    ? decision.key_reasons
+    : decision.contributions || [];
+  return reasons.slice(0, 4);
+};
+
+const similarCasesForDecision = (decision = {}) => {
+  if (Array.isArray(decision.similar_past_cases) && decision.similar_past_cases.length) {
+    return decision.similar_past_cases;
+  }
+  if (Array.isArray(decision.playbook?.neighbors)) {
+    return decision.playbook.neighbors;
+  }
+  return [];
+};
+
+const reasonTone = (reason = {}, decision = {}) => {
+  const impact = reason.impact || reason.predicted_direction;
+  if (impact === decision.predicted_direction && decision.status === 'prediction') {
+    return signalColor(decision);
+  }
+  if (impact === 'reversal') return 'success';
+  if (impact === 'continuation') return 'info';
+  return 'default';
+};
+
+const reasonImpactLabel = (reason = {}, decision = {}) => {
+  const impact = reason.impact || reason.predicted_direction;
+  if (!impact) return 'Model input';
+  const prefix = impact === decision.predicted_direction && decision.status === 'prediction' ? 'Supports' : 'Points to';
+  return `${prefix} ${titleCase(impact)}`;
+};
+
+const formatSimilarity = (value) => {
+  if (isBlankValue(value)) return '--';
+  const n = Number(value);
+  if (!Number.isFinite(n)) return '--';
+  if (n >= 0 && n <= 1) return percent(n);
+  return decimal(n, 2);
+};
+
+const caseResultTone = (item = {}) => {
+  if (item.is_correct === true) return 'success';
+  if (item.is_correct === false) return 'error';
+  return 'default';
+};
+
+const caseResultLabel = (item = {}) => {
+  if (item.is_correct === true) return 'Worked';
+  if (item.is_correct === false) return 'Failed';
+  return titleCase(item.actual_direction);
+};
+
 const activeDirectionAccuracy = (decision = {}, backtest = {}) => {
   if (decision.predicted_direction === 'reversal') return backtest.reversal_accuracy;
   if (decision.predicted_direction === 'continuation') return backtest.continuation_accuracy;
@@ -1200,6 +1254,146 @@ function ContributionsTable({ title, contributions = [] }) {
   );
 }
 
+function KeyReasonsPanel({ activeHorizon, decision = {} }) {
+  const reasons = keyReasonsForDecision(decision);
+  const predictedDirection = titleCase(decision.predicted_direction);
+
+  return (
+    <Paper variant="outlined" sx={panelSx}>
+      <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 1.5, flexWrap: 'wrap' }}>
+        <Box sx={{ minWidth: 0 }}>
+          <Typography variant="h6" fontWeight={850}>
+            Key Reasons
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            {decision.status === 'prediction'
+              ? `${activeHorizon.toUpperCase()} model leaned ${predictedDirection} because these inputs carried the most weight.`
+              : `${activeHorizon.toUpperCase()} model did not clear a trade signal.`}
+          </Typography>
+        </Box>
+        <Chip size="small" color={signalColor(decision)} label={`${activeHorizon.toUpperCase()} ${signalText(decision)}`} />
+      </Box>
+
+      {reasons.length > 0 ? (
+        <Grid container spacing={1.25} sx={{ mt: 0.75 }}>
+          {reasons.map((reason, index) => {
+            const tone = reasonTone(reason, decision);
+            return (
+              <Grid item xs={12} md={6} key={`${reason.feature || 'reason'}-${index}`}>
+                <Box
+                  sx={(theme) => ({
+                    ...insetSx(theme),
+                    p: 1.5,
+                    height: '100%',
+                    borderColor:
+                      tone !== 'default' && theme.palette[tone]
+                        ? alpha(theme.palette[tone].main, 0.28)
+                        : alpha(theme.palette.common.white, 0.10),
+                  })}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 1 }}>
+                    <Box sx={{ minWidth: 0 }}>
+                      <Typography variant="subtitle2" fontWeight={850} sx={{ overflowWrap: 'anywhere' }}>
+                        {titleCase(reason.feature)}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary" sx={{ mt: 0.35 }}>
+                        {reasonImpactLabel(reason, decision)}
+                      </Typography>
+                    </Box>
+                    <Chip size="small" color={tone} variant={tone === 'default' ? 'outlined' : 'filled'} label={`#${reason.rank || index + 1}`} />
+                  </Box>
+                  <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap', mt: 1.25 }}>
+                    <Chip size="small" variant="outlined" label={`Value ${String(reason.value ?? '--')}`} />
+                    <Chip size="small" variant="outlined" label={`Weight ${decimal(reason.contribution, 3)}`} />
+                    {reason.horizon ? (
+                      <Chip size="small" variant="outlined" label={String(reason.horizon).toUpperCase()} />
+                    ) : null}
+                  </Box>
+                </Box>
+              </Grid>
+            );
+          })}
+        </Grid>
+      ) : (
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5 }}>
+          No ranked reasons for this symbol/date.
+        </Typography>
+      )}
+    </Paper>
+  );
+}
+
+function SimilarPastCasesPanel({ activeHorizon, decision = {} }) {
+  const cases = similarCasesForDecision(decision).slice(0, 8);
+  const playbook = decision.playbook || {};
+  const predictedDirection = decision.predicted_direction;
+
+  return (
+    <Paper variant="outlined" sx={panelSx}>
+      <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 1.5, flexWrap: 'wrap' }}>
+        <Box sx={{ minWidth: 0 }}>
+          <Typography variant="h6" fontWeight={850}>
+            Similar Past Cases
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Prior {activeHorizon.toUpperCase()} setups closest to the current tape.
+          </Typography>
+        </Box>
+        <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          {playbook.match_count !== undefined ? (
+            <Chip size="small" variant="outlined" label={`${playbook.match_count} matched`} />
+          ) : null}
+          {playbook.precision !== undefined ? (
+            <Chip size="small" color={signalColor(decision)} variant="outlined" label={`${percent(playbook.precision)} precision`} />
+          ) : null}
+          {predictedDirection ? (
+            <Chip size="small" color={signalColor(decision)} label={titleCase(predictedDirection)} />
+          ) : null}
+        </Box>
+      </Box>
+
+      <TableContainer sx={{ mt: 1.5 }}>
+        <Table size="small">
+          <TableHead>
+            <TableRow>
+              <TableCell>Signal Date</TableCell>
+              <TableCell>Side</TableCell>
+              <TableCell>Actual Move</TableCell>
+              <TableCell>Result</TableCell>
+              <TableCell align="right">Return</TableCell>
+              <TableCell align="right">Similarity</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {cases.length > 0 ? (
+              cases.map((item, index) => (
+                <TableRow key={`${item.signal_date || item.date || 'case'}-${index}`}>
+                  <TableCell>{item.signal_date || item.date || '--'}</TableCell>
+                  <TableCell>{item.touched_side || '--'}</TableCell>
+                  <TableCell>{titleCase(item.actual_direction || item.direction)}</TableCell>
+                  <TableCell>
+                    <Chip size="small" color={caseResultTone(item)} variant="outlined" label={caseResultLabel(item)} />
+                  </TableCell>
+                  <TableCell align="right">{signedPercent(item.trade_return)}</TableCell>
+                  <TableCell align="right">{formatSimilarity(item.similarity)}</TableCell>
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={6} align="center">
+                  <Typography variant="body2" color="text.secondary">
+                    No similar past cases returned for this horizon.
+                  </Typography>
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    </Paper>
+  );
+}
+
 function PredictionHistoryTable({ predictions = [] }) {
   return (
     <Paper variant="outlined" sx={panelSx}>
@@ -1704,6 +1898,15 @@ export default function EntryDecision() {
             </Grid>
           </Grid>
 
+          <Grid container spacing={1.5}>
+            <Grid item xs={12} lg={5}>
+              <KeyReasonsPanel activeHorizon={activeHorizon} decision={activeDecision} />
+            </Grid>
+            <Grid item xs={12} lg={7}>
+              <SimilarPastCasesPanel activeHorizon={activeHorizon} decision={activeDecision} />
+            </Grid>
+          </Grid>
+
           <OpenPredictionLifecycle predictions={activeOpenPredictionMarkers} activeHorizon={activeHorizon} />
 
           {payload.chart_data?.length ? (
@@ -1769,48 +1972,6 @@ export default function EntryDecision() {
               />
             </Paper>
           ) : null}
-
-          <Paper variant="outlined" sx={panelSx}>
-            <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1.5 }}>
-              Top Reasons
-            </Typography>
-            <TableContainer>
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Rank</TableCell>
-                    <TableCell>Horizon</TableCell>
-                    <TableCell>Feature</TableCell>
-                    <TableCell>Impact</TableCell>
-                    <TableCell align="right">Value</TableCell>
-                    <TableCell align="right">Contribution</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {(payload.top_reasons || []).length > 0 ? (
-                    payload.top_reasons.map((reason, index) => (
-                      <TableRow key={`reason-${index}`}>
-                        <TableCell>{index + 1}</TableCell>
-                        <TableCell>{String(reason.horizon || '--').toUpperCase()}</TableCell>
-                        <TableCell>{titleCase(reason.feature)}</TableCell>
-                        <TableCell>{titleCase(reason.impact)}</TableCell>
-                        <TableCell align="right">{String(reason.value ?? '--')}</TableCell>
-                        <TableCell align="right">{decimal(reason.contribution, 3)}</TableCell>
-                      </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={6} align="center">
-                        <Typography variant="body2" color="text.secondary">
-                          No ranked reasons for this symbol/date.
-                        </Typography>
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </Paper>
 
           <ContributionsTable
             title={`${activeHorizon.toUpperCase()} Contributions`}

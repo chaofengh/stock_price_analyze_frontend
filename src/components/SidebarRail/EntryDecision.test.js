@@ -89,6 +89,32 @@ const mockPayload = {
         precision: 0.83,
         match_count: 12,
       },
+      key_reasons: [
+        {
+          rank: 1,
+          horizon: '5d',
+          feature: 'wick_rejection',
+          impact: 'reversal',
+          value: 0.4,
+          contribution: -0.8,
+        },
+      ],
+      similar_past_cases: [
+        {
+          signal_date: '2026-03-02',
+          outcome_date: '2026-03-09',
+          horizon_days: 5,
+          touched_side: 'Lower',
+          predicted_direction: 'reversal',
+          actual_direction: 'reversal',
+          signal_close: 181.2,
+          outcome_close: 187.3,
+          is_correct: true,
+          trade_direction: 'long',
+          trade_return: 0.033665,
+          similarity: 0.91,
+        },
+      ],
       model: {
         training_sample_count: 24,
         continuation_training_count: 12,
@@ -132,6 +158,8 @@ const mockPayload = {
         posterior_probability: 0.643,
         neighbor_count: 14,
       },
+      key_reasons: [],
+      similar_past_cases: [],
       model: {
         training_sample_count: 24,
         continuation_training_count: 12,
@@ -346,6 +374,14 @@ describe('EntryDecision', () => {
       expect(screen.getByText('Bullish Reversal Watch')).toBeInTheDocument();
       expect(screen.getByText('ATM Call Bias')).toBeInTheDocument();
       expect(screen.getAllByText('5D Reversal').length).toBeGreaterThan(0);
+      expect(screen.getByText('Key Reasons')).toBeInTheDocument();
+      expect(screen.getByText(/5D model leaned Reversal/)).toBeInTheDocument();
+      expect(screen.getAllByText('Wick Rejection').length).toBeGreaterThan(0);
+      expect(screen.getByText('Supports Reversal')).toBeInTheDocument();
+      expect(screen.getByText('Similar Past Cases')).toBeInTheDocument();
+      expect(screen.getByText('2026-03-02')).toBeInTheDocument();
+      expect(screen.getByText('Worked')).toBeInTheDocument();
+      expect(screen.getByText('+3.4%')).toBeInTheDocument();
       expect(screen.getByText('Side Precision')).toBeInTheDocument();
       expect(screen.getByText('1Y Side Accuracy')).toBeInTheDocument();
       expect(screen.getByText('Flat Move OK')).toBeInTheDocument();
