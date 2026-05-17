@@ -38,6 +38,7 @@ export default defineConfig(({ mode }) => {
     test: {
       environment: 'jsdom',
       setupFiles: ['./src/setupTests.js'],
+      exclude: ['node_modules/**', 'dist/**', 'build/**', 'tests/**/*.spec.js'],
       globals: true,
       clearMocks: true,
       restoreMocks: true,
